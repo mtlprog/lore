@@ -3,34 +3,30 @@ package sync
 import (
 	"context"
 	"fmt"
-	"log/slog"
-)
 
-// DelegationInfo holds delegation data for an account.
-type DelegationInfo struct {
-	AccountID    string
-	DelegateTo   *string
-	MTLAPBalance float64
-	CouncilReady bool
-}
+	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
+)
 
 // calculateDelegations computes delegation chains and council votes.
 func (s *Syncer) calculateDelegations(ctx context.Context) error {
-	// Step 1: Reset all delegation-related fields
 	if err := s.repo.ResetDelegations(ctx); err != nil {
 		return fmt.Errorf("reset delegations: %w", err)
 	}
 
-	// Step 2: Get all accounts with their delegation info
 	accounts, err := s.repo.GetAllDelegationInfo(ctx)
 	if err != nil {
 		return fmt.Errorf("get delegation info: %w", err)
 	}
 
-	// Build lookup maps
-	accountMap := make(map[string]*DelegationInfo)
+	// Build lookup map using lo.KeyBy
+	accountMap := lo.KeyBy(accounts, func(acc DelegationInfo) string {
+		return acc.AccountID
+	})
+	// Convert to pointer map for mutations
+	accountPtrMap := make(map[string]*DelegationInfo, len(accounts))
 	for i := range accounts {
-		accountMap[accounts[i].AccountID] = &accounts[i]
+		accountPtrMap[accounts[i].AccountID] = &accounts[i]
 	}
 
 	var dbErrors []string
@@ -41,24 +37,20 @@ func (s *Syncer) calculateDelegations(ctx context.Context) error {
 			continue
 		}
 
-		// Check for delegation errors
 		delegateAcc, exists := accountMap[*acc.DelegateTo]
-		if !exists || delegateAcc.MTLAPBalance == 0 {
-			// Delegating to non-MTLAP holder is an error
+		if !exists || delegateAcc.MTLAPBalance.IsZero() {
 			if err := s.repo.SetDelegationError(ctx, acc.AccountID, true); err != nil {
-				slog.Error("failed to set delegation error", "account_id", acc.AccountID, "error", err)
+				s.logger.Error("failed to set delegation error", "account_id", acc.AccountID, "error", err)
 				dbErrors = append(dbErrors, acc.AccountID)
 			}
 			continue
 		}
 
-		// Trace the delegation chain to detect cycles
-		path, hasCycle := traceDelegationChain(acc.AccountID, accountMap)
+		path, hasCycle := traceDelegationChain(acc.AccountID, accountPtrMap)
 		if hasCycle {
-			// Mark all accounts in the cycle
 			for _, cycleAccID := range path {
 				if err := s.repo.SetCycleError(ctx, cycleAccID, path); err != nil {
-					slog.Error("failed to set cycle error", "account_id", cycleAccID, "error", err)
+					s.logger.Error("failed to set cycle error", "account_id", cycleAccID, "error", err)
 					dbErrors = append(dbErrors, cycleAccID)
 				}
 			}
@@ -66,24 +58,23 @@ func (s *Syncer) calculateDelegations(ctx context.Context) error {
 	}
 
 	// Step 4: Calculate received votes for council-ready accounts
-	// Only count votes from accounts without delegation errors or cycles
-	for _, acc := range accounts {
-		if !acc.CouncilReady {
-			continue
-		}
+	councilReadyAccounts := lo.Filter(accounts, func(acc DelegationInfo, _ int) bool {
+		return acc.CouncilReady
+	})
 
-		// Sum MTLAP from all accounts that delegate to this one (directly or transitively)
-		votes := calculateReceivedVotes(acc.AccountID, accountMap)
-
+	for _, acc := range councilReadyAccounts {
+		votes := calculateReceivedVotes(acc.AccountID, accountPtrMap)
 		if err := s.repo.SetReceivedVotes(ctx, acc.AccountID, votes); err != nil {
-			slog.Error("failed to set received votes", "account_id", acc.AccountID, "error", err)
+			s.logger.Error("failed to set received votes", "account_id", acc.AccountID, "error", err)
 			dbErrors = append(dbErrors, acc.AccountID)
 		}
 	}
 
 	if len(dbErrors) > 0 {
-		slog.Error("delegation calculation had database errors", "failed_count", len(dbErrors))
-		// Return error if too many failures
+		s.logger.Error("delegation calculation had database errors",
+			"failed_count", len(dbErrors),
+			"failed_accounts", dbErrors[:min(10, len(dbErrors))],
+		)
 		if len(dbErrors) > 10 {
 			return fmt.Errorf("too many database errors during delegation calculation: %d failures", len(dbErrors))
 		}
@@ -93,7 +84,6 @@ func (s *Syncer) calculateDelegations(ctx context.Context) error {
 }
 
 // traceDelegationChain follows the delegation chain and detects cycles.
-// Returns the path and whether a cycle was detected.
 func traceDelegationChain(startID string, accountMap map[string]*DelegationInfo) ([]string, bool) {
 	visited := make(map[string]bool)
 	var path []string
@@ -101,14 +91,7 @@ func traceDelegationChain(startID string, accountMap map[string]*DelegationInfo)
 	current := startID
 	for {
 		if visited[current] {
-			// Found a cycle - extract the cycle portion
-			cycleStart := -1
-			for i, id := range path {
-				if id == current {
-					cycleStart = i
-					break
-				}
-			}
+			cycleStart := lo.IndexOf(path, current)
 			if cycleStart >= 0 {
 				return path[cycleStart:], true
 			}
@@ -131,53 +114,48 @@ func traceDelegationChain(startID string, accountMap map[string]*DelegationInfo)
 
 // calculateReceivedVotes sums MTLAP from all accounts that delegate to the target.
 func calculateReceivedVotes(targetID string, accountMap map[string]*DelegationInfo) int {
-	// Find all accounts whose delegation chain ends at targetID
-	totalVotes := 0.0
+	totalVotes := decimal.Zero
 
 	for _, acc := range accountMap {
 		if acc.AccountID == targetID {
 			continue
 		}
 
-		// Follow delegation chain from this account
 		finalTarget := getFinalDelegationTarget(acc.AccountID, accountMap)
 		if finalTarget == targetID {
-			totalVotes += acc.MTLAPBalance
+			totalVotes = totalVotes.Add(acc.MTLAPBalance)
 		}
 	}
 
-	return int(totalVotes)
+	return int(totalVotes.IntPart())
 }
 
 // getFinalDelegationTarget follows the delegation chain to find the final target.
-// Returns empty string if chain leads to cycle or error.
 func getFinalDelegationTarget(startID string, accountMap map[string]*DelegationInfo) string {
 	visited := make(map[string]bool)
 	current := startID
 
 	for {
 		if visited[current] {
-			return "" // Cycle detected
+			return ""
 		}
 		visited[current] = true
 
 		acc, exists := accountMap[current]
 		if !exists {
-			return "" // Account not found
+			return ""
 		}
 
 		if acc.DelegateTo == nil {
-			// This account doesn't delegate, so it's the final target
 			if acc.CouncilReady {
 				return current
 			}
-			return "" // End of chain but not council ready
+			return ""
 		}
 
-		// Check if delegate exists and has MTLAP
 		delegateAcc, exists := accountMap[*acc.DelegateTo]
-		if !exists || delegateAcc.MTLAPBalance == 0 {
-			return "" // Delegation error
+		if !exists || delegateAcc.MTLAPBalance.IsZero() {
+			return ""
 		}
 
 		current = *acc.DelegateTo

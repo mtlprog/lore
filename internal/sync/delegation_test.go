@@ -3,12 +3,13 @@ package sync
 import (
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestTraceDelegationChain(t *testing.T) {
-	// Helper to create pointer to string
 	strPtr := func(s string) *string { return &s }
+	one := decimal.NewFromInt(1)
 
 	tests := []struct {
 		name        string
@@ -21,7 +22,7 @@ func TestTraceDelegationChain(t *testing.T) {
 			name:    "no delegation",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: 1},
+				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: one},
 			},
 			expectCycle: false,
 			expectLen:   1,
@@ -30,9 +31,9 @@ func TestTraceDelegationChain(t *testing.T) {
 			name:    "simple chain",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: 1},
-				"B": {AccountID: "B", DelegateTo: strPtr("C"), MTLAPBalance: 1},
-				"C": {AccountID: "C", DelegateTo: nil, MTLAPBalance: 1, CouncilReady: true},
+				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: one},
+				"B": {AccountID: "B", DelegateTo: strPtr("C"), MTLAPBalance: one},
+				"C": {AccountID: "C", DelegateTo: nil, MTLAPBalance: one, CouncilReady: true},
 			},
 			expectCycle: false,
 			expectLen:   3,
@@ -41,8 +42,8 @@ func TestTraceDelegationChain(t *testing.T) {
 			name:    "simple cycle",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: 1},
-				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: 1},
+				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: one},
+				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: one},
 			},
 			expectCycle: true,
 			expectLen:   2,
@@ -51,9 +52,9 @@ func TestTraceDelegationChain(t *testing.T) {
 			name:    "longer cycle",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: 1},
-				"B": {AccountID: "B", DelegateTo: strPtr("C"), MTLAPBalance: 1},
-				"C": {AccountID: "C", DelegateTo: strPtr("A"), MTLAPBalance: 1},
+				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: one},
+				"B": {AccountID: "B", DelegateTo: strPtr("C"), MTLAPBalance: one},
+				"C": {AccountID: "C", DelegateTo: strPtr("A"), MTLAPBalance: one},
 			},
 			expectCycle: true,
 			expectLen:   3,
@@ -71,6 +72,8 @@ func TestTraceDelegationChain(t *testing.T) {
 
 func TestGetFinalDelegationTarget(t *testing.T) {
 	strPtr := func(s string) *string { return &s }
+	one := decimal.NewFromInt(1)
+	zero := decimal.Zero
 
 	tests := []struct {
 		name     string
@@ -82,7 +85,7 @@ func TestGetFinalDelegationTarget(t *testing.T) {
 			name:    "no delegation - council ready",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: 1, CouncilReady: true},
+				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: one, CouncilReady: true},
 			},
 			expected: "A",
 		},
@@ -90,7 +93,7 @@ func TestGetFinalDelegationTarget(t *testing.T) {
 			name:    "no delegation - not council ready",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: 1, CouncilReady: false},
+				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: one, CouncilReady: false},
 			},
 			expected: "",
 		},
@@ -98,8 +101,8 @@ func TestGetFinalDelegationTarget(t *testing.T) {
 			name:    "delegates to council ready",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: 1},
-				"B": {AccountID: "B", DelegateTo: nil, MTLAPBalance: 1, CouncilReady: true},
+				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: one},
+				"B": {AccountID: "B", DelegateTo: nil, MTLAPBalance: one, CouncilReady: true},
 			},
 			expected: "B",
 		},
@@ -107,9 +110,9 @@ func TestGetFinalDelegationTarget(t *testing.T) {
 			name:    "chain to council ready",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: 1},
-				"B": {AccountID: "B", DelegateTo: strPtr("C"), MTLAPBalance: 1},
-				"C": {AccountID: "C", DelegateTo: nil, MTLAPBalance: 1, CouncilReady: true},
+				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: one},
+				"B": {AccountID: "B", DelegateTo: strPtr("C"), MTLAPBalance: one},
+				"C": {AccountID: "C", DelegateTo: nil, MTLAPBalance: one, CouncilReady: true},
 			},
 			expected: "C",
 		},
@@ -117,8 +120,8 @@ func TestGetFinalDelegationTarget(t *testing.T) {
 			name:    "cycle returns empty",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: 1},
-				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: 1},
+				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: one},
+				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: one},
 			},
 			expected: "",
 		},
@@ -126,8 +129,8 @@ func TestGetFinalDelegationTarget(t *testing.T) {
 			name:    "delegate without MTLAP returns empty",
 			startID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: 1},
-				"B": {AccountID: "B", DelegateTo: nil, MTLAPBalance: 0, CouncilReady: true},
+				"A": {AccountID: "A", DelegateTo: strPtr("B"), MTLAPBalance: one},
+				"B": {AccountID: "B", DelegateTo: nil, MTLAPBalance: zero, CouncilReady: true},
 			},
 			expected: "",
 		},
@@ -154,7 +157,7 @@ func TestCalculateReceivedVotes(t *testing.T) {
 			name:     "no delegators",
 			targetID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: 10, CouncilReady: true},
+				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: decimal.NewFromInt(10), CouncilReady: true},
 			},
 			expected: 0,
 		},
@@ -162,8 +165,8 @@ func TestCalculateReceivedVotes(t *testing.T) {
 			name:     "one direct delegator",
 			targetID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: 10, CouncilReady: true},
-				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: 5},
+				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: decimal.NewFromInt(10), CouncilReady: true},
+				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: decimal.NewFromInt(5)},
 			},
 			expected: 5,
 		},
@@ -171,9 +174,9 @@ func TestCalculateReceivedVotes(t *testing.T) {
 			name:     "multiple delegators",
 			targetID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: 10, CouncilReady: true},
-				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: 5},
-				"C": {AccountID: "C", DelegateTo: strPtr("A"), MTLAPBalance: 3},
+				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: decimal.NewFromInt(10), CouncilReady: true},
+				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: decimal.NewFromInt(5)},
+				"C": {AccountID: "C", DelegateTo: strPtr("A"), MTLAPBalance: decimal.NewFromInt(3)},
 			},
 			expected: 8,
 		},
@@ -181,9 +184,9 @@ func TestCalculateReceivedVotes(t *testing.T) {
 			name:     "transitive delegation",
 			targetID: "A",
 			accounts: map[string]*DelegationInfo{
-				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: 10, CouncilReady: true},
-				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: 5},
-				"C": {AccountID: "C", DelegateTo: strPtr("B"), MTLAPBalance: 3},
+				"A": {AccountID: "A", DelegateTo: nil, MTLAPBalance: decimal.NewFromInt(10), CouncilReady: true},
+				"B": {AccountID: "B", DelegateTo: strPtr("A"), MTLAPBalance: decimal.NewFromInt(5)},
+				"C": {AccountID: "C", DelegateTo: strPtr("B"), MTLAPBalance: decimal.NewFromInt(3)},
 			},
 			expected: 8, // B(5) + C(3) both ultimately delegate to A
 		},

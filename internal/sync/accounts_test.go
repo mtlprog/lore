@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stretchr/testify/assert"
@@ -50,31 +51,31 @@ func TestParseNumberedKey(t *testing.T) {
 		name          string
 		key           string
 		expectedBase  string
-		expectedIndex string
+		expectedIndex int
 	}{
 		{
 			name:          "key without number",
 			key:           "Name",
 			expectedBase:  "Name",
-			expectedIndex: "0",
+			expectedIndex: 0,
 		},
 		{
 			name:          "key with zero",
 			key:           "Website0",
 			expectedBase:  "Website",
-			expectedIndex: "0",
+			expectedIndex: 0,
 		},
 		{
 			name:          "key with number",
 			key:           "Website1",
 			expectedBase:  "Website",
-			expectedIndex: "1",
+			expectedIndex: 1,
 		},
 		{
 			name:          "key with large number",
 			key:           "Website123",
 			expectedBase:  "Website",
-			expectedIndex: "123",
+			expectedIndex: 123,
 		},
 	}
 
@@ -102,8 +103,8 @@ func TestParseRelationship(t *testing.T) {
 			value: "1",
 			expected: &Relationship{
 				TargetAccountID: validAccountID,
-				RelationType:    "PartOf",
-				RelationIndex:   "0",
+				RelationType:    RelationPartOf,
+				RelationIndex:   0,
 			},
 		},
 		{
@@ -112,8 +113,8 @@ func TestParseRelationship(t *testing.T) {
 			value: "1",
 			expected: &Relationship{
 				TargetAccountID: validAccountID,
-				RelationType:    "MyPart",
-				RelationIndex:   "1",
+				RelationType:    RelationMyPart,
+				RelationIndex:   1,
 			},
 		},
 		{
@@ -323,60 +324,60 @@ func TestParseAccountData(t *testing.T) {
 
 func TestFindBalance(t *testing.T) {
 	balances := []Balance{
-		{AssetCode: "XLM", AssetIssuer: "", Balance: "100.0000000"},
-		{AssetCode: "USDC", AssetIssuer: "GISSUER1", Balance: "50.0000000"},
-		{AssetCode: "MTLAP", AssetIssuer: "GISSUER2", Balance: "5.0000000"},
+		{AssetCode: "XLM", AssetIssuer: "", Balance: decimal.RequireFromString("100.0000000")},
+		{AssetCode: "USDC", AssetIssuer: "GISSUER1", Balance: decimal.RequireFromString("50.0000000")},
+		{AssetCode: "MTLAP", AssetIssuer: "GISSUER2", Balance: decimal.RequireFromString("5.0000000")},
 	}
 
 	tests := []struct {
 		name     string
 		code     string
 		issuer   string
-		expected string
+		expected decimal.Decimal
 	}{
 		{
 			name:     "find native XLM",
 			code:     "XLM",
 			issuer:   "",
-			expected: "100.0000000",
+			expected: decimal.RequireFromString("100.0000000"),
 		},
 		{
 			name:     "find USDC",
 			code:     "USDC",
 			issuer:   "GISSUER1",
-			expected: "50.0000000",
+			expected: decimal.RequireFromString("50.0000000"),
 		},
 		{
 			name:     "find MTLAP",
 			code:     "MTLAP",
 			issuer:   "GISSUER2",
-			expected: "5.0000000",
+			expected: decimal.RequireFromString("5.0000000"),
 		},
 		{
 			name:     "asset not found",
 			code:     "UNKNOWN",
 			issuer:   "GISSUER",
-			expected: "0",
+			expected: decimal.Zero,
 		},
 		{
 			name:     "wrong issuer",
 			code:     "USDC",
 			issuer:   "WRONG_ISSUER",
-			expected: "0",
+			expected: decimal.Zero,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := findBalance(balances, tt.code, tt.issuer)
-			assert.Equal(t, tt.expected, result)
+			assert.True(t, tt.expected.Equal(result), "expected %s, got %s", tt.expected, result)
 		})
 	}
 }
 
 func TestFindBalanceEmptySlice(t *testing.T) {
 	result := findBalance([]Balance{}, "XLM", "")
-	assert.Equal(t, "0", result)
+	assert.True(t, decimal.Zero.Equal(result))
 }
 
 func TestParseManageDataEdgeCases(t *testing.T) {
@@ -425,14 +426,14 @@ func TestParseManageDataEdgeCases(t *testing.T) {
 			data: map[string]string{
 				"mtla_delegate": base64.StdEncoding.EncodeToString([]byte("GSHORT")),
 			},
-			expectedCouncil: false, // delegate should be nil
+			expectedCouncil: false,
 		},
 		{
 			name: "delegate with invalid account ID (wrong prefix)",
 			data: map[string]string{
 				"mtla_delegate": base64.StdEncoding.EncodeToString([]byte("ACNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA")),
 			},
-			expectedCouncil: false, // delegate should be nil
+			expectedCouncil: false,
 		},
 	}
 
@@ -441,14 +442,12 @@ func TestParseManageDataEdgeCases(t *testing.T) {
 			_, _, delegate, council := parseManageData(tt.data)
 			assert.Equal(t, tt.expectedCouncil, council)
 
-			// Check delegate validity for specific test cases
 			if tt.name == "delegate with invalid account ID (too short)" || tt.name == "delegate with invalid account ID (wrong prefix)" {
 				assert.Nil(t, delegate)
 			}
 		})
 	}
 
-	// Test valid delegate
 	t.Run("valid delegate", func(t *testing.T) {
 		data := map[string]string{
 			"mtla_delegate": base64.StdEncoding.EncodeToString([]byte(validAccountID)),
@@ -460,7 +459,6 @@ func TestParseManageDataEdgeCases(t *testing.T) {
 }
 
 func TestParseManageDataNumberedKeysSorting(t *testing.T) {
-	// Test that numbered keys are sorted correctly
 	data := map[string]string{
 		"Website2": base64.StdEncoding.EncodeToString([]byte("https://third.com")),
 		"Website0": base64.StdEncoding.EncodeToString([]byte("https://first.com")),
@@ -469,7 +467,6 @@ func TestParseManageDataNumberedKeysSorting(t *testing.T) {
 
 	meta, _, _, _ := parseManageData(data)
 
-	// Find website entries
 	var websites []Metadata
 	for _, m := range meta {
 		if m.Key == "Website" {
@@ -479,11 +476,10 @@ func TestParseManageDataNumberedKeysSorting(t *testing.T) {
 
 	assert.Len(t, websites, 3)
 
-	// Verify sorted order
-	assert.Equal(t, "0", websites[0].Index)
+	assert.Equal(t, 0, websites[0].Index)
 	assert.Equal(t, "https://first.com", websites[0].Value)
-	assert.Equal(t, "1", websites[1].Index)
+	assert.Equal(t, 1, websites[1].Index)
 	assert.Equal(t, "https://second.com", websites[1].Value)
-	assert.Equal(t, "2", websites[2].Index)
+	assert.Equal(t, 2, websites[2].Index)
 	assert.Equal(t, "https://third.com", websites[2].Value)
 }

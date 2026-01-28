@@ -6,9 +6,12 @@ require (
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/pressly/goose/v3 v3.26.0
+	github.com/samber/lo v1.52.0
+	github.com/shopspring/decimal v1.4.0
 	github.com/stellar/go v0.0.0-20251210100531-aab2ea4aca88
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli/v2 v2.27.7
+	golang.org/x/sync v0.18.0
 )
 
 require (
@@ -37,7 +40,6 @@ require (
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b // indirect
-	golang.org/x/sync v0.18.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect

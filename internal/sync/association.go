@@ -3,35 +3,36 @@ package sync
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/mtlprog/lore/internal/config"
+	"github.com/samber/lo"
 	"github.com/stellar/go/clients/horizonclient"
 )
 
-// AssociationTag represents a tag from the Association account.
-type AssociationTag struct {
-	TagName         string
-	TagIndex        string
-	TargetAccountID string
+// tagNameStrings maps string to TagName for parsing.
+var tagNameStrings = map[string]TagName{
+	"Program": TagProgram,
+	"Faction": TagFaction,
 }
+
+// tagNamePrefixes for parsing tag keys.
+var tagNamePrefixes = []string{"Program", "Faction"}
 
 // syncAssociationTags fetches tags from the Association account.
 func (s *Syncer) syncAssociationTags(ctx context.Context) error {
-	// Fetch the Association account (TokenIssuer)
 	acc, err := s.horizon.AccountDetail(horizonclient.AccountRequest{AccountID: config.TokenIssuer})
 	if err != nil {
 		return fmt.Errorf("fetch association account: %w", err)
 	}
 
-	// Parse tags from ManageData
 	tags := parseAssociationTags(acc.Data)
 
-	// Group by tag name and upsert
-	tagsByName := make(map[string][]AssociationTag)
-	for _, tag := range tags {
-		tagsByName[tag.TagName] = append(tagsByName[tag.TagName], tag)
-	}
+	// Group by tag name using lo.GroupBy
+	tagsByName := lo.GroupBy(tags, func(tag AssociationTag) TagName {
+		return tag.TagName
+	})
 
 	for tagName, tagList := range tagsByName {
 		if err := s.repo.UpsertAssociationTags(ctx, tagName, tagList); err != nil {
@@ -42,21 +43,17 @@ func (s *Syncer) syncAssociationTags(ctx context.Context) error {
 	return nil
 }
 
-// Known association tag types
-var associationTagTypes = []string{"Program", "Faction"}
-
 // parseAssociationTags extracts tags from Association account ManageData.
 func parseAssociationTags(rawData map[string]string) []AssociationTag {
 	var tags []AssociationTag
 
 	for key := range rawData {
-		for _, tagType := range associationTagTypes {
-			if !strings.HasPrefix(key, tagType) {
+		for _, prefix := range tagNamePrefixes {
+			if !strings.HasPrefix(key, prefix) {
 				continue
 			}
 
-			// Extract account ID and index
-			rest := key[len(tagType):]
+			rest := key[len(prefix):]
 			if len(rest) < 56 {
 				continue
 			}
@@ -66,13 +63,22 @@ func parseAssociationTags(rawData map[string]string) []AssociationTag {
 				continue
 			}
 
-			index := "0"
+			index := 0
 			if len(rest) > 56 {
-				index = rest[56:]
+				var err error
+				index, err = strconv.Atoi(rest[56:])
+				if err != nil {
+					continue
+				}
+			}
+
+			tagName, ok := tagNameStrings[prefix]
+			if !ok {
+				continue
 			}
 
 			tags = append(tags, AssociationTag{
-				TagName:         tagType,
+				TagName:         tagName,
 				TagIndex:        index,
 				TargetAccountID: targetID,
 			})

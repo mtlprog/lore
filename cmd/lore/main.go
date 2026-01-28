@@ -119,7 +119,10 @@ func runServe(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create account repository: %w", err)
 	}
-	h := handler.New(stellar, accounts, tmpl)
+	h, err := handler.New(stellar, accounts, tmpl)
+	if err != nil {
+		return fmt.Errorf("failed to create handler: %w", err)
+	}
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
@@ -182,8 +185,16 @@ func runSync(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create syncer: %w", err)
 	}
-	if err := syncer.Run(ctx, full); err != nil {
+	result, err := syncer.Run(ctx, full)
+	if err != nil {
 		return fmt.Errorf("sync failed: %w", err)
+	}
+
+	if result != nil && (len(result.FailedAccounts) > 0 || len(result.FailedPrices) > 0) {
+		slog.Warn("sync completed with failures",
+			"failed_accounts", len(result.FailedAccounts),
+			"failed_prices", len(result.FailedPrices),
+		)
 	}
 
 	return nil

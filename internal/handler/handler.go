@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/mtlprog/lore/internal/repository"
@@ -16,12 +17,22 @@ type Handler struct {
 }
 
 // New creates a new Handler with the given dependencies.
-func New(stellar *service.StellarService, accounts *repository.AccountRepository, tmpl *template.Templates) *Handler {
+// Returns error if any required dependency is nil.
+func New(stellar *service.StellarService, accounts *repository.AccountRepository, tmpl *template.Templates) (*Handler, error) {
+	if stellar == nil {
+		return nil, errors.New("stellar service is required")
+	}
+	if accounts == nil {
+		return nil, errors.New("account repository is required")
+	}
+	if tmpl == nil {
+		return nil, errors.New("templates are required")
+	}
 	return &Handler{
 		stellar:  stellar,
 		accounts: accounts,
 		tmpl:     tmpl,
-	}
+	}, nil
 }
 
 // RegisterRoutes registers all HTTP routes on the given mux.
