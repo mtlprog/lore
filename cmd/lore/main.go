@@ -115,7 +115,10 @@ func runServe(c *cli.Context) error {
 	}
 
 	stellar := service.NewStellarService(horizonURL)
-	accounts := repository.NewAccountRepository(db.Pool())
+	accounts, err := repository.NewAccountRepository(db.Pool())
+	if err != nil {
+		return fmt.Errorf("failed to create account repository: %w", err)
+	}
 	h := handler.New(stellar, accounts, tmpl)
 
 	mux := http.NewServeMux()
@@ -175,7 +178,10 @@ func runSync(c *cli.Context) error {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	syncer := sync.New(db.Pool(), horizonURL)
+	syncer, err := sync.New(db.Pool(), horizonURL)
+	if err != nil {
+		return fmt.Errorf("failed to create syncer: %w", err)
+	}
 	if err := syncer.Run(ctx, full); err != nil {
 		return fmt.Errorf("sync failed: %w", err)
 	}

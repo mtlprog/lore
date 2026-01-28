@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -18,12 +19,22 @@ type Syncer struct {
 }
 
 // New creates a new Syncer instance.
-func New(pool *pgxpool.Pool, horizonURL string) *Syncer {
+// Returns error if pool is nil or horizonURL is empty.
+func New(pool *pgxpool.Pool, horizonURL string) (*Syncer, error) {
+	if horizonURL == "" {
+		return nil, errors.New("horizon URL is required")
+	}
+
+	repo, err := NewRepository(pool)
+	if err != nil {
+		return nil, fmt.Errorf("create repository: %w", err)
+	}
+
 	return &Syncer{
 		horizon: &horizonclient.Client{HorizonURL: horizonURL},
-		repo:    NewRepository(pool),
+		repo:    repo,
 		logger:  slog.Default(),
-	}
+	}, nil
 }
 
 // Run executes the full synchronization process.

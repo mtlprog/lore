@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,12 +15,12 @@ type AccountRepository struct {
 }
 
 // NewAccountRepository creates a new account repository.
-// Returns nil if pool is nil.
-func NewAccountRepository(pool *pgxpool.Pool) *AccountRepository {
+// Returns error if pool is nil.
+func NewAccountRepository(pool *pgxpool.Pool) (*AccountRepository, error) {
 	if pool == nil {
-		return nil
+		return nil, errors.New("database pool is required")
 	}
-	return &AccountRepository{pool: pool}
+	return &AccountRepository{pool: pool}, nil
 }
 
 // Stats holds aggregate statistics.
