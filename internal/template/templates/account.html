@@ -1,0 +1,60 @@
+{{template "base" .}}
+
+{{define "title"}}{{.Account.Name}} // LORE{{end}}
+
+{{define "content"}}
+<div class="detail-header">
+    <h1 class="detail-name">{{.Account.Name}}</h1>
+    <div class="detail-id">{{.Account.ID}}</div>
+</div>
+
+<div class="detail-grid">
+    {{if .Account.About}}
+    <div class="detail-block">
+        <div class="detail-block-title">About</div>
+        <div class="detail-block-content">{{.Account.About}}</div>
+    </div>
+    {{end}}
+
+    {{if .Account.Websites}}
+    <div class="detail-block">
+        <div class="detail-block-title">Links</div>
+        <div class="detail-block-content">
+            <ul class="links-list">
+                {{range .Account.Websites}}
+                <li><a href="{{.}}" target="_blank" rel="noopener">{{.}}</a></li>
+                {{end}}
+            </ul>
+        </div>
+    </div>
+    {{end}}
+
+    <div class="detail-block full-width">
+        <div class="detail-block-title">Trustlines ({{len .Account.Trustlines}})</div>
+        {{if .Account.Trustlines}}
+        <div class="trustlines">
+            <table class="trustlines-table">
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Balance</th>
+                        <th>Limit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .Account.Trustlines}}
+                    <tr>
+                        <td>{{.AssetCode}}</td>
+                        <td>{{.Balance}}</td>
+                        <td>{{if .Limit}}{{.Limit}}{{else}}-{{end}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="empty">NO TRUSTLINES</div>
+        {{end}}
+    </div>
+</div>
+{{end}}

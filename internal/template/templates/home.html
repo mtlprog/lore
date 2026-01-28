@@ -1,0 +1,73 @@
+{{template "base" .}}
+
+{{define "title"}}LORE // TOKEN HOLDERS{{end}}
+
+{{define "content"}}
+<section class="section">
+    <div class="section-header">
+        <h2 class="section-title">Persons</h2>
+        <span class="section-badge">MTLAP</span>
+    </div>
+    {{if .Persons.Accounts}}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Account ID</th>
+                <th style="text-align: right">Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Persons.Accounts}}
+            <tr class="row-link" onclick="window.location='/accounts/{{.ID}}'">
+                <td class="cell-name"><a href="/accounts/{{.ID}}">{{.Name}}</a></td>
+                <td class="cell-id">{{.ID}}</td>
+                <td class="cell-num">{{.Balance}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{if .Persons.Pagination.HasMore}}
+    <div class="pagination">
+        <a href="?persons_cursor={{.Persons.Pagination.NextCursor}}{{if .Companies.Pagination.NextCursor}}&companies_cursor={{.Companies.Pagination.NextCursor}}{{end}}" class="btn">> Load More</a>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="empty">NO PERSONS FOUND</div>
+    {{end}}
+</section>
+
+<section class="section">
+    <div class="section-header">
+        <h2 class="section-title">Companies</h2>
+        <span class="section-badge">MTLAC</span>
+    </div>
+    {{if .Companies.Accounts}}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Account ID</th>
+                <th style="text-align: right">Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Companies.Accounts}}
+            <tr class="row-link" onclick="window.location='/accounts/{{.ID}}'">
+                <td class="cell-name"><a href="/accounts/{{.ID}}">{{.Name}}</a></td>
+                <td class="cell-id">{{.ID}}</td>
+                <td class="cell-num">{{.Balance}}</td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    {{if .Companies.Pagination.HasMore}}
+    <div class="pagination">
+        <a href="?{{if .Persons.Pagination.NextCursor}}persons_cursor={{.Persons.Pagination.NextCursor}}&{{end}}companies_cursor={{.Companies.Pagination.NextCursor}}" class="btn">> Load More</a>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="empty">NO COMPANIES FOUND</div>
+    {{end}}
+</section>
+{{end}}

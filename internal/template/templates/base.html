@@ -1,0 +1,483 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{block "title" .}}LORE{{end}}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg-panel: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text-dim: #8b949e;
+            --accent: #3fb950;
+            --accent-dim: #238636;
+            --link: #58a6ff;
+            --warn: #d29922;
+            --num: #79c0ff;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg: #f6f8fa;
+                --bg-panel: #ffffff;
+                --border: #d0d7de;
+                --text: #1f2328;
+                --text-dim: #656d76;
+                --accent: #1a7f37;
+                --accent-dim: #2da44e;
+                --link: #0969da;
+                --warn: #9a6700;
+                --num: #0550ae;
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        /* HEADER */
+        header {
+            border-bottom: 2px solid var(--accent);
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .logo:hover {
+            text-decoration: none;
+            opacity: 0.8;
+        }
+
+        .tagline {
+            color: var(--text-dim);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            letter-spacing: 0.05em;
+        }
+
+        /* MAIN */
+        main {
+            min-height: calc(100vh - 200px);
+        }
+
+        /* SECTIONS */
+        .section {
+            margin-bottom: 3rem;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+        }
+
+        .section-badge {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 0.125rem 0.5rem;
+        }
+
+        /* DATA TABLE */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9375rem;
+        }
+
+        .data-table th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            background: var(--bg-panel);
+            border-bottom: 2px solid var(--border);
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+        }
+
+        .data-table td {
+            padding: 0.625rem 1rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .data-table tbody tr {
+            transition: background 0.1s;
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--bg-panel);
+        }
+
+        .data-table a {
+            color: var(--text);
+            text-decoration: none;
+            display: block;
+        }
+
+        .data-table a:hover {
+            color: var(--link);
+        }
+
+        /* CELL TYPES */
+        .cell-name {
+            font-weight: 700;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .cell-id {
+            font-size: 0.8125rem;
+            color: var(--text-dim);
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cell-num {
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            color: var(--num);
+        }
+
+        .cell-asset {
+            font-weight: 700;
+            color: var(--warn);
+        }
+
+        /* CLICKABLE ROW */
+        .row-link {
+            cursor: pointer;
+        }
+
+        .row-link td {
+            position: relative;
+        }
+
+        .row-link td::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+        }
+
+        .row-link a {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* PAGINATION */
+        .pagination {
+            margin-top: 1.5rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-panel);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            font-family: inherit;
+            font-size: 0.875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+
+        .btn:hover {
+            background: var(--accent);
+            color: var(--bg);
+            text-decoration: none;
+        }
+
+        /* DETAIL PAGE */
+        .detail-header {
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .detail-name {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .detail-id {
+            font-size: 0.875rem;
+            color: var(--text-dim);
+            word-break: break-all;
+        }
+
+        .detail-grid {
+            display: grid;
+            gap: 2rem;
+        }
+
+        @media (min-width: 768px) {
+            .detail-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .detail-block {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+        }
+
+        .detail-block-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail-block-content {
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .detail-block-content a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        .detail-block-content a:hover {
+            text-decoration: underline;
+        }
+
+        .detail-block.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* TRUSTLINES TABLE */
+        .trustlines {
+            overflow-x: auto;
+        }
+
+        .trustlines-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        .trustlines-table th {
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            font-weight: 700;
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .trustlines-table th:nth-child(2),
+        .trustlines-table th:nth-child(3) {
+            text-align: right;
+        }
+
+        .trustlines-table td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .trustlines-table td:nth-child(2),
+        .trustlines-table td:nth-child(3) {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            color: var(--num);
+        }
+
+        .trustlines-table td:first-child {
+            font-weight: 700;
+            color: var(--warn);
+        }
+
+        .trustlines-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* LINKS LIST */
+        .links-list {
+            list-style: none;
+        }
+
+        .links-list li {
+            padding: 0.25rem 0;
+        }
+
+        .links-list li::before {
+            content: '>';
+            color: var(--accent);
+            margin-right: 0.5rem;
+        }
+
+        /* EMPTY STATE */
+        .empty {
+            color: var(--text-dim);
+            font-style: italic;
+            padding: 2rem;
+            text-align: center;
+            border: 1px dashed var(--border);
+        }
+
+        /* FOOTER */
+        footer {
+            margin-top: 3rem;
+            padding: 1.5rem 0;
+            border-top: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* MOBILE */
+        @media (max-width: 768px) {
+            html {
+                font-size: 14px;
+            }
+
+            .container {
+                padding: 0.75rem;
+            }
+
+            .logo {
+                font-size: 1.75rem;
+            }
+
+            .data-table {
+                font-size: 0.8125rem;
+            }
+
+            .data-table th,
+            .data-table td {
+                padding: 0.5rem;
+            }
+
+            .cell-id {
+                display: none;
+            }
+
+            .detail-name {
+                font-size: 1.5rem;
+            }
+
+            .detail-id {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* SCANLINE EFFECT (subtle) */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+            z-index: 9999;
+        }
+
+        @media (prefers-color-scheme: light) {
+            body::before {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="/" class="logo">LORE</a>
+            <div class="tagline">STELLAR TOKEN EXPLORER // MTLAP + MTLAC</div>
+        </header>
+        <main>
+            {{block "content" .}}{{end}}
+        </main>
+        <footer>
+            DATA SOURCE: <a href="https://horizon.stellar.org" target="_blank" rel="noopener">STELLAR HORIZON API</a>
+        </footer>
+    </div>
+</body>
+</html>
+{{end}}
