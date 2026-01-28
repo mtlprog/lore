@@ -48,3 +48,7 @@ The application follows a 3-layer architecture:
 ## Testing
 
 Tests in `internal/service/stellar_test.go` cover utility functions (`parseNumberedDataKeys`, `decodeBase64`) with edge cases for numbered keys, base64 encoding, and error conditions.
+
+## Git Conventions
+
+- **Commit messages**: Use [Conventional Commits](https://www.conventionalcommits.org/) format (e.g., `feat:`, `fix:`, `refactor:`, `docs:`, `chore:`)
