@@ -1,0 +1,18 @@
+# Binary
+lore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Test artifacts
+*.test
+coverage.out
+
+# Playwright MCP
+.playwright-mcp/
