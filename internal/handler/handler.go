@@ -3,21 +3,24 @@ package handler
 import (
 	"net/http"
 
+	"github.com/mtlprog/lore/internal/repository"
 	"github.com/mtlprog/lore/internal/service"
 	"github.com/mtlprog/lore/internal/template"
 )
 
 // Handler holds dependencies for HTTP handlers.
 type Handler struct {
-	stellar *service.StellarService
-	tmpl    *template.Templates
+	stellar  *service.StellarService
+	accounts *repository.AccountRepository
+	tmpl     *template.Templates
 }
 
 // New creates a new Handler with the given dependencies.
-func New(stellar *service.StellarService, tmpl *template.Templates) *Handler {
+func New(stellar *service.StellarService, accounts *repository.AccountRepository, tmpl *template.Templates) *Handler {
 	return &Handler{
-		stellar: stellar,
-		tmpl:    tmpl,
+		stellar:  stellar,
+		accounts: accounts,
+		tmpl:     tmpl,
 	}
 }
 
