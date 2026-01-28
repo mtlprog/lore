@@ -26,8 +26,14 @@ type HomeData struct {
 func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	personsOffset, _ := strconv.Atoi(r.URL.Query().Get("persons_offset"))
-	companiesOffset, _ := strconv.Atoi(r.URL.Query().Get("companies_offset"))
+	personsOffset, err := strconv.Atoi(r.URL.Query().Get("persons_offset"))
+	if err != nil || personsOffset < 0 {
+		personsOffset = 0
+	}
+	companiesOffset, err := strconv.Atoi(r.URL.Query().Get("companies_offset"))
+	if err != nil || companiesOffset < 0 {
+		companiesOffset = 0
+	}
 
 	stats, err := h.accounts.GetStats(ctx)
 	if err != nil {

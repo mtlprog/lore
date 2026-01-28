@@ -14,7 +14,11 @@ type AccountRepository struct {
 }
 
 // NewAccountRepository creates a new account repository.
+// Returns nil if pool is nil.
 func NewAccountRepository(pool *pgxpool.Pool) *AccountRepository {
+	if pool == nil {
+		return nil
+	}
 	return &AccountRepository{pool: pool}
 }
 
@@ -108,7 +112,10 @@ func (r *AccountRepository) GetPersons(ctx context.Context, limit int, offset in
 		persons = append(persons, p)
 	}
 
-	return persons, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate persons rows: %w", err)
+	}
+	return persons, nil
 }
 
 // GetCompanies returns MTLAC holders with their names and portfolio values.
@@ -146,43 +153,8 @@ func (r *AccountRepository) GetCompanies(ctx context.Context, limit int, offset 
 		companies = append(companies, c)
 	}
 
-	return companies, rows.Err()
-}
-
-// CountPersons returns total number of MTLAP holders.
-func (r *AccountRepository) CountPersons(ctx context.Context) (int, error) {
-	query, args, err := database.QB.
-		Select("COUNT(*)").
-		From("accounts").
-		Where("mtlap_balance > 0").
-		ToSql()
-	if err != nil {
-		return 0, fmt.Errorf("build count query: %w", err)
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate companies rows: %w", err)
 	}
-
-	var count int
-	if err := r.pool.QueryRow(ctx, query, args...).Scan(&count); err != nil {
-		return 0, fmt.Errorf("query count: %w", err)
-	}
-
-	return count, nil
-}
-
-// CountCompanies returns total number of MTLAC holders.
-func (r *AccountRepository) CountCompanies(ctx context.Context) (int, error) {
-	query, args, err := database.QB.
-		Select("COUNT(*)").
-		From("accounts").
-		Where("mtlac_balance > 0").
-		ToSql()
-	if err != nil {
-		return 0, fmt.Errorf("build count query: %w", err)
-	}
-
-	var count int
-	if err := r.pool.QueryRow(ctx, query, args...).Scan(&count); err != nil {
-		return 0, fmt.Errorf("query count: %w", err)
-	}
-
-	return count, nil
+	return companies, nil
 }

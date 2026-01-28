@@ -10,7 +10,12 @@ import (
 
 // DB wraps a pgxpool.Pool for database operations.
 type DB struct {
-	Pool *pgxpool.Pool
+	pool *pgxpool.Pool
+}
+
+// Pool returns the underlying connection pool.
+func (db *DB) Pool() *pgxpool.Pool {
+	return db.pool
 }
 
 // New creates a new database connection pool.
@@ -35,11 +40,11 @@ func New(ctx context.Context, databaseURL string) (*DB, error) {
 
 	slog.Info("database connected")
 
-	return &DB{Pool: pool}, nil
+	return &DB{pool: pool}, nil
 }
 
 // Close closes the database connection pool.
 func (db *DB) Close() {
-	db.Pool.Close()
+	db.pool.Close()
 	slog.Info("database connection closed")
 }

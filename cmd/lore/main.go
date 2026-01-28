@@ -81,7 +81,7 @@ func run(c *cli.Context) error {
 	}
 	defer db.Close()
 
-	if err := database.RunMigrations(ctx, db.Pool); err != nil {
+	if err := database.RunMigrations(ctx, db.Pool()); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
@@ -91,7 +91,7 @@ func run(c *cli.Context) error {
 	}
 
 	stellar := service.NewStellarService(horizonURL)
-	accounts := repository.NewAccountRepository(db.Pool)
+	accounts := repository.NewAccountRepository(db.Pool())
 	h := handler.New(stellar, accounts, tmpl)
 
 	mux := http.NewServeMux()
