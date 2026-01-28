@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/mtlprog/lore/internal/model"
@@ -29,7 +29,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Account not found", http.StatusNotFound)
 			return
 		}
-		log.Printf("Error fetching account %s: %v", accountID, err)
+		slog.Error("failed to fetch account", "account_id", accountID, "error", err)
 		http.Error(w, "Failed to fetch account", http.StatusInternalServerError)
 		return
 	}
@@ -39,7 +39,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.tmpl.Render(w, "account.html", data); err != nil {
-		log.Printf("Error rendering account template: %v", err)
+		slog.Error("failed to render account template", "account_id", accountID, "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }

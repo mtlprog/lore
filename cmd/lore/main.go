@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/mtlprog/lore/internal/config"
 	"github.com/mtlprog/lore/internal/handler"
+	"github.com/mtlprog/lore/internal/logger"
 	"github.com/mtlprog/lore/internal/service"
 	"github.com/mtlprog/lore/internal/template"
 	"github.com/urfave/cli/v2"
@@ -36,18 +37,29 @@ func main() {
 				Usage:   "Stellar Horizon API URL",
 				EnvVars: []string{"HORIZON_URL"},
 			},
+			&cli.StringFlag{
+				Name:    "log-level",
+				Aliases: []string{"l"},
+				Value:   "info",
+				Usage:   "Log level (debug, info, error)",
+				EnvVars: []string{"LOG_LEVEL"},
+			},
 		},
 		Action: run,
 	}
 
 	if err := app.Run(os.Args); err != nil {
-		log.Fatal(err)
+		slog.Error("application error", "error", err)
+		os.Exit(1)
 	}
 }
 
 func run(c *cli.Context) error {
 	port := c.String("port")
 	horizonURL := c.String("horizon-url")
+	logLevel := parseLogLevel(c.String("log-level"))
+
+	logger.Setup(logLevel)
 
 	tmpl, err := template.New()
 	if err != nil {
@@ -72,14 +84,15 @@ func run(c *cli.Context) error {
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		log.Printf("Starting server on http://localhost:%s", port)
+		slog.Info("starting server", "addr", "http://localhost:"+port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server error: %v", err)
+			slog.Error("server error", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	<-done
-	log.Println("Shutting down server...")
+	slog.Info("shutting down server")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -88,6 +101,17 @@ func run(c *cli.Context) error {
 		return fmt.Errorf("server shutdown failed: %w", err)
 	}
 
-	log.Println("Server stopped")
+	slog.Info("server stopped")
 	return nil
+}
+
+func parseLogLevel(level string) slog.Level {
+	switch level {
+	case "debug":
+		return slog.LevelDebug
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
 }
