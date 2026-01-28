@@ -22,7 +22,7 @@ var funcMap = template.FuncMap{
 		return s[:n]
 	},
 	"slice": func(s string, start int) string {
-		if start >= len(s) {
+		if start < 0 || start >= len(s) {
 			return ""
 		}
 		return s[start:]
