@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/mtlprog/lore/internal/config"
@@ -29,7 +29,7 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		config.DefaultPageLimit,
 	)
 	if err != nil {
-		log.Printf("Error fetching persons: %v", err)
+		slog.Error("failed to fetch persons", "error", err)
 		http.Error(w, "Failed to fetch persons", http.StatusInternalServerError)
 		return
 	}
@@ -42,7 +42,7 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		config.DefaultPageLimit,
 	)
 	if err != nil {
-		log.Printf("Error fetching companies: %v", err)
+		slog.Error("failed to fetch companies", "error", err)
 		http.Error(w, "Failed to fetch companies", http.StatusInternalServerError)
 		return
 	}
@@ -53,7 +53,7 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.tmpl.Render(w, "home.html", data); err != nil {
-		log.Printf("Error rendering home template: %v", err)
+		slog.Error("failed to render home template", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 }
