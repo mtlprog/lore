@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/base64"
+	"log/slog"
 	"regexp"
 	"sort"
 	"strconv"
@@ -171,6 +172,7 @@ func decodeBase64(s string) string {
 	}
 	decoded, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
+		slog.Debug("failed to decode base64", "input", s, "error", err)
 		return ""
 	}
 	return strings.TrimSpace(string(decoded))
@@ -178,7 +180,7 @@ func decodeBase64(s string) string {
 
 // IsNotFound checks if the error is a "not found" error from Horizon.
 func IsNotFound(err error) bool {
-	if hErr, ok := err.(*horizonclient.Error); ok {
+	if hErr, ok := err.(*horizonclient.Error); ok && hErr.Response != nil {
 		return hErr.Response.StatusCode == 404
 	}
 	return false
