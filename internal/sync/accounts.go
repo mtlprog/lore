@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/mtlprog/lore/internal/config"
 	"github.com/stellar/go/clients/horizonclient"
@@ -58,6 +59,13 @@ func (s *Syncer) fetchAllAssetHolders(ctx context.Context, code, issuer string) 
 	cursor := ""
 
 	for {
+		// Check for context cancellation between iterations
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
 		req := horizonclient.AccountsRequest{
 			Asset: code + ":" + issuer,
 			Limit: horizonPageLimit,
@@ -86,43 +94,51 @@ func (s *Syncer) fetchAllAssetHolders(ctx context.Context, code, issuer string) 
 }
 
 // syncAccounts fetches and stores account details concurrently.
+// Returns error if more than 10% of accounts fail to sync.
 func (s *Syncer) syncAccounts(ctx context.Context, accountIDs map[string]struct{}) error {
 	sem := semaphore.NewWeighted(concurrentLimit)
-	errChan := make(chan error, len(accountIDs))
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var failedAccounts []string
+
+	totalCount := len(accountIDs)
 
 	for id := range accountIDs {
 		if err := sem.Acquire(ctx, 1); err != nil {
 			return fmt.Errorf("acquire semaphore: %w", err)
 		}
 
+		wg.Add(1)
 		go func(accountID string) {
+			defer wg.Done()
 			defer sem.Release(1)
 
 			if err := s.syncSingleAccount(ctx, accountID); err != nil {
-				slog.Warn("failed to sync account", "account_id", accountID, "error", err)
-				errChan <- fmt.Errorf("sync account %s: %w", accountID, err)
+				slog.Error("failed to sync account", "account_id", accountID, "error", err)
+				mu.Lock()
+				failedAccounts = append(failedAccounts, accountID)
+				mu.Unlock()
 				return
 			}
-			errChan <- nil
 		}(id)
 	}
 
-	// Wait for all goroutines
-	if err := sem.Acquire(ctx, concurrentLimit); err != nil {
-		return fmt.Errorf("wait for completion: %w", err)
-	}
+	// Wait for all goroutines to complete
+	wg.Wait()
 
-	// Check for errors (log warnings but don't fail the sync)
-	close(errChan)
-	var errCount int
-	for err := range errChan {
-		if err != nil {
-			errCount++
+	failedCount := len(failedAccounts)
+	if failedCount > 0 {
+		slog.Error("accounts failed to sync",
+			"failed_count", failedCount,
+			"total_count", totalCount,
+			"failed_accounts", failedAccounts[:min(10, failedCount)],
+		)
+
+		// Return error if failure rate exceeds 10%
+		failureRate := float64(failedCount) / float64(totalCount)
+		if failureRate > 0.1 {
+			return fmt.Errorf("sync failed: %d/%d accounts failed (%.1f%%)", failedCount, totalCount, failureRate*100)
 		}
-	}
-
-	if errCount > 0 {
-		slog.Warn("some accounts failed to sync", "failed_count", errCount)
 	}
 
 	return nil
@@ -326,6 +342,7 @@ func decodeBase64(s string) string {
 	}
 	decoded, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
+		slog.Debug("failed to decode base64", "error", err, "input_length", len(s))
 		return ""
 	}
 	return strings.TrimSpace(string(decoded))

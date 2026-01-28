@@ -33,6 +33,8 @@ func (s *Syncer) calculateDelegations(ctx context.Context) error {
 		accountMap[accounts[i].AccountID] = &accounts[i]
 	}
 
+	var dbErrors []string
+
 	// Step 3: For each account that delegates, trace the chain
 	for _, acc := range accounts {
 		if acc.DelegateTo == nil {
@@ -44,7 +46,8 @@ func (s *Syncer) calculateDelegations(ctx context.Context) error {
 		if !exists || delegateAcc.MTLAPBalance == 0 {
 			// Delegating to non-MTLAP holder is an error
 			if err := s.repo.SetDelegationError(ctx, acc.AccountID, true); err != nil {
-				slog.Warn("failed to set delegation error", "account_id", acc.AccountID, "error", err)
+				slog.Error("failed to set delegation error", "account_id", acc.AccountID, "error", err)
+				dbErrors = append(dbErrors, acc.AccountID)
 			}
 			continue
 		}
@@ -55,7 +58,8 @@ func (s *Syncer) calculateDelegations(ctx context.Context) error {
 			// Mark all accounts in the cycle
 			for _, cycleAccID := range path {
 				if err := s.repo.SetCycleError(ctx, cycleAccID, path); err != nil {
-					slog.Warn("failed to set cycle error", "account_id", cycleAccID, "error", err)
+					slog.Error("failed to set cycle error", "account_id", cycleAccID, "error", err)
+					dbErrors = append(dbErrors, cycleAccID)
 				}
 			}
 		}
@@ -72,7 +76,16 @@ func (s *Syncer) calculateDelegations(ctx context.Context) error {
 		votes := calculateReceivedVotes(acc.AccountID, accountMap)
 
 		if err := s.repo.SetReceivedVotes(ctx, acc.AccountID, votes); err != nil {
-			slog.Warn("failed to set received votes", "account_id", acc.AccountID, "error", err)
+			slog.Error("failed to set received votes", "account_id", acc.AccountID, "error", err)
+			dbErrors = append(dbErrors, acc.AccountID)
+		}
+	}
+
+	if len(dbErrors) > 0 {
+		slog.Error("delegation calculation had database errors", "failed_count", len(dbErrors))
+		// Return error if too many failures
+		if len(dbErrors) > 10 {
+			return fmt.Errorf("too many database errors during delegation calculation: %d failures", len(dbErrors))
 		}
 	}
 

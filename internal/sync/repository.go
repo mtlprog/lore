@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,8 +15,12 @@ type Repository struct {
 }
 
 // NewRepository creates a new sync repository.
-func NewRepository(pool *pgxpool.Pool) *Repository {
-	return &Repository{pool: pool}
+// Returns error if pool is nil.
+func NewRepository(pool *pgxpool.Pool) (*Repository, error) {
+	if pool == nil {
+		return nil, errors.New("database pool is required")
+	}
+	return &Repository{pool: pool}, nil
 }
 
 // SyncStats holds aggregate statistics after sync.
@@ -23,6 +28,16 @@ type SyncStats struct {
 	TotalAccounts  int
 	TotalPersons   int
 	TotalCompanies int
+}
+
+// allowedTruncateTables is the whitelist of tables that can be truncated.
+var allowedTruncateTables = map[string]bool{
+	"association_tags": true,
+	"relationships":    true,
+	"account_metadata": true,
+	"account_balances": true,
+	"token_prices":     true,
+	"accounts":         true,
 }
 
 // Truncate clears all syncable tables (preserves settings tables).
@@ -37,6 +52,9 @@ func (r *Repository) Truncate(ctx context.Context) error {
 	}
 
 	for _, table := range tables {
+		if !allowedTruncateTables[table] {
+			return fmt.Errorf("table %s is not allowed to be truncated", table)
+		}
 		_, err := r.pool.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table))
 		if err != nil {
 			return fmt.Errorf("truncate %s: %w", table, err)
@@ -92,14 +110,20 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 	return nil
 }
 
-// UpsertBalances inserts or updates account balances.
+// UpsertBalances inserts or updates account balances within a transaction.
 func (r *Repository) UpsertBalances(ctx context.Context, accountID string, balances []Balance) error {
 	if len(balances) == 0 {
 		return nil
 	}
 
-	// Delete existing balances first for simplicity
-	_, err := r.pool.Exec(ctx, "DELETE FROM account_balances WHERE account_id = $1", accountID)
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Delete existing balances
+	_, err = tx.Exec(ctx, "DELETE FROM account_balances WHERE account_id = $1", accountID)
 	if err != nil {
 		return fmt.Errorf("delete existing balances: %w", err)
 	}
@@ -117,22 +141,32 @@ func (r *Repository) UpsertBalances(ctx context.Context, accountID string, balan
 		return fmt.Errorf("build insert query: %w", err)
 	}
 
-	_, err = r.pool.Exec(ctx, sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("exec insert: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return nil
 }
 
-// UpsertMetadata inserts or updates account metadata.
+// UpsertMetadata inserts or updates account metadata within a transaction.
 func (r *Repository) UpsertMetadata(ctx context.Context, accountID string, metadata []Metadata) error {
 	if len(metadata) == 0 {
 		return nil
 	}
 
-	// Delete existing metadata first
-	_, err := r.pool.Exec(ctx, "DELETE FROM account_metadata WHERE account_id = $1", accountID)
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Delete existing metadata
+	_, err = tx.Exec(ctx, "DELETE FROM account_metadata WHERE account_id = $1", accountID)
 	if err != nil {
 		return fmt.Errorf("delete existing metadata: %w", err)
 	}
@@ -150,22 +184,32 @@ func (r *Repository) UpsertMetadata(ctx context.Context, accountID string, metad
 		return fmt.Errorf("build insert query: %w", err)
 	}
 
-	_, err = r.pool.Exec(ctx, sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("exec insert: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return nil
 }
 
-// UpsertRelationships inserts or updates account relationships.
+// UpsertRelationships inserts or updates account relationships within a transaction.
 func (r *Repository) UpsertRelationships(ctx context.Context, accountID string, relationships []Relationship) error {
 	if len(relationships) == 0 {
 		return nil
 	}
 
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	// Delete existing relationships from this source
-	_, err := r.pool.Exec(ctx, "DELETE FROM relationships WHERE source_account_id = $1", accountID)
+	_, err = tx.Exec(ctx, "DELETE FROM relationships WHERE source_account_id = $1", accountID)
 	if err != nil {
 		return fmt.Errorf("delete existing relationships: %w", err)
 	}
@@ -183,9 +227,13 @@ func (r *Repository) UpsertRelationships(ctx context.Context, accountID string, 
 		return fmt.Errorf("build insert query: %w", err)
 	}
 
-	_, err = r.pool.Exec(ctx, sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("exec insert: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return nil
@@ -362,14 +410,20 @@ func (r *Repository) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 	return &stats, nil
 }
 
-// UpsertAssociationTags inserts or updates association tags.
+// UpsertAssociationTags inserts or updates association tags within a transaction.
 func (r *Repository) UpsertAssociationTags(ctx context.Context, tagName string, tags []AssociationTag) error {
 	if len(tags) == 0 {
 		return nil
 	}
 
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
 	// Delete existing tags of this type
-	_, err := r.pool.Exec(ctx, "DELETE FROM association_tags WHERE tag_name = $1", tagName)
+	_, err = tx.Exec(ctx, "DELETE FROM association_tags WHERE tag_name = $1", tagName)
 	if err != nil {
 		return fmt.Errorf("delete existing tags: %w", err)
 	}
@@ -387,9 +441,13 @@ func (r *Repository) UpsertAssociationTags(ctx context.Context, tagName string, 
 		return fmt.Errorf("build insert query: %w", err)
 	}
 
-	_, err = r.pool.Exec(ctx, sql, args...)
+	_, err = tx.Exec(ctx, sql, args...)
 	if err != nil {
 		return fmt.Errorf("exec insert: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return nil
