@@ -16,6 +16,7 @@ import (
 	"github.com/mtlprog/lore/internal/logger"
 	"github.com/mtlprog/lore/internal/repository"
 	"github.com/mtlprog/lore/internal/service"
+	"github.com/mtlprog/lore/internal/sync"
 	"github.com/mtlprog/lore/internal/template"
 	"github.com/urfave/cli/v2"
 )
@@ -25,13 +26,6 @@ func main() {
 		Name:  "lore",
 		Usage: "Stellar Token Explorer for MTLAP & MTLAC",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "port",
-				Aliases: []string{"p"},
-				Value:   config.DefaultPort,
-				Usage:   "HTTP server port",
-				EnvVars: []string{"PORT"},
-			},
 			&cli.StringFlag{
 				Name:    "horizon-url",
 				Aliases: []string{"H"},
@@ -59,7 +53,34 @@ func main() {
 			logger.Setup(logger.ParseLevel(c.String("log-level")))
 			return nil
 		},
-		Action: run,
+		Commands: []*cli.Command{
+			{
+				Name:  "serve",
+				Usage: "Start the web server",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "port",
+						Aliases: []string{"p"},
+						Value:   config.DefaultPort,
+						Usage:   "HTTP server port",
+						EnvVars: []string{"PORT"},
+					},
+				},
+				Action: runServe,
+			},
+			{
+				Name:  "sync",
+				Usage: "Sync data from Stellar Horizon to PostgreSQL",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "full",
+						Usage: "Full resync (truncate tables before sync)",
+					},
+				},
+				Action: runSync,
+			},
+		},
+		Action: runServe,
 	}
 
 	if err := app.Run(os.Args); err != nil {
@@ -68,10 +89,13 @@ func main() {
 	}
 }
 
-func run(c *cli.Context) error {
+func runServe(c *cli.Context) error {
 	ctx := c.Context
 
 	port := c.String("port")
+	if port == "" {
+		port = config.DefaultPort
+	}
 	horizonURL := c.String("horizon-url")
 	databaseURL := c.String("database-url")
 
@@ -131,5 +155,30 @@ func run(c *cli.Context) error {
 	}
 
 	slog.Info("server stopped")
+	return nil
+}
+
+func runSync(c *cli.Context) error {
+	ctx := c.Context
+
+	horizonURL := c.String("horizon-url")
+	databaseURL := c.String("database-url")
+	full := c.Bool("full")
+
+	db, err := database.New(ctx, databaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	if err := database.RunMigrations(ctx, db.Pool()); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	syncer := sync.New(db.Pool(), horizonURL)
+	if err := syncer.Run(ctx, full); err != nil {
+		return fmt.Errorf("sync failed: %w", err)
+	}
+
 	return nil
 }
