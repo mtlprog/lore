@@ -41,9 +41,13 @@ func main() {
 				Name:    "log-level",
 				Aliases: []string{"l"},
 				Value:   "info",
-				Usage:   "Log level (debug, info, error)",
+				Usage:   "Log level (debug, info, warn, error)",
 				EnvVars: []string{"LOG_LEVEL"},
 			},
+		},
+		Before: func(c *cli.Context) error {
+			logger.Setup(logger.ParseLevel(c.String("log-level")))
+			return nil
 		},
 		Action: run,
 	}
@@ -57,9 +61,6 @@ func main() {
 func run(c *cli.Context) error {
 	port := c.String("port")
 	horizonURL := c.String("horizon-url")
-	logLevel := parseLogLevel(c.String("log-level"))
-
-	logger.Setup(logLevel)
 
 	tmpl, err := template.New()
 	if err != nil {
@@ -80,19 +81,23 @@ func run(c *cli.Context) error {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	serverErr := make(chan error, 1)
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		slog.Info("starting server", "addr", "http://localhost:"+port)
+		slog.Info("starting server", "server_addr", "http://localhost:"+port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("server error", "error", err)
-			os.Exit(1)
+			serverErr <- err
 		}
 	}()
 
-	<-done
-	slog.Info("shutting down server")
+	select {
+	case err := <-serverErr:
+		return fmt.Errorf("server error: %w", err)
+	case <-done:
+		slog.Info("shutting down server")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -103,15 +108,4 @@ func run(c *cli.Context) error {
 
 	slog.Info("server stopped")
 	return nil
-}
-
-func parseLogLevel(level string) slog.Level {
-	switch level {
-	case "debug":
-		return slog.LevelDebug
-	case "error":
-		return slog.LevelError
-	default:
-		return slog.LevelInfo
-	}
 }

@@ -40,7 +40,8 @@ The application follows a 3-layer architecture:
 - **Stellar Metadata**: Account data is stored in base64 on Stellar; the service layer decodes transparently
 - **Pagination**: Cursor-based pagination via Stellar Horizon's cursors, passed as `persons_cursor` and `companies_cursor` query params
 - **Numbered Fields**: Account metadata like websites use numbered keys (Website0, Website1) parsed and sorted by `parseNumberedDataKeys()`
-- **Configuration**: Port via `--port`/`PORT`, Horizon URL via `--horizon-url`/`HORIZON_URL`
+- **Configuration**: Port via `--port`/`PORT`, Horizon URL via `--horizon-url`/`HORIZON_URL`, log level via `--log-level`/`LOG_LEVEL` (debug, info, warn, error)
+- **Logging**: Uses `log/slog` with JSON output and source location. Log levels: `info` for lifecycle events, `error` for unexpected failures (not expected errors like 404), `debug` for troubleshooting
 - **Token Constants**: Defined in `internal/config/config.go` (MTLAP, MTLAC, issuer address)
 - **Template Inheritance**: Each page template must be cloned from base separately (see `template.go`). Using `ParseFS` with multiple templates defining the same block causes overwrites.
 

@@ -29,7 +29,11 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		config.DefaultPageLimit,
 	)
 	if err != nil {
-		slog.Error("failed to fetch persons", "error", err)
+		slog.Error("failed to fetch persons",
+			"token", config.TokenMTLAP,
+			"cursor", personsCursor,
+			"error", err,
+		)
 		http.Error(w, "Failed to fetch persons", http.StatusInternalServerError)
 		return
 	}
@@ -42,7 +46,11 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		config.DefaultPageLimit,
 	)
 	if err != nil {
-		slog.Error("failed to fetch companies", "error", err)
+		slog.Error("failed to fetch companies",
+			"token", config.TokenMTLAC,
+			"cursor", companiesCursor,
+			"error", err,
+		)
 		http.Error(w, "Failed to fetch companies", http.StatusInternalServerError)
 		return
 	}
