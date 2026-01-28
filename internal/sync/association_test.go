@@ -25,7 +25,7 @@ func TestParseAssociationTags(t *testing.T) {
 				"Program" + validAccountID: "1",
 			},
 			expected: []AssociationTag{
-				{TagName: "Program", TagIndex: "0", TargetAccountID: validAccountID},
+				{TagName: TagProgram, TagIndex: 0, TargetAccountID: validAccountID},
 			},
 		},
 		{
@@ -34,7 +34,7 @@ func TestParseAssociationTags(t *testing.T) {
 				"Faction" + validAccountID: "1",
 			},
 			expected: []AssociationTag{
-				{TagName: "Faction", TagIndex: "0", TargetAccountID: validAccountID},
+				{TagName: TagFaction, TagIndex: 0, TargetAccountID: validAccountID},
 			},
 		},
 		{
@@ -43,7 +43,7 @@ func TestParseAssociationTags(t *testing.T) {
 				"Program" + validAccountID + "1": "1",
 			},
 			expected: []AssociationTag{
-				{TagName: "Program", TagIndex: "1", TargetAccountID: validAccountID},
+				{TagName: TagProgram, TagIndex: 1, TargetAccountID: validAccountID},
 			},
 		},
 		{
@@ -53,8 +53,8 @@ func TestParseAssociationTags(t *testing.T) {
 				"Faction" + validAccountID + "2": "1",
 			},
 			expected: []AssociationTag{
-				{TagName: "Program", TagIndex: "0", TargetAccountID: validAccountID},
-				{TagName: "Faction", TagIndex: "2", TargetAccountID: validAccountID},
+				{TagName: TagProgram, TagIndex: 0, TargetAccountID: validAccountID},
+				{TagName: TagFaction, TagIndex: 2, TargetAccountID: validAccountID},
 			},
 		},
 		{
@@ -97,10 +97,8 @@ func TestParseAssociationTags(t *testing.T) {
 				return
 			}
 
-			// Sort both slices for comparison (order may vary due to map iteration)
 			assert.Len(t, result, len(tt.expected))
 
-			// Check each expected tag is present
 			for _, exp := range tt.expected {
 				found := false
 				for _, res := range result {

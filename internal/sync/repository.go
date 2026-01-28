@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mtlprog/lore/internal/database"
+	"github.com/shopspring/decimal"
 )
 
 // Repository handles database operations for syncing.
@@ -21,13 +23,6 @@ func NewRepository(pool *pgxpool.Pool) (*Repository, error) {
 		return nil, errors.New("database pool is required")
 	}
 	return &Repository{pool: pool}, nil
-}
-
-// SyncStats holds aggregate statistics after sync.
-type SyncStats struct {
-	TotalAccounts  int
-	TotalPersons   int
-	TotalCompanies int
 }
 
 // allowedTruncateTables is the whitelist of tables that can be truncated.
@@ -53,11 +48,11 @@ func (r *Repository) Truncate(ctx context.Context) error {
 
 	for _, table := range tables {
 		if !allowedTruncateTables[table] {
-			return fmt.Errorf("table %s is not allowed to be truncated", table)
+			return fmt.Errorf("table %q is not allowed to be truncated", table)
 		}
-		_, err := r.pool.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s CASCADE", table))
+		_, err := r.pool.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %q CASCADE", table))
 		if err != nil {
-			return fmt.Errorf("truncate %s: %w", table, err)
+			return fmt.Errorf("truncate %q: %w", table, err)
 		}
 	}
 
@@ -122,13 +117,11 @@ func (r *Repository) UpsertBalances(ctx context.Context, accountID string, balan
 	}
 	defer tx.Rollback(ctx)
 
-	// Delete existing balances
 	_, err = tx.Exec(ctx, "DELETE FROM account_balances WHERE account_id = $1", accountID)
 	if err != nil {
 		return fmt.Errorf("delete existing balances: %w", err)
 	}
 
-	// Insert new balances
 	query := database.QB.Insert("account_balances").
 		Columns("account_id", "asset_code", "asset_issuer", "balance")
 
@@ -165,18 +158,16 @@ func (r *Repository) UpsertMetadata(ctx context.Context, accountID string, metad
 	}
 	defer tx.Rollback(ctx)
 
-	// Delete existing metadata
 	_, err = tx.Exec(ctx, "DELETE FROM account_metadata WHERE account_id = $1", accountID)
 	if err != nil {
 		return fmt.Errorf("delete existing metadata: %w", err)
 	}
 
-	// Insert new metadata
 	query := database.QB.Insert("account_metadata").
 		Columns("account_id", "data_key", "data_index", "data_value")
 
 	for _, m := range metadata {
-		query = query.Values(accountID, m.Key, m.Index, m.Value)
+		query = query.Values(accountID, m.Key, strconv.Itoa(m.Index), m.Value)
 	}
 
 	sql, args, err := query.ToSql()
@@ -208,18 +199,16 @@ func (r *Repository) UpsertRelationships(ctx context.Context, accountID string, 
 	}
 	defer tx.Rollback(ctx)
 
-	// Delete existing relationships from this source
 	_, err = tx.Exec(ctx, "DELETE FROM relationships WHERE source_account_id = $1", accountID)
 	if err != nil {
 		return fmt.Errorf("delete existing relationships: %w", err)
 	}
 
-	// Insert new relationships
 	query := database.QB.Insert("relationships").
 		Columns("source_account_id", "target_account_id", "relation_type", "relation_index")
 
 	for _, rel := range relationships {
-		query = query.Values(accountID, rel.TargetAccountID, rel.RelationType, rel.RelationIndex)
+		query = query.Values(accountID, rel.TargetAccountID, rel.RelationType, strconv.Itoa(rel.RelationIndex))
 	}
 
 	sql, args, err := query.ToSql()
@@ -268,7 +257,7 @@ func (r *Repository) GetUniqueAssets(ctx context.Context) ([]Asset, error) {
 }
 
 // UpsertTokenPrice inserts or updates a token price.
-func (r *Repository) UpsertTokenPrice(ctx context.Context, code, issuer string, price float64) error {
+func (r *Repository) UpsertTokenPrice(ctx context.Context, code, issuer string, price decimal.Decimal) error {
 	query, args, err := database.QB.
 		Insert("token_prices").
 		Columns("asset_code", "asset_issuer", "xlm_price", "updated_at").
@@ -291,7 +280,6 @@ func (r *Repository) UpsertTokenPrice(ctx context.Context, code, issuer string, 
 
 // UpdateXLMValues calculates and updates total_xlm_value for all accounts.
 func (r *Repository) UpdateXLMValues(ctx context.Context) error {
-	// First, update xlm_value in account_balances
 	_, err := r.pool.Exec(ctx, `
 		UPDATE account_balances ab
 		SET xlm_value = ab.balance * COALESCE(tp.xlm_price, 0)
@@ -303,7 +291,6 @@ func (r *Repository) UpdateXLMValues(ctx context.Context) error {
 		return fmt.Errorf("update balance xlm_values: %w", err)
 	}
 
-	// Then, update total_xlm_value in accounts
 	_, err = r.pool.Exec(ctx, `
 		UPDATE accounts a
 		SET total_xlm_value = COALESCE((
@@ -401,9 +388,10 @@ func (r *Repository) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 		SELECT
 			COUNT(*) AS total_accounts,
 			COUNT(*) FILTER (WHERE mtlap_balance > 0) AS total_persons,
-			COUNT(*) FILTER (WHERE mtlac_balance > 0) AS total_companies
+			COUNT(*) FILTER (WHERE mtlac_balance > 0) AS total_companies,
+			COALESCE(SUM(total_xlm_value), 0) AS total_xlm_value
 		FROM accounts
-	`).Scan(&stats.TotalAccounts, &stats.TotalPersons, &stats.TotalCompanies)
+	`).Scan(&stats.TotalAccounts, &stats.TotalPersons, &stats.TotalCompanies, &stats.TotalXLMValue)
 	if err != nil {
 		return nil, fmt.Errorf("query stats: %w", err)
 	}
@@ -411,7 +399,7 @@ func (r *Repository) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 }
 
 // UpsertAssociationTags inserts or updates association tags within a transaction.
-func (r *Repository) UpsertAssociationTags(ctx context.Context, tagName string, tags []AssociationTag) error {
+func (r *Repository) UpsertAssociationTags(ctx context.Context, tagName TagName, tags []AssociationTag) error {
 	if len(tags) == 0 {
 		return nil
 	}
@@ -422,18 +410,16 @@ func (r *Repository) UpsertAssociationTags(ctx context.Context, tagName string, 
 	}
 	defer tx.Rollback(ctx)
 
-	// Delete existing tags of this type
 	_, err = tx.Exec(ctx, "DELETE FROM association_tags WHERE tag_name = $1", tagName)
 	if err != nil {
 		return fmt.Errorf("delete existing tags: %w", err)
 	}
 
-	// Insert new tags
 	query := database.QB.Insert("association_tags").
 		Columns("tag_name", "tag_index", "target_account_id")
 
 	for _, tag := range tags {
-		query = query.Values(tag.TagName, tag.TagIndex, tag.TargetAccountID)
+		query = query.Values(tag.TagName, strconv.Itoa(tag.TagIndex), tag.TargetAccountID)
 	}
 
 	sql, args, err := query.ToSql()

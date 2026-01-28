@@ -12,6 +12,8 @@ import (
 	"sync"
 
 	"github.com/mtlprog/lore/internal/config"
+	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/protocols/horizon"
 	"golang.org/x/sync/semaphore"
@@ -22,44 +24,12 @@ const (
 	concurrentLimit  = 10
 )
 
-// AccountData holds parsed account information from Horizon.
-type AccountData struct {
-	ID            string
-	Balances      []Balance
-	Metadata      []Metadata
-	Relationships []Relationship
-	DelegateTo    *string
-	CouncilReady  bool
-}
-
-// Balance represents an account balance.
-type Balance struct {
-	AssetCode   string
-	AssetIssuer string
-	Balance     string
-}
-
-// Metadata represents account metadata entry.
-type Metadata struct {
-	Key   string
-	Index string
-	Value string
-}
-
-// Relationship represents a relationship between accounts.
-type Relationship struct {
-	TargetAccountID string
-	RelationType    string
-	RelationIndex   string
-}
-
 // fetchAllAssetHolders returns all account IDs holding the specified asset.
 func (s *Syncer) fetchAllAssetHolders(ctx context.Context, code, issuer string) ([]string, error) {
 	var accountIDs []string
 	cursor := ""
 
 	for {
-		// Check for context cancellation between iterations
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
@@ -94,8 +64,9 @@ func (s *Syncer) fetchAllAssetHolders(ctx context.Context, code, issuer string) 
 }
 
 // syncAccounts fetches and stores account details concurrently.
-// Returns error if more than 10% of accounts fail to sync.
-func (s *Syncer) syncAccounts(ctx context.Context, accountIDs map[string]struct{}) error {
+// Returns SyncResult with stats and failed account list.
+// Returns error if failure rate exceeds the configured threshold.
+func (s *Syncer) syncAccounts(ctx context.Context, accountIDs []string) (*SyncResult, error) {
 	sem := semaphore.NewWeighted(concurrentLimit)
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -103,9 +74,9 @@ func (s *Syncer) syncAccounts(ctx context.Context, accountIDs map[string]struct{
 
 	totalCount := len(accountIDs)
 
-	for id := range accountIDs {
+	for _, id := range accountIDs {
 		if err := sem.Acquire(ctx, 1); err != nil {
-			return fmt.Errorf("acquire semaphore: %w", err)
+			return nil, fmt.Errorf("acquire semaphore: %w", err)
 		}
 
 		wg.Add(1)
@@ -114,7 +85,7 @@ func (s *Syncer) syncAccounts(ctx context.Context, accountIDs map[string]struct{
 			defer sem.Release(1)
 
 			if err := s.syncSingleAccount(ctx, accountID); err != nil {
-				slog.Error("failed to sync account", "account_id", accountID, "error", err)
+				s.logger.Error("failed to sync account", "account_id", accountID, "error", err)
 				mu.Lock()
 				failedAccounts = append(failedAccounts, accountID)
 				mu.Unlock()
@@ -123,25 +94,33 @@ func (s *Syncer) syncAccounts(ctx context.Context, accountIDs map[string]struct{
 		}(id)
 	}
 
-	// Wait for all goroutines to complete
 	wg.Wait()
 
 	failedCount := len(failedAccounts)
+	failureRate := float64(0)
+	if totalCount > 0 {
+		failureRate = float64(failedCount) / float64(totalCount)
+	}
+
+	result := &SyncResult{
+		FailedAccounts:  failedAccounts,
+		AccountFailRate: failureRate,
+	}
+
 	if failedCount > 0 {
-		slog.Error("accounts failed to sync",
+		s.logger.Error("accounts failed to sync",
 			"failed_count", failedCount,
 			"total_count", totalCount,
 			"failed_accounts", failedAccounts[:min(10, failedCount)],
 		)
 
-		// Return error if failure rate exceeds 10%
-		failureRate := float64(failedCount) / float64(totalCount)
-		if failureRate > 0.1 {
-			return fmt.Errorf("sync failed: %d/%d accounts failed (%.1f%%)", failedCount, totalCount, failureRate*100)
+		if failureRate > s.failureThreshold {
+			return result, fmt.Errorf("sync failed: %d/%d accounts failed (%.1f%%), threshold %.1f%%",
+				failedCount, totalCount, failureRate*100, s.failureThreshold*100)
 		}
 	}
 
-	return nil
+	return result, nil
 }
 
 // syncSingleAccount fetches and stores a single account.
@@ -179,22 +158,21 @@ func parseAccountData(acc *horizon.Account) *AccountData {
 		CouncilReady: false,
 	}
 
-	// Parse balances
-	for _, bal := range acc.Balances {
+	// Parse balances using lo.Map
+	data.Balances = lo.Map(acc.Balances, func(bal horizon.Balance, _ int) Balance {
 		if bal.Asset.Type == "native" {
-			data.Balances = append(data.Balances, Balance{
+			return Balance{
 				AssetCode:   "XLM",
 				AssetIssuer: "",
-				Balance:     bal.Balance,
-			})
-		} else {
-			data.Balances = append(data.Balances, Balance{
-				AssetCode:   bal.Asset.Code,
-				AssetIssuer: bal.Asset.Issuer,
-				Balance:     bal.Balance,
-			})
+				Balance:     decimal.RequireFromString(bal.Balance),
+			}
 		}
-	}
+		return Balance{
+			AssetCode:   bal.Asset.Code,
+			AssetIssuer: bal.Asset.Issuer,
+			Balance:     decimal.RequireFromString(bal.Balance),
+		}
+	})
 
 	// Parse ManageData
 	data.Metadata, data.Relationships, data.DelegateTo, data.CouncilReady = parseManageData(acc.Data)
@@ -202,15 +180,59 @@ func parseAccountData(acc *horizon.Account) *AccountData {
 	return data
 }
 
-// Known relation type prefixes
-var relationTypes = []string{
-	"MyPart", "PartOf", "RecommendToMTLA",
-	"OneFamily", "Spouse", "Guardian", "Ward", "Sympathy", "Love", "Divorce",
+// relationTypeStrings maps string to RelationType for parsing.
+var relationTypeStrings = map[string]RelationType{
+	"MyPart":            RelationMyPart,
+	"PartOf":            RelationPartOf,
+	"RecommendToMTLA":   RelationRecommendToMTLA,
+	"OneFamily":         RelationOneFamily,
+	"Spouse":            RelationSpouse,
+	"Guardian":          RelationGuardian,
+	"Ward":              RelationWard,
+	"Sympathy":          RelationSympathy,
+	"Love":              RelationLove,
+	"Divorce":           RelationDivorce,
+	"A":                 RelationA,
+	"B":                 RelationB,
+	"C":                 RelationC,
+	"D":                 RelationD,
+	"Employer":          RelationEmployer,
+	"Employee":          RelationEmployee,
+	"Contractor":        RelationContractor,
+	"Client":            RelationClient,
+	"Partnership":       RelationPartnership,
+	"Collaboration":     RelationCollaboration,
+	"OwnershipFull":     RelationOwnershipFull,
+	"OwnershipMajority": RelationOwnershipMajority,
+	"OwnershipMinority": RelationOwnershipMinority,
+	"Owner":             RelationOwner,
+	"OwnerMajority":     RelationOwnerMajority,
+	"OwnerMinority":     RelationOwnerMinority,
+	"WelcomeGuest":      RelationWelcomeGuest,
+	"FactionMember":     RelationFactionMember,
+}
+
+// relationTypePrefixes for parsing relationship keys (ordered by length for proper matching).
+var relationTypePrefixes = []string{
+	"RecommendToMTLA",
+	"OwnershipMajority", "OwnershipMinority", "OwnershipFull",
+	"OwnerMajority", "OwnerMinority",
+	"FactionMember",
+	"Collaboration", "Partnership",
+	"WelcomeGuest",
+	"Contractor",
+	"OneFamily",
+	"Employer", "Employee",
+	"Guardian",
+	"Sympathy",
+	"Divorce",
+	"Client",
+	"Spouse",
+	"MyPart", "PartOf",
+	"Owner",
+	"Love",
+	"Ward",
 	"A", "B", "C", "D",
-	"Employer", "Employee", "Contractor", "Client", "Partnership", "Collaboration",
-	"OwnershipFull", "OwnershipMajority", "OwnershipMinority",
-	"Owner", "OwnerMajority", "OwnerMinority",
-	"WelcomeGuest", "FactionMember",
 }
 
 // parseManageData extracts metadata, relationships, delegate_to, and council_ready from account data.
@@ -222,7 +244,7 @@ func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *st
 
 	// Collect numbered keys for grouping
 	numberedData := make(map[string][]struct {
-		index string
+		index int
 		value string
 	})
 
@@ -253,7 +275,7 @@ func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *st
 		// Parse numbered keys (Name, Name0, Website, Website1, etc.)
 		baseKey, index := parseNumberedKey(key)
 		numberedData[baseKey] = append(numberedData[baseKey], struct {
-			index string
+			index int
 			value string
 		}{index: index, value: value})
 	}
@@ -261,9 +283,7 @@ func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *st
 	// Convert numbered data to metadata, sorted by index
 	for baseKey, items := range numberedData {
 		sort.Slice(items, func(i, j int) bool {
-			ni, _ := strconv.Atoi(items[i].index)
-			nj, _ := strconv.Atoi(items[j].index)
-			return ni < nj
+			return items[i].index < items[j].index
 		})
 
 		for _, item := range items {
@@ -281,12 +301,12 @@ func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *st
 // parseRelationship attempts to parse a key as a relationship.
 func parseRelationship(key, _ string) *Relationship {
 	// Try each known relation type as prefix
-	for _, relType := range relationTypes {
-		if !strings.HasPrefix(key, relType) {
+	for _, prefix := range relationTypePrefixes {
+		if !strings.HasPrefix(key, prefix) {
 			continue
 		}
 
-		rest := key[len(relType):]
+		rest := key[len(prefix):]
 		if len(rest) < 56 {
 			continue
 		}
@@ -300,13 +320,19 @@ func parseRelationship(key, _ string) *Relationship {
 		}
 
 		// Extract optional index (remaining characters after account ID)
-		relIndex := "0"
+		relIndex := 0
 		if len(rest) > 56 {
-			relIndex = rest[56:]
-			// Verify index is numeric
-			if _, err := strconv.Atoi(relIndex); err != nil {
+			indexStr := rest[56:]
+			var err error
+			relIndex, err = strconv.Atoi(indexStr)
+			if err != nil {
 				continue
 			}
+		}
+
+		relType, ok := relationTypeStrings[prefix]
+		if !ok {
+			continue
 		}
 
 		return &Relationship{
@@ -320,55 +346,58 @@ func parseRelationship(key, _ string) *Relationship {
 }
 
 // parseNumberedKey extracts the base key and index from keys like "Website0", "Name".
-func parseNumberedKey(key string) (baseKey string, index string) {
+func parseNumberedKey(key string) (baseKey string, index int) {
 	re := regexp.MustCompile(`^(.+?)(\d*)$`)
 	matches := re.FindStringSubmatch(key)
 	if matches == nil {
-		return key, "0"
+		return key, 0
 	}
 
 	baseKey = matches[1]
-	index = matches[2]
-	if index == "" {
-		index = "0"
+	if matches[2] == "" {
+		return baseKey, 0
 	}
-	return
+
+	index, _ = strconv.Atoi(matches[2])
+	return baseKey, index
 }
 
 // decodeBase64 decodes a base64-encoded string, returning empty string on error.
+// Logs a warning on decode failure as this may indicate corrupted data.
 func decodeBase64(s string) string {
 	if s == "" {
 		return ""
 	}
 	decoded, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {
-		slog.Debug("failed to decode base64", "error", err, "input_length", len(s))
+		slog.Warn("failed to decode base64 - data may be corrupted", "error", err, "input_length", len(s))
 		return ""
 	}
 	return strings.TrimSpace(string(decoded))
 }
 
-// findBalance finds a specific balance from the account balances.
-func findBalance(balances []Balance, code, issuer string) string {
-	for _, bal := range balances {
-		if bal.AssetCode == code && bal.AssetIssuer == issuer {
-			return bal.Balance
-		}
+// findBalance finds a specific balance from the account balances using lo.Find.
+func findBalance(balances []Balance, code, issuer string) decimal.Decimal {
+	bal, found := lo.Find(balances, func(b Balance) bool {
+		return b.AssetCode == code && b.AssetIssuer == issuer
+	})
+	if !found {
+		return decimal.Zero
 	}
-	return "0"
+	return bal.Balance
 }
 
 // getMTLAPBalance returns the MTLAP balance from account data.
-func getMTLAPBalance(data *AccountData) string {
+func getMTLAPBalance(data *AccountData) decimal.Decimal {
 	return findBalance(data.Balances, config.TokenMTLAP, config.TokenIssuer)
 }
 
 // getMTLACBalance returns the MTLAC balance from account data.
-func getMTLACBalance(data *AccountData) string {
+func getMTLACBalance(data *AccountData) decimal.Decimal {
 	return findBalance(data.Balances, config.TokenMTLAC, config.TokenIssuer)
 }
 
 // getNativeBalance returns the XLM balance from account data.
-func getNativeBalance(data *AccountData) string {
+func getNativeBalance(data *AccountData) decimal.Decimal {
 	return findBalance(data.Balances, "XLM", "")
 }
