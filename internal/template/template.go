@@ -10,6 +10,25 @@ import (
 //go:embed templates/*.html
 var templateFS embed.FS
 
+// funcMap provides custom template functions.
+var funcMap = template.FuncMap{
+	"add": func(a, b int) int {
+		return a + b
+	},
+	"truncate": func(s string, n int) string {
+		if len(s) <= n {
+			return s
+		}
+		return s[:n]
+	},
+	"slice": func(s string, start int) string {
+		if start >= len(s) {
+			return ""
+		}
+		return s[start:]
+	},
+}
+
 // Templates holds parsed HTML templates.
 type Templates struct {
 	pages map[string]*template.Template
@@ -19,8 +38,8 @@ type Templates struct {
 func New() (*Templates, error) {
 	pages := make(map[string]*template.Template)
 
-	// Parse base template first
-	base, err := template.ParseFS(templateFS, "templates/base.html")
+	// Parse base template first with functions
+	base, err := template.New("base.html").Funcs(funcMap).ParseFS(templateFS, "templates/base.html")
 	if err != nil {
 		return nil, fmt.Errorf("parsing base template: %w", err)
 	}

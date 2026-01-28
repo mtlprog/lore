@@ -7,6 +7,9 @@ const (
 	// DefaultHorizonURL is the Stellar mainnet Horizon endpoint.
 	DefaultHorizonURL = "https://horizon.stellar.org"
 
+	// DefaultDatabaseURL is empty; must be provided via flag or environment.
+	DefaultDatabaseURL = ""
+
 	// TokenIssuer is the issuer account for MTLAP and MTLAC tokens.
 	TokenIssuer = "GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA"
 

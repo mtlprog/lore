@@ -1,73 +1,122 @@
 {{template "base" .}}
 
-{{define "title"}}LORE // TOKEN HOLDERS{{end}}
+{{define "title"}}LORE // MTLA Registry{{end}}
 
 {{define "content"}}
+<!-- STATS OVERVIEW -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Total Accounts</div>
+        <div class="stat-value">{{.Stats.TotalAccounts}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Persons (MTLAP)</div>
+        <div class="stat-value">{{.Stats.TotalPersons}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Companies (MTLAC)</div>
+        <div class="stat-value">{{.Stats.TotalCompanies}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total Portfolio Value</div>
+        <div class="stat-value">{{printf "%.0f" .Stats.TotalXLMValue}}<span class="unit">XLM</span></div>
+    </div>
+</div>
+
+<!-- PERSONS SECTION -->
 <section class="section">
     <div class="section-header">
         <h2 class="section-title">Persons</h2>
         <span class="section-badge">MTLAP</span>
+        <span class="section-count">{{.Stats.TotalPersons}} registered</span>
     </div>
-    {{if .Persons.Accounts}}
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Account ID</th>
-                <th style="text-align: right">Balance</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{range .Persons.Accounts}}
-            <tr class="row-link" onclick="window.location='/accounts/{{.ID}}'">
-                <td class="cell-name"><a href="/accounts/{{.ID}}">{{.Name}}</a></td>
-                <td class="cell-id">{{.ID}}</td>
-                <td class="cell-num">{{.Balance}}</td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
-    {{if .Persons.Pagination.HasMore}}
+    {{if .Persons}}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Account</th>
+                    <th class="right">Balance</th>
+                    <th class="right">Council</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $i, $p := .Persons}}
+                <tr class="row-link" onclick="window.location='/accounts/{{$p.AccountID}}'">
+                    <td class="cell-rank">{{add $i 1}}</td>
+                    <td class="cell-name">
+                        <a href="/accounts/{{$p.AccountID}}">{{$p.Name}}</a>
+                    </td>
+                    <td class="cell-id">{{truncate $p.AccountID 8}}...{{slice $p.AccountID 48}}</td>
+                    <td class="cell-num">{{printf "%.2f" $p.MTLAPBalance}}</td>
+                    <td class="cell-votes">
+                        {{if $p.IsCouncilReady}}
+                        <span class="badge-council">Ready</span>
+                        {{if gt $p.ReceivedVotes 0}}
+                        <span class="votes-count">{{$p.ReceivedVotes}}</span>
+                        {{end}}
+                        {{else}}
+                        <span style="color: var(--text-muted);">-</span>
+                        {{end}}
+                    </td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{if .HasMorePersons}}
     <div class="pagination">
-        <a href="?persons_cursor={{.Persons.Pagination.NextCursor}}{{if .Companies.Pagination.NextCursor}}&companies_cursor={{.Companies.Pagination.NextCursor}}{{end}}" class="btn">> Load More</a>
+        <a href="?persons_offset={{.NextPersonsOffset}}{{if .CompaniesOffset}}&companies_offset={{.CompaniesOffset}}{{end}}" class="btn">Load More &gt;</a>
     </div>
     {{end}}
     {{else}}
-    <div class="empty">NO PERSONS FOUND</div>
+    <div class="empty">No persons found</div>
     {{end}}
 </section>
 
+<!-- COMPANIES SECTION -->
 <section class="section">
     <div class="section-header">
         <h2 class="section-title">Companies</h2>
-        <span class="section-badge">MTLAC</span>
+        <span class="section-badge mtlac">MTLAC</span>
+        <span class="section-count">{{.Stats.TotalCompanies}} registered</span>
     </div>
-    {{if .Companies.Accounts}}
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Account ID</th>
-                <th style="text-align: right">Balance</th>
-            </tr>
-        </thead>
-        <tbody>
-            {{range .Companies.Accounts}}
-            <tr class="row-link" onclick="window.location='/accounts/{{.ID}}'">
-                <td class="cell-name"><a href="/accounts/{{.ID}}">{{.Name}}</a></td>
-                <td class="cell-id">{{.ID}}</td>
-                <td class="cell-num">{{.Balance}}</td>
-            </tr>
-            {{end}}
-        </tbody>
-    </table>
-    {{if .Companies.Pagination.HasMore}}
+    {{if .Companies}}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Account</th>
+                    <th class="right">Shares</th>
+                    <th class="right">Portfolio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $i, $c := .Companies}}
+                <tr class="row-link" onclick="window.location='/accounts/{{$c.AccountID}}'">
+                    <td class="cell-rank">{{add $i 1}}</td>
+                    <td class="cell-name">
+                        <a href="/accounts/{{$c.AccountID}}">{{$c.Name}}</a>
+                    </td>
+                    <td class="cell-id">{{truncate $c.AccountID 8}}...{{slice $c.AccountID 48}}</td>
+                    <td class="cell-num">{{printf "%.2f" $c.MTLACBalance}}</td>
+                    <td class="cell-xlm">{{printf "%.0f" $c.TotalXLMValue}} XLM</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{if .HasMoreCompanies}}
     <div class="pagination">
-        <a href="?{{if .Persons.Pagination.NextCursor}}persons_cursor={{.Persons.Pagination.NextCursor}}&{{end}}companies_cursor={{.Companies.Pagination.NextCursor}}" class="btn">> Load More</a>
+        <a href="?{{if .PersonsOffset}}persons_offset={{.PersonsOffset}}&{{end}}companies_offset={{.NextCompaniesOffset}}" class="btn">Load More &gt;</a>
     </div>
     {{end}}
     {{else}}
-    <div class="empty">NO COMPANIES FOUND</div>
+    <div class="empty">No companies found</div>
     {{end}}
 </section>
 {{end}}

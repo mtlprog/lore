@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/mtlprog/lore/internal/config"
+	"github.com/mtlprog/lore/internal/database"
 	"github.com/mtlprog/lore/internal/handler"
 	"github.com/mtlprog/lore/internal/logger"
+	"github.com/mtlprog/lore/internal/repository"
 	"github.com/mtlprog/lore/internal/service"
 	"github.com/mtlprog/lore/internal/template"
 	"github.com/urfave/cli/v2"
@@ -44,6 +46,14 @@ func main() {
 				Usage:   "Log level (debug, info, warn, error)",
 				EnvVars: []string{"LOG_LEVEL"},
 			},
+			&cli.StringFlag{
+				Name:     "database-url",
+				Aliases:  []string{"d"},
+				Value:    config.DefaultDatabaseURL,
+				Usage:    "PostgreSQL database URL",
+				EnvVars:  []string{"DATABASE_URL"},
+				Required: true,
+			},
 		},
 		Before: func(c *cli.Context) error {
 			logger.Setup(logger.ParseLevel(c.String("log-level")))
@@ -59,8 +69,21 @@ func main() {
 }
 
 func run(c *cli.Context) error {
+	ctx := c.Context
+
 	port := c.String("port")
 	horizonURL := c.String("horizon-url")
+	databaseURL := c.String("database-url")
+
+	db, err := database.New(ctx, databaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+
+	if err := database.RunMigrations(ctx, db.Pool); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
 
 	tmpl, err := template.New()
 	if err != nil {
@@ -68,7 +91,8 @@ func run(c *cli.Context) error {
 	}
 
 	stellar := service.NewStellarService(horizonURL)
-	h := handler.New(stellar, tmpl)
+	accounts := repository.NewAccountRepository(db.Pool)
+	h := handler.New(stellar, accounts, tmpl)
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
