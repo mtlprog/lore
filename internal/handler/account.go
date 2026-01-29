@@ -47,5 +47,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = buf.WriteTo(w)
+	if _, err := buf.WriteTo(w); err != nil {
+		slog.Debug("failed to write response", "account_id", accountID, "error", err)
+	}
 }
