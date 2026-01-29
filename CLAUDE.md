@@ -36,7 +36,7 @@ go vet ./...
 
 The application follows a layered architecture:
 
-- **Handler Layer** (`internal/handler/`) - HTTP request handling with Go 1.22+ routing. Routes: `GET /` (home) and `GET /accounts/{id}` (detail). Uses `r.PathValue()` for path parameters.
+- **Handler Layer** (`internal/handler/`) - HTTP request handling with Go 1.22+ routing. Routes: `GET /` (home, catch-all) and `GET /accounts/{id}` (detail). Uses `r.PathValue()` for path parameters. Note: `GET /` matches any path; to test "unregistered routes", use wrong HTTP method.
 
 - **Repository Layer** (`internal/repository/`) - Data access layer for PostgreSQL. `AccountRepository` provides methods for querying accounts, stats, persons (MTLAP holders), and companies (MTLAC holders). Uses Squirrel query builder.
 
@@ -50,8 +50,9 @@ The application follows a layered architecture:
 
 ## Key Technical Details
 
+- **Template Buffering**: Render templates to `bytes.Buffer` first, write to ResponseWriter only on success. Prevents partial HTML on template errors.
 - **Stellar Metadata**: Account data is stored in base64 on Stellar; the service layer decodes transparently
-- **Stellar SDK Types**: `horizon.Balance.Asset` is type `base.Asset` (from `github.com/stellar/go/protocols/horizon/base`), not `horizon.Asset`. Import the `base` package when writing tests.
+- **Stellar SDK Types**: `horizon.Balance` embeds `base.Asset`, so prefer `bal.Code` over `bal.Asset.Code` (staticcheck QF1008). Import `base` package when writing tests.
 - **Pagination**: Offset-based pagination for database queries, passed as `persons_offset` and `companies_offset` query params. Horizon API uses cursor-based pagination for account detail pages.
 - **Numbered Fields**: Account metadata like websites use numbered keys (Website0, Website1) parsed and sorted by `parseNumberedDataKeys()`
 - **Configuration**: Port via `--port`/`PORT`, Horizon URL via `--horizon-url`/`HORIZON_URL`, log level via `--log-level`/`LOG_LEVEL` (debug, info, warn, error), database URL via `--database-url`/`DATABASE_URL` (required)
@@ -129,7 +130,13 @@ lop.Filter(slice, func(x T, _ int) bool { ... })              // Parallel filter
 
 - `internal/service/stellar_test.go` - utility functions (`parseNumberedDataKeys`, `decodeBase64`)
 - `internal/sync/*_test.go` - sync parsing functions (`parseAccountData`, `parseAssociationTags`, `getAssetType`)
+- `internal/handler/*_test.go` - HTTP handlers using mockery-generated mocks
 - Use table-driven tests with `t.Run()` for edge cases
+
+### Mocking with mockery
+- Config in `.mockery.yaml`, regenerate with `mockery` or `go generate ./internal/handler/`
+- When renaming interfaces, update `.mockery.yaml` and delete old mock files before regenerating
+- Use `EXPECT()` pattern with specific expectations; avoid `.Maybe()` in favor of isolated sub-tests with fresh mocks
 
 ## Git Conventions
 
