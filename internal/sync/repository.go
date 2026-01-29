@@ -115,7 +115,7 @@ func (r *Repository) UpsertBalances(ctx context.Context, accountID string, balan
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx, "DELETE FROM account_balances WHERE account_id = $1", accountID)
 	if err != nil {
@@ -156,7 +156,7 @@ func (r *Repository) UpsertMetadata(ctx context.Context, accountID string, metad
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx, "DELETE FROM account_metadata WHERE account_id = $1", accountID)
 	if err != nil {
@@ -197,7 +197,7 @@ func (r *Repository) UpsertRelationships(ctx context.Context, accountID string, 
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx, "DELETE FROM relationships WHERE source_account_id = $1", accountID)
 	if err != nil {
@@ -408,7 +408,7 @@ func (r *Repository) UpsertAssociationTags(ctx context.Context, tagName TagName,
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	_, err = tx.Exec(ctx, "DELETE FROM association_tags WHERE tag_name = $1", tagName)
 	if err != nil {
