@@ -23,24 +23,24 @@ func (_m *MockAccountQuerier) EXPECT() *MockAccountQuerier_Expecter {
 	return &MockAccountQuerier_Expecter{mock: &_m.Mock}
 }
 
-// GetCompanies provides a mock function with given fields: ctx, limit, offset
-func (_m *MockAccountQuerier) GetCompanies(ctx context.Context, limit int, offset int) ([]repository.CompanyRow, error) {
+// GetCorporate provides a mock function with given fields: ctx, limit, offset
+func (_m *MockAccountQuerier) GetCorporate(ctx context.Context, limit int, offset int) ([]repository.CorporateRow, error) {
 	ret := _m.Called(ctx, limit, offset)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetCompanies")
+		panic("no return value specified for GetCorporate")
 	}
 
-	var r0 []repository.CompanyRow
+	var r0 []repository.CorporateRow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]repository.CompanyRow, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]repository.CorporateRow, error)); ok {
 		return rf(ctx, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int, int) []repository.CompanyRow); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) []repository.CorporateRow); ok {
 		r0 = rf(ctx, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]repository.CompanyRow)
+			r0 = ret.Get(0).([]repository.CorporateRow)
 		}
 	}
 
@@ -53,32 +53,32 @@ func (_m *MockAccountQuerier) GetCompanies(ctx context.Context, limit int, offse
 	return r0, r1
 }
 
-// MockAccountQuerier_GetCompanies_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCompanies'
-type MockAccountQuerier_GetCompanies_Call struct {
+// MockAccountQuerier_GetCorporate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCorporate'
+type MockAccountQuerier_GetCorporate_Call struct {
 	*mock.Call
 }
 
-// GetCompanies is a helper method to define mock.On call
+// GetCorporate is a helper method to define mock.On call
 //   - ctx context.Context
 //   - limit int
 //   - offset int
-func (_e *MockAccountQuerier_Expecter) GetCompanies(ctx interface{}, limit interface{}, offset interface{}) *MockAccountQuerier_GetCompanies_Call {
-	return &MockAccountQuerier_GetCompanies_Call{Call: _e.mock.On("GetCompanies", ctx, limit, offset)}
+func (_e *MockAccountQuerier_Expecter) GetCorporate(ctx interface{}, limit interface{}, offset interface{}) *MockAccountQuerier_GetCorporate_Call {
+	return &MockAccountQuerier_GetCorporate_Call{Call: _e.mock.On("GetCorporate", ctx, limit, offset)}
 }
 
-func (_c *MockAccountQuerier_GetCompanies_Call) Run(run func(ctx context.Context, limit int, offset int)) *MockAccountQuerier_GetCompanies_Call {
+func (_c *MockAccountQuerier_GetCorporate_Call) Run(run func(ctx context.Context, limit int, offset int)) *MockAccountQuerier_GetCorporate_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(int), args[2].(int))
 	})
 	return _c
 }
 
-func (_c *MockAccountQuerier_GetCompanies_Call) Return(_a0 []repository.CompanyRow, _a1 error) *MockAccountQuerier_GetCompanies_Call {
+func (_c *MockAccountQuerier_GetCorporate_Call) Return(_a0 []repository.CorporateRow, _a1 error) *MockAccountQuerier_GetCorporate_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockAccountQuerier_GetCompanies_Call) RunAndReturn(run func(context.Context, int, int) ([]repository.CompanyRow, error)) *MockAccountQuerier_GetCompanies_Call {
+func (_c *MockAccountQuerier_GetCorporate_Call) RunAndReturn(run func(context.Context, int, int) ([]repository.CorporateRow, error)) *MockAccountQuerier_GetCorporate_Call {
 	_c.Call.Return(run)
 	return _c
 }

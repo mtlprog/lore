@@ -14,13 +14,13 @@ import (
 type HomeData struct {
 	Stats               *repository.Stats
 	Persons             []repository.PersonRow
-	Companies           []repository.CompanyRow
+	Corporate           []repository.CorporateRow
 	PersonsOffset       int
-	CompaniesOffset     int
+	CorporateOffset     int
 	NextPersonsOffset   int
-	NextCompaniesOffset int
+	NextCorporateOffset int
 	HasMorePersons      bool
-	HasMoreCompanies    bool
+	HasMoreCorporate    bool
 }
 
 // Home handles the main page showing Persons and Companies.
@@ -35,13 +35,13 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		}
 		personsOffset = 0
 	}
-	companiesOffsetParam := r.URL.Query().Get("companies_offset")
-	companiesOffset, err := strconv.Atoi(companiesOffsetParam)
-	if err != nil || companiesOffset < 0 {
-		if companiesOffsetParam != "" {
-			slog.Debug("invalid companies_offset parameter, defaulting to 0", "value", companiesOffsetParam)
+	corporateOffsetParam := r.URL.Query().Get("corporate_offset")
+	corporateOffset, err := strconv.Atoi(corporateOffsetParam)
+	if err != nil || corporateOffset < 0 {
+		if corporateOffsetParam != "" {
+			slog.Debug("invalid corporate_offset parameter, defaulting to 0", "value", corporateOffsetParam)
 		}
-		companiesOffset = 0
+		corporateOffset = 0
 	}
 
 	stats, err := h.accounts.GetStats(ctx)
@@ -58,33 +58,33 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	companies, err := h.accounts.GetCompanies(ctx, config.DefaultPageLimit+1, companiesOffset)
+	corporate, err := h.accounts.GetCorporate(ctx, config.DefaultPageLimit+1, corporateOffset)
 	if err != nil {
-		slog.Error("failed to fetch companies", "offset", companiesOffset, "error", err)
-		http.Error(w, "Failed to fetch companies", http.StatusInternalServerError)
+		slog.Error("failed to fetch corporate", "offset", corporateOffset, "error", err)
+		http.Error(w, "Failed to fetch corporate accounts", http.StatusInternalServerError)
 		return
 	}
 
 	hasMorePersons := len(persons) > config.DefaultPageLimit
-	hasMoreCompanies := len(companies) > config.DefaultPageLimit
+	hasMoreCorporate := len(corporate) > config.DefaultPageLimit
 
 	if hasMorePersons {
 		persons = persons[:config.DefaultPageLimit]
 	}
-	if hasMoreCompanies {
-		companies = companies[:config.DefaultPageLimit]
+	if hasMoreCorporate {
+		corporate = corporate[:config.DefaultPageLimit]
 	}
 
 	data := HomeData{
 		Stats:               stats,
 		Persons:             persons,
-		Companies:           companies,
+		Corporate:           corporate,
 		PersonsOffset:       personsOffset,
-		CompaniesOffset:     companiesOffset,
+		CorporateOffset:     corporateOffset,
 		NextPersonsOffset:   personsOffset + config.DefaultPageLimit,
-		NextCompaniesOffset: companiesOffset + config.DefaultPageLimit,
+		NextCorporateOffset: corporateOffset + config.DefaultPageLimit,
 		HasMorePersons:      hasMorePersons,
-		HasMoreCompanies:    hasMoreCompanies,
+		HasMoreCorporate:    hasMoreCorporate,
 	}
 
 	var buf bytes.Buffer
@@ -95,5 +95,7 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	_, _ = buf.WriteTo(w)
+	if _, err := buf.WriteTo(w); err != nil {
+		slog.Debug("failed to write response", "error", err)
+	}
 }

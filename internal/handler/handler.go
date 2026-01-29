@@ -21,7 +21,7 @@ type StellarServicer interface {
 type AccountQuerier interface {
 	GetStats(ctx context.Context) (*repository.Stats, error)
 	GetPersons(ctx context.Context, limit int, offset int) ([]repository.PersonRow, error)
-	GetCompanies(ctx context.Context, limit int, offset int) ([]repository.CompanyRow, error)
+	GetCorporate(ctx context.Context, limit int, offset int) ([]repository.CorporateRow, error)
 }
 
 // TemplateRenderer defines the interface for template rendering.
