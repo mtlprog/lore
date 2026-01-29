@@ -12,18 +12,6 @@ Lore is a Stellar blockchain token explorer for MTLAP (Persons) and MTLAC (Compa
 # Build the binary
 go build -o lore ./cmd/lore
 
-# Run the application (requires PostgreSQL)
-./lore --database-url "postgres://user:pass@localhost:5432/lore?sslmode=disable"
-./lore --database-url "..." --port 3000
-./lore --database-url "..." --horizon-url https://horizon-testnet.stellar.org
-
-# Run sync to fetch data from Stellar Horizon
-./lore sync --database-url "..."
-./lore sync --database-url "..." --full  # Full resync (truncates tables first)
-
-# Run PostgreSQL locally with Docker
-docker run -d --name lore-db -e POSTGRES_PASSWORD=lore -e POSTGRES_DB=lore -p 5432:5432 postgres:16
-
 # Run tests
 go test ./...
 
@@ -32,13 +20,67 @@ go fmt ./...
 go vet ./...
 ```
 
+## Docker Development (Recommended)
+
+Use Docker Compose for local development with fast iteration:
+
+```bash
+# Quick start: build, start services, sync data
+make dev
+
+# After making code changes, rebuild and restart (fast - no container rebuild):
+make dev-restart
+
+# View logs
+make dev-logs
+
+# Stop everything
+make dev-down
+
+# Reset database and re-sync
+make db-reset && make dev
+```
+
+### How it works
+- `docker-compose.dev.yml` mounts the local binary into containers
+- Cross-compile for Linux containers: `CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o lore ./cmd/lore`
+- Then restart the container - no Docker image rebuild needed
+- Syncer runs once on startup; restart it manually with `docker compose restart syncer`
+
+## Docker Production
+
+```bash
+# Build images and start all services
+make prod
+
+# View logs
+make prod-logs
+
+# Stop
+make prod-down
+```
+
+## Local Development (without Docker containers for app)
+
+```bash
+# Start only PostgreSQL
+make db
+
+# Run the application
+./lore --database-url "postgres://lore:lore@localhost:5432/lore?sslmode=disable" serve
+
+# Run sync
+./lore --database-url "postgres://lore:lore@localhost:5432/lore?sslmode=disable" sync
+./lore --database-url "..." sync --full  # Full resync (truncates tables first)
+```
+
 ## Architecture
 
 The application follows a layered architecture:
 
 - **Handler Layer** (`internal/handler/`) - HTTP request handling with Go 1.22+ routing. Routes: `GET /` (home, catch-all) and `GET /accounts/{id}` (detail). Uses `r.PathValue()` for path parameters. Note: `GET /` matches any path; to test "unregistered routes", use wrong HTTP method.
 
-- **Repository Layer** (`internal/repository/`) - Data access layer for PostgreSQL. `AccountRepository` provides methods for querying accounts, stats, persons (MTLAP holders), and companies (MTLAC holders). Uses Squirrel query builder.
+- **Repository Layer** (`internal/repository/`) - Data access layer for PostgreSQL. `AccountRepository` provides methods for querying accounts, stats, persons (MTLAP holders), and corporate accounts (MTLAC holders). Uses Squirrel query builder.
 
 - **Database Layer** (`internal/database/`) - PostgreSQL connection pool management via pgx. Includes embedded goose migrations that run automatically on startup. Pool settings: MaxConns=10, MinConns=2.
 
@@ -46,14 +88,14 @@ The application follows a layered architecture:
 
 - **Sync Layer** (`internal/sync/`) - Data synchronization from Stellar Horizon API to PostgreSQL. Fetches MTLAP/MTLAC holders, parses ManageData, calculates delegations, and fetches token prices from SDEX. Uses semaphore + WaitGroup for concurrent processing with 10-worker limit.
 
-- **Template Layer** (`internal/template/`) - Embedded templates using Go's `embed` package. `base.html` provides master layout, extended by `home.html` and `account.html`. Custom functions: `add`, `truncate`, `slice`.
+- **Template Layer** (`internal/template/`) - Embedded templates using Go's `embed` package. `base.html` provides master layout, extended by `home.html` and `account.html`. Custom functions: `add`, `addFloat` (float64 + int), `truncate`, `slice`, `formatNumber` (space-separated thousands), `votePower` (log10-based: 1-10=1, 11-100=2, 101-1000=3).
 
 ## Key Technical Details
 
 - **Template Buffering**: Render templates to `bytes.Buffer` first, write to ResponseWriter only on success. Prevents partial HTML on template errors.
 - **Stellar Metadata**: Account data is stored in base64 on Stellar; the service layer decodes transparently
 - **Stellar SDK Types**: `horizon.Balance` embeds `base.Asset`, so prefer `bal.Code` over `bal.Asset.Code` (staticcheck QF1008). Import `base` package when writing tests.
-- **Pagination**: Offset-based pagination for database queries, passed as `persons_offset` and `companies_offset` query params. Horizon API uses cursor-based pagination for account detail pages.
+- **Pagination**: Offset-based pagination for database queries, passed as `persons_offset` and `corporate_offset` query params. Horizon API uses cursor-based pagination for account detail pages.
 - **Numbered Fields**: Account metadata like websites use numbered keys (Website0, Website1) parsed and sorted by `parseNumberedDataKeys()`
 - **Configuration**: Port via `--port`/`PORT`, Horizon URL via `--horizon-url`/`HORIZON_URL`, log level via `--log-level`/`LOG_LEVEL` (debug, info, warn, error), database URL via `--database-url`/`DATABASE_URL` (required)
 - **Logging**: Uses `log/slog` with JSON output and source location. Log levels: `info` for lifecycle events, `error` for unexpected failures (not expected errors like 404), `debug` for troubleshooting
@@ -61,6 +103,15 @@ The application follows a layered architecture:
 - **Template Inheritance**: Each page template must be cloned from base separately (see `template.go`). Using `ParseFS` with multiple templates defining the same block causes overwrites.
 - **Constructor Pattern**: Constructors return `(*T, error)` with nil validation, not `*T` that silently returns nil on error.
 - **Transaction Atomicity**: Wrap DELETE + INSERT sequences in transactions to prevent partial state on failure.
+- **Database Migrations**: Add new migrations in `internal/database/migrations/` with format `NNN_description.sql`. Migrations run automatically on startup via goose.
+
+## Stellar Account Data Keys
+
+- **mtla_delegate**: General delegation target (account ID that receives delegated votes)
+- **mtla_c_delegate**: Has dual meaning:
+  - `"ready"` → account is council-ready (can receive council delegations)
+  - Account ID → delegates council votes to that account
+- **Council delegation chains**: Use `council_delegate_to` column, not `delegate_to`, for vote calculations
 
 ## samber/lo - Utility Library
 
