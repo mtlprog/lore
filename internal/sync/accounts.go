@@ -175,7 +175,7 @@ func parseAccountData(acc *horizon.Account) *AccountData {
 	})
 
 	// Parse ManageData
-	data.Metadata, data.Relationships, data.DelegateTo, data.CouncilReady = parseManageData(acc.Data)
+	data.Metadata, data.Relationships, data.DelegateTo, data.CouncilDelegateTo, data.CouncilReady = parseManageData(acc.Data)
 
 	return data
 }
@@ -235,16 +235,17 @@ var relationTypePrefixes = []string{
 	"A", "B", "C", "D",
 }
 
-// parseManageData extracts metadata, relationships, delegate_to, and council_ready from account data.
-func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *string, bool) {
+// parseManageData extracts metadata, relationships, delegate_to, council_delegate_to, and council_ready from account data.
+func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *string, *string, bool) {
 	var metadata []Metadata
 	var relationships []Relationship
 	var delegateTo *string
+	var councilDelegateTo *string
 	councilReady := false
 
 	// Collect numbered keys for grouping
 	numberedData := make(map[string][]struct {
-		index int
+		index string
 		value string
 	})
 
@@ -261,8 +262,14 @@ func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *st
 				delegateTo = &value
 			}
 			continue
-		case "mtla_council_ready":
-			councilReady = value == "1" || strings.ToLower(value) == "true"
+		case "mtla_c_delegate":
+			// mtla_c_delegate = "ready" marks as council-ready
+			// mtla_c_delegate = account ID means council delegation to that account
+			if strings.ToLower(value) == "ready" {
+				councilReady = true
+			} else if len(value) == 56 && strings.HasPrefix(value, "G") {
+				councilDelegateTo = &value
+			}
 			continue
 		}
 
@@ -275,7 +282,7 @@ func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *st
 		// Parse numbered keys (Name, Name0, Website, Website1, etc.)
 		baseKey, index := parseNumberedKey(key)
 		numberedData[baseKey] = append(numberedData[baseKey], struct {
-			index int
+			index string
 			value string
 		}{index: index, value: value})
 	}
@@ -295,7 +302,7 @@ func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *st
 		}
 	}
 
-	return metadata, relationships, delegateTo, councilReady
+	return metadata, relationships, delegateTo, councilDelegateTo, councilReady
 }
 
 // parseRelationship attempts to parse a key as a relationship.
@@ -345,21 +352,16 @@ func parseRelationship(key, _ string) *Relationship {
 	return nil
 }
 
-// parseNumberedKey extracts the base key and index from keys like "Website0", "Name".
-func parseNumberedKey(key string) (baseKey string, index int) {
+// parseNumberedKey extracts the base key and index suffix from keys like "Website0", "Name".
+// Returns the original suffix string to preserve leading zeros (e.g., "002" vs "2").
+func parseNumberedKey(key string) (baseKey string, index string) {
 	re := regexp.MustCompile(`^(.+?)(\d*)$`)
 	matches := re.FindStringSubmatch(key)
 	if matches == nil {
-		return key, 0
+		return key, ""
 	}
 
-	baseKey = matches[1]
-	if matches[2] == "" {
-		return baseKey, 0
-	}
-
-	index, _ = strconv.Atoi(matches[2])
-	return baseKey, index
+	return matches[1], matches[2]
 }
 
 // decodeBase64 decodes a base64-encoded string, returning empty string on error.

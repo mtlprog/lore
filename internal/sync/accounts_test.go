@@ -51,31 +51,37 @@ func TestParseNumberedKey(t *testing.T) {
 		name          string
 		key           string
 		expectedBase  string
-		expectedIndex int
+		expectedIndex string
 	}{
 		{
 			name:          "key without number",
 			key:           "Name",
 			expectedBase:  "Name",
-			expectedIndex: 0,
+			expectedIndex: "",
 		},
 		{
 			name:          "key with zero",
 			key:           "Website0",
 			expectedBase:  "Website",
-			expectedIndex: 0,
+			expectedIndex: "0",
 		},
 		{
 			name:          "key with number",
 			key:           "Website1",
 			expectedBase:  "Website",
-			expectedIndex: 1,
+			expectedIndex: "1",
 		},
 		{
 			name:          "key with large number",
 			key:           "Website123",
 			expectedBase:  "Website",
-			expectedIndex: 123,
+			expectedIndex: "123",
+		},
+		{
+			name:          "key with leading zeros",
+			key:           "PartOf002",
+			expectedBase:  "PartOf",
+			expectedIndex: "002",
 		},
 	}
 
@@ -149,12 +155,13 @@ func TestParseManageData(t *testing.T) {
 	validAccountID := "GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA"
 
 	tests := []struct {
-		name             string
-		data             map[string]string
-		expectedMeta     int
-		expectedRels     int
-		expectedDelegate *string
-		expectedCouncil  bool
+		name                    string
+		data                    map[string]string
+		expectedMeta            int
+		expectedRels            int
+		expectedDelegate        *string
+		expectedCouncilDelegate *string
+		expectedCouncil         bool
 	}{
 		{
 			name: "basic metadata",
@@ -162,49 +169,65 @@ func TestParseManageData(t *testing.T) {
 				"Name":  base64.StdEncoding.EncodeToString([]byte("Test Account")),
 				"About": base64.StdEncoding.EncodeToString([]byte("Description")),
 			},
-			expectedMeta:     2,
-			expectedRels:     0,
-			expectedDelegate: nil,
-			expectedCouncil:  false,
+			expectedMeta:            2,
+			expectedRels:            0,
+			expectedDelegate:        nil,
+			expectedCouncilDelegate: nil,
+			expectedCouncil:         false,
 		},
 		{
 			name: "with delegate",
 			data: map[string]string{
 				"mtla_delegate": base64.StdEncoding.EncodeToString([]byte(validAccountID)),
 			},
-			expectedMeta:     0,
-			expectedRels:     0,
-			expectedDelegate: &validAccountID,
-			expectedCouncil:  false,
+			expectedMeta:            0,
+			expectedRels:            0,
+			expectedDelegate:        &validAccountID,
+			expectedCouncilDelegate: nil,
+			expectedCouncil:         false,
 		},
 		{
-			name: "council ready true",
+			name: "council ready with mtla_c_delegate = ready",
 			data: map[string]string{
-				"mtla_council_ready": base64.StdEncoding.EncodeToString([]byte("1")),
+				"mtla_c_delegate": base64.StdEncoding.EncodeToString([]byte("ready")),
 			},
-			expectedMeta:     0,
-			expectedRels:     0,
-			expectedDelegate: nil,
-			expectedCouncil:  true,
+			expectedMeta:            0,
+			expectedRels:            0,
+			expectedDelegate:        nil,
+			expectedCouncilDelegate: nil,
+			expectedCouncil:         true,
+		},
+		{
+			name: "council delegation with mtla_c_delegate = account ID",
+			data: map[string]string{
+				"mtla_c_delegate": base64.StdEncoding.EncodeToString([]byte(validAccountID)),
+			},
+			expectedMeta:            0,
+			expectedRels:            0,
+			expectedDelegate:        nil,
+			expectedCouncilDelegate: &validAccountID,
+			expectedCouncil:         false,
 		},
 		{
 			name: "with relationship",
 			data: map[string]string{
 				"PartOf" + validAccountID: base64.StdEncoding.EncodeToString([]byte("1")),
 			},
-			expectedMeta:     0,
-			expectedRels:     1,
-			expectedDelegate: nil,
-			expectedCouncil:  false,
+			expectedMeta:            0,
+			expectedRels:            1,
+			expectedDelegate:        nil,
+			expectedCouncilDelegate: nil,
+			expectedCouncil:         false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			meta, rels, delegate, council := parseManageData(tt.data)
+			meta, rels, delegate, councilDelegate, council := parseManageData(tt.data)
 			assert.Len(t, meta, tt.expectedMeta)
 			assert.Len(t, rels, tt.expectedRels)
 			assert.Equal(t, tt.expectedDelegate, delegate)
+			assert.Equal(t, tt.expectedCouncilDelegate, councilDelegate)
 			assert.Equal(t, tt.expectedCouncil, council)
 		})
 	}
@@ -394,30 +417,30 @@ func TestParseManageDataEdgeCases(t *testing.T) {
 			expectedCouncil: false,
 		},
 		{
-			name: "council ready with lowercase true",
+			name: "council ready with lowercase ready",
 			data: map[string]string{
-				"mtla_council_ready": base64.StdEncoding.EncodeToString([]byte("true")),
+				"mtla_c_delegate": base64.StdEncoding.EncodeToString([]byte("ready")),
 			},
 			expectedCouncil: true,
 		},
 		{
-			name: "council ready with uppercase TRUE",
+			name: "council ready with uppercase READY",
 			data: map[string]string{
-				"mtla_council_ready": base64.StdEncoding.EncodeToString([]byte("TRUE")),
+				"mtla_c_delegate": base64.StdEncoding.EncodeToString([]byte("READY")),
 			},
 			expectedCouncil: true,
 		},
 		{
-			name: "council ready with 0",
+			name: "council ready with mixed case Ready",
 			data: map[string]string{
-				"mtla_council_ready": base64.StdEncoding.EncodeToString([]byte("0")),
+				"mtla_c_delegate": base64.StdEncoding.EncodeToString([]byte("Ready")),
 			},
-			expectedCouncil: false,
+			expectedCouncil: true,
 		},
 		{
-			name: "council ready with false",
+			name: "council delegate with account ID is not ready",
 			data: map[string]string{
-				"mtla_council_ready": base64.StdEncoding.EncodeToString([]byte("false")),
+				"mtla_c_delegate": base64.StdEncoding.EncodeToString([]byte(validAccountID)),
 			},
 			expectedCouncil: false,
 		},
@@ -439,7 +462,7 @@ func TestParseManageDataEdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, delegate, council := parseManageData(tt.data)
+			_, _, delegate, _, council := parseManageData(tt.data)
 			assert.Equal(t, tt.expectedCouncil, council)
 
 			if tt.name == "delegate with invalid account ID (too short)" || tt.name == "delegate with invalid account ID (wrong prefix)" {
@@ -452,9 +475,19 @@ func TestParseManageDataEdgeCases(t *testing.T) {
 		data := map[string]string{
 			"mtla_delegate": base64.StdEncoding.EncodeToString([]byte(validAccountID)),
 		}
-		_, _, delegate, _ := parseManageData(data)
+		_, _, delegate, _, _ := parseManageData(data)
 		assert.NotNil(t, delegate)
 		assert.Equal(t, validAccountID, *delegate)
+	})
+
+	t.Run("valid council delegate", func(t *testing.T) {
+		data := map[string]string{
+			"mtla_c_delegate": base64.StdEncoding.EncodeToString([]byte(validAccountID)),
+		}
+		_, _, _, councilDelegate, council := parseManageData(data)
+		assert.NotNil(t, councilDelegate)
+		assert.Equal(t, validAccountID, *councilDelegate)
+		assert.False(t, council) // Not council-ready, just delegating
 	})
 }
 
@@ -465,7 +498,7 @@ func TestParseManageDataNumberedKeysSorting(t *testing.T) {
 		"Website1": base64.StdEncoding.EncodeToString([]byte("https://second.com")),
 	}
 
-	meta, _, _, _ := parseManageData(data)
+	meta, _, _, _, _ := parseManageData(data)
 
 	var websites []Metadata
 	for _, m := range meta {
@@ -476,10 +509,10 @@ func TestParseManageDataNumberedKeysSorting(t *testing.T) {
 
 	assert.Len(t, websites, 3)
 
-	assert.Equal(t, 0, websites[0].Index)
+	assert.Equal(t, "0", websites[0].Index)
 	assert.Equal(t, "https://first.com", websites[0].Value)
-	assert.Equal(t, 1, websites[1].Index)
+	assert.Equal(t, "1", websites[1].Index)
 	assert.Equal(t, "https://second.com", websites[1].Value)
-	assert.Equal(t, 2, websites[2].Index)
+	assert.Equal(t, "2", websites[2].Index)
 	assert.Equal(t, "https://third.com", websites[2].Value)
 }

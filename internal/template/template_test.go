@@ -79,6 +79,94 @@ func TestSlice(t *testing.T) {
 	}
 }
 
+func TestFormatNumber(t *testing.T) {
+	formatNumber := funcMap["formatNumber"].(func(float64) string)
+
+	tests := []struct {
+		name     string
+		input    float64
+		expected string
+	}{
+		{"small number", 123.0, "123"},
+		{"thousands", 1234.0, "1 234"},
+		{"millions", 3311282.0, "3 311 282"},
+		{"zero", 0.0, "0"},
+		{"negative", -1234.0, "-1 234"},
+		{"rounding up", 1234.6, "1 235"},
+		{"rounding down", 1234.4, "1 234"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatNumber(tt.input)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestVotePower(t *testing.T) {
+	votePower := funcMap["votePower"].(func(float64) int)
+
+	tests := []struct {
+		name       string
+		totalVotes float64
+		expected   int
+	}{
+		// Edge cases
+		{"zero votes", 0.0, 0},
+		{"negative votes", -5.0, 0},
+
+		// 1-10 total votes = 1 vote power
+		{"1 vote", 1.0, 1},
+		{"5 votes", 5.0, 1},
+		{"10 votes", 10.0, 1},
+
+		// 11-100 total votes = 2 vote power
+		{"11 votes", 11.0, 2},
+		{"13 votes (Stanislav case)", 13.0, 2},
+		{"50 votes", 50.0, 2},
+		{"100 votes", 100.0, 2},
+
+		// 101-1000 total votes = 3 vote power
+		{"101 votes", 101.0, 3},
+		{"500 votes", 500.0, 3},
+		{"1000 votes", 1000.0, 3},
+
+		// 1001-10000 total votes = 4 vote power
+		{"1001 votes", 1001.0, 4},
+		{"10000 votes", 10000.0, 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := votePower(tt.totalVotes)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestAddFloat(t *testing.T) {
+	addFloat := funcMap["addFloat"].(func(float64, int) float64)
+
+	tests := []struct {
+		name     string
+		a        float64
+		b        int
+		expected float64
+	}{
+		{"5.0 + 8", 5.0, 8, 13.0},
+		{"0.0 + 0", 0.0, 0, 0.0},
+		{"3.5 + 10", 3.5, 10, 13.5},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := addFloat(tt.a, tt.b)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestNew(t *testing.T) {
 	t.Run("successful parsing", func(t *testing.T) {
 		tmpl, err := New()
@@ -112,13 +200,13 @@ func TestRender(t *testing.T) {
 				TotalXLMValue  float64
 			}
 			Persons             []any
-			Companies           []any
+			Corporate           []any
 			PersonsOffset       int
-			CompaniesOffset     int
+			CorporateOffset     int
 			NextPersonsOffset   int
-			NextCompaniesOffset int
+			NextCorporateOffset int
 			HasMorePersons      bool
-			HasMoreCompanies    bool
+			HasMoreCorporate    bool
 		}{
 			Stats: struct {
 				TotalAccounts  int
@@ -132,9 +220,9 @@ func TestRender(t *testing.T) {
 				TotalXLMValue:  1000000.0,
 			},
 			Persons:          []any{},
-			Companies:        []any{},
+			Corporate:        []any{},
 			HasMorePersons:   false,
-			HasMoreCompanies: false,
+			HasMoreCorporate: false,
 		}
 
 		err := tmpl.Render(&buf, "home.html", data)

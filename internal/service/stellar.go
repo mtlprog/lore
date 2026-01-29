@@ -48,7 +48,7 @@ func (s *StellarService) GetAccountsWithAsset(ctx context.Context, code, issuer,
 	for _, acc := range page.Embedded.Records {
 		name := decodeBase64(acc.Data["Name"])
 		if name == "" {
-			name = acc.ID[:8] + "..."
+			name = acc.ID[:6] + "..." + acc.ID[len(acc.ID)-6:]
 		}
 
 		balance := findAssetBalance(acc.Balances, code, issuer)
@@ -80,7 +80,7 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 
 	name := decodeBase64(acc.Data["Name"])
 	if name == "" {
-		name = accountID[:8] + "..."
+		name = accountID[:6] + "..." + accountID[len(accountID)-6:]
 	}
 
 	about := decodeBase64(acc.Data["About"])

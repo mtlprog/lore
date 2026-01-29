@@ -115,6 +115,9 @@
             padding: 1rem 1.5rem;
             position: relative;
             z-index: 2;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         /* HEADER */
@@ -207,7 +210,7 @@
 
         /* MAIN */
         main {
-            min-height: calc(100vh - 250px);
+            flex: 1;
         }
 
         /* STATS GRID */
@@ -801,13 +804,9 @@
                 <div>
                     <div class="logo-block">
                         <a href="/" class="logo">LORE</a>
-                        <span class="version-tag">v2.0</span>
+                        <span class="version-tag">Beta</span>
                     </div>
-                    <div class="tagline">Stellar Token Explorer / MTLA Registry</div>
-                </div>
-                <div class="status-indicator">
-                    <span class="status-dot"></span>
-                    <span>Synced with Horizon</span>
+                    <div class="tagline">Montelibero Lore Explorer</div>
                 </div>
             </div>
         </header>
@@ -816,9 +815,9 @@
         </main>
         <footer>
             <div class="footer-left">
-                Data source: <a href="https://horizon.stellar.org" target="_blank" rel="noopener">Stellar Horizon API</a>
+                © <a href="https://mtlprog.xyz" target="_blank" rel="noopener">Montelibero Programmers Guild</a>
             </div>
-            <div class="footer-right">MTLAP + MTLAC // Stellar Mainnet</div>
+            <div class="footer-right">Montelibero Lore Explorer</div>
         </footer>
     </div>
 </body>

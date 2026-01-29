@@ -51,10 +51,11 @@ type Balance struct {
 	Balance     decimal.Decimal
 }
 
-// Metadata represents account metadata with numeric index.
+// Metadata represents account metadata with string index.
+// Index preserves the original suffix (e.g., "002" vs "2") to avoid duplicates.
 type Metadata struct {
 	Key   string
-	Index int
+	Index string
 	Value string
 }
 
@@ -97,20 +98,22 @@ type Asset struct {
 
 // AccountData holds parsed account information from Horizon.
 type AccountData struct {
-	ID            string
-	Balances      []Balance
-	Metadata      []Metadata
-	Relationships []Relationship
-	DelegateTo    *string
-	CouncilReady  bool
+	ID                string
+	Balances          []Balance
+	Metadata          []Metadata
+	Relationships     []Relationship
+	DelegateTo        *string // mtla_delegate - general delegation
+	CouncilDelegateTo *string // mtla_c_delegate when it's an account ID
+	CouncilReady      bool    // mtla_c_delegate == "ready"
 }
 
 // DelegationInfo holds delegation data for an account.
 type DelegationInfo struct {
-	AccountID    string
-	DelegateTo   *string
-	MTLAPBalance decimal.Decimal
-	CouncilReady bool
+	AccountID         string
+	DelegateTo        *string // mtla_delegate
+	CouncilDelegateTo *string // mtla_c_delegate when it's an account ID
+	MTLAPBalance      decimal.Decimal
+	CouncilReady      bool // mtla_c_delegate == "ready"
 }
 
 // DefaultFailureThreshold is the default maximum failure rate (10%)
