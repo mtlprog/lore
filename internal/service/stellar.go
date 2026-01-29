@@ -105,6 +105,13 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 		}
 	}
 
+	// Sort trustlines by balance (descending)
+	sort.Slice(trustlines, func(i, j int) bool {
+		balI, _ := strconv.ParseFloat(trustlines[i].Balance, 64)
+		balJ, _ := strconv.ParseFloat(trustlines[j].Balance, 64)
+		return balI > balJ
+	})
+
 	return &model.AccountDetail{
 		ID:         acc.ID,
 		Name:       name,

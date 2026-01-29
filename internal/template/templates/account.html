@@ -3,38 +3,34 @@
 {{define "title"}}{{.Account.Name}} // LORE{{end}}
 
 {{define "content"}}
-<div class="detail-header">
-    <h1 class="detail-name">{{.Account.Name}}</h1>
-    <div class="detail-id">{{.Account.ID}}</div>
+<div class="account-header">
+    <div class="account-info">
+        <h1 class="account-name">{{.Account.Name}}</h1>
+        <div class="account-id">{{.Account.ID}}</div>
+    </div>
+    <div class="account-badges">
+        {{if .Account.TrustRating}}
+        <div class="rating-badge grade-{{if ge .Account.TrustRating.Score 3.0}}a{{else if ge .Account.TrustRating.Score 2.0}}b{{else if ge .Account.TrustRating.Score 1.5}}c{{else}}d{{end}}">
+            <div class="rating-grade">{{.Account.TrustRating.Grade}}</div>
+            <div class="rating-details">
+                <div class="rating-label">Trust Rating</div>
+                <div class="rating-counts">
+                    <span class="rc-a">A:{{.Account.TrustRating.CountA}}</span>
+                    <span class="rc-b">B:{{.Account.TrustRating.CountB}}</span>
+                    <span class="rc-c">C:{{.Account.TrustRating.CountC}}</span>
+                    <span class="rc-d">D:{{.Account.TrustRating.CountD}}</span>
+                </div>
+            </div>
+        </div>
+        {{end}}
+        {{if .Account.IsCorporate}}
+        <div class="value-badge">
+            <div class="value-amount">{{formatNumber .Account.TotalXLMValue}}</div>
+            <div class="value-label">XLM Value</div>
+        </div>
+        {{end}}
+    </div>
 </div>
-
-{{if .Account.TrustRating}}
-<div class="trust-rating">
-    <div class="trust-header">
-        <span class="trust-title">Trust Rating</span>
-        <span class="trust-refs">{{.Account.TrustRating.Total}} references</span>
-    </div>
-    <div class="trust-bar-container">
-        <div class="trust-bar grade-{{if ge .Account.TrustRating.Score 3.0}}a{{else if ge .Account.TrustRating.Score 2.0}}b{{else if ge .Account.TrustRating.Score 1.5}}c{{else}}d{{end}}" style="width: {{trustBarWidth .Account.TrustRating.Percent}}"></div>
-        <span class="trust-grade">{{.Account.TrustRating.Grade}}</span>
-    </div>
-    <div class="trust-breakdown">
-        <span class="count-a">A: {{.Account.TrustRating.CountA}}</span>
-        <span class="count-b">B: {{.Account.TrustRating.CountB}}</span>
-        <span class="count-c">C: {{.Account.TrustRating.CountC}}</span>
-        <span class="count-d">D: {{.Account.TrustRating.CountD}}</span>
-    </div>
-</div>
-{{end}}
-
-{{if .Account.IsCorporate}}
-<div class="portfolio-value">
-    <div class="portfolio-header">
-        <span class="portfolio-title">Portfolio Value</span>
-    </div>
-    <div class="portfolio-amount">{{formatNumber .Account.TotalXLMValue}} XLM</div>
-</div>
-{{end}}
 
 <div class="detail-grid">
     {{if .Account.About}}
@@ -61,24 +57,34 @@
 {{if .Account.Categories}}
 <div class="connections-section">
     <div class="connections-header">Connections</div>
-    {{range .Account.Categories}}
-    <details class="category{{if .IsEmpty}} empty{{end}}"{{if not .IsEmpty}} open{{end}}>
+    {{range $idx, $cat := .Account.Categories}}
+    <details class="category{{if $cat.IsEmpty}} empty{{end}}">
         <summary>
-            <span class="category-name" style="color: {{.Color}}">{{.Name}}</span>
-            <span class="category-count">({{len .Relationships}})</span>
-            {{if .IsEmpty}}<span class="category-empty-badge">empty</span>{{end}}
+            <span class="category-name" style="color: {{$cat.Color}}">{{$cat.Name}}</span>
+            <span class="category-count">({{len $cat.Relationships}})</span>
+            {{if $cat.IsEmpty}}<span class="category-empty-badge">empty</span>{{end}}
         </summary>
-        {{if not .IsEmpty}}
+        {{if not $cat.IsEmpty}}
         <div class="category-content">
-            {{$catName := .Name}}
-            {{range .Relationships}}
-            <div class="relationship-row">
-                <span class="relationship-arrow {{.Direction}}">{{relationArrow .Direction}}</span>
-                <span class="relationship-type cat-{{if eq $catName "FAMILY"}}family{{else if eq $catName "WORK"}}work{{else if eq $catName "NETWORK"}}network{{else if eq $catName "OWNERSHIP"}}ownership{{else}}social{{end}}">{{.Type}}</span>
-                <a href="/accounts/{{.TargetID}}" class="relationship-name">{{.TargetName}}</a>
-                <span class="relationship-id">{{truncateID .TargetID}}</span>
-                <span class="relationship-badge-slot">{{if .IsMutual}}<span class="relationship-badge mutual">mutual</span>{{else if .IsConfirmed}}<span class="relationship-badge confirmed">confirmed</span>{{end}}</span>
+            {{$catName := $cat.Name}}
+            {{$count := len $cat.Relationships}}
+            <input type="checkbox" id="toggle-{{$cat.Name}}" class="show-all-toggle">
+            <div class="relationships-grid">
+                {{range $cat.Relationships}}
+                <div class="relationship-row">
+                    <span class="relationship-arrow {{.Direction}}">{{relationArrow .Direction}}</span>
+                    <span class="relationship-type cat-{{if eq $catName "FAMILY"}}family{{else if eq $catName "WORK"}}work{{else if eq $catName "NETWORK"}}network{{else if eq $catName "OWNERSHIP"}}ownership{{else}}social{{end}}">{{.Type}}</span>
+                    <a href="/accounts/{{.TargetID}}" class="relationship-name">{{.TargetName}}</a>
+                    <span class="relationship-id">{{truncateID .TargetID}}</span>
+                    <span class="relationship-badge-slot">{{if .IsMutual}}<span class="relationship-badge mutual">mutual</span>{{else if .IsConfirmed}}<span class="relationship-badge confirmed">confirmed</span>{{end}}</span>
+                </div>
+                {{end}}
             </div>
+            {{if gt $count 10}}
+            <label for="toggle-{{$cat.Name}}" class="show-all-btn">
+                <span class="show-more">Show all {{$count}} connections</span>
+                <span class="show-less">Show less</span>
+            </label>
             {{end}}
         </div>
         {{end}}
@@ -91,6 +97,8 @@
     <div class="detail-block full-width">
         <div class="detail-block-title">Tokens ({{len .Account.Trustlines}})</div>
         {{if .Account.Trustlines}}
+        {{$tokenCount := len .Account.Trustlines}}
+        <input type="checkbox" id="toggle-tokens" class="show-all-toggle">
         <div class="trustlines">
             <table class="trustlines-table">
                 <thead>
@@ -99,7 +107,7 @@
                         <th>Balance</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="tokens-body">
                     {{range .Account.Trustlines}}
                     <tr>
                         <td>{{.AssetCode}}</td>
@@ -109,6 +117,12 @@
                 </tbody>
             </table>
         </div>
+        {{if gt $tokenCount 10}}
+        <label for="toggle-tokens" class="show-all-btn tokens-toggle">
+            <span class="show-more">Show all {{$tokenCount}} tokens</span>
+            <span class="show-less">Show less</span>
+        </label>
+        {{end}}
         {{else}}
         <div class="empty">NO TOKENS</div>
         {{end}}
