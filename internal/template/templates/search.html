@@ -126,7 +126,7 @@
 
     {{if .HasMore}}
     <div class="pagination">
-        <a href="/search?{{if .Query}}q={{.Query}}&{{end}}{{range .Tags}}tag={{.}}&{{end}}offset={{.NextOffset}}" class="btn">Load More</a>
+        <a href="/search?{{if .Query}}q={{urlquery .Query}}&{{end}}{{range .Tags}}tag={{urlquery .}}&{{end}}offset={{.NextOffset}}" class="btn">Load More</a>
     </div>
     {{end}}
 </div>
