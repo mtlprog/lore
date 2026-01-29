@@ -69,3 +69,55 @@ type TrustRating struct {
 	Grade   string // "A", "B+", "C", etc.
 	Percent int    // For progress bar width
 }
+
+// Operation represents a Stellar operation for display.
+type Operation struct {
+	ID              string
+	Type            string // "payment", "create_account", etc.
+	TypeDisplay     string // Human-readable: "Payment", "Create Account"
+	TypeCategory    string // "payment", "trust", "data", "dex", "account", "other"
+	CreatedAt       string // Formatted timestamp
+	TransactionHash string
+	SourceAccount   string
+	// Type-specific fields (flattened for template simplicity)
+	Amount          string
+	AssetCode       string
+	AssetIssuer     string
+	From            string
+	To              string
+	DataName        string
+	DataValue       string
+	StartingBalance string
+	TrustLimit      string
+	// Path payment fields
+	SourceAmount string
+	SourceAsset  string
+	DestAmount   string
+	DestAsset    string
+	// DEX offer fields
+	Selling string
+	Buying  string
+	Price   string
+	OfferID string
+}
+
+// OperationsPage for cursor-based pagination.
+type OperationsPage struct {
+	Operations []Operation
+	NextCursor string
+	HasMore    bool
+}
+
+// Transaction for detail page.
+type Transaction struct {
+	Hash           string
+	Successful     bool
+	Ledger         int
+	CreatedAt      string // Formatted timestamp
+	SourceAccount  string
+	FeeCharged     string
+	MemoType       string
+	Memo           string
+	OperationCount int
+	Operations     []Operation
+}

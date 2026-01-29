@@ -69,6 +69,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 		Insert("accounts").
 		Columns(
 			"account_id",
+			"name",
 			"mtlap_balance",
 			"mtlac_balance",
 			"native_balance",
@@ -79,6 +80,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 		).
 		Values(
 			data.ID,
+			data.Name,
 			mtlapBalance,
 			mtlacBalance,
 			nativeBalance,
@@ -88,6 +90,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 			"NOW()",
 		).
 		Suffix(`ON CONFLICT (account_id) DO UPDATE SET
+			name = EXCLUDED.name,
 			mtlap_balance = EXCLUDED.mtlap_balance,
 			mtlac_balance = EXCLUDED.mtlac_balance,
 			native_balance = EXCLUDED.native_balance,

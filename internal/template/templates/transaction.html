@@ -1,0 +1,100 @@
+{{template "base" .}}
+
+{{define "title"}}TX {{truncate .Transaction.Hash 12}}... // LORE{{end}}
+
+{{define "content"}}
+{{$names := .AccountNames}}
+<div class="detail-header">
+    <h1 class="detail-name">TRANSACTION</h1>
+    <div class="detail-id">{{.Transaction.Hash}}</div>
+</div>
+
+<div class="tx-meta">
+    <div class="tx-meta-row">
+        <span class="tx-meta-label">Status</span>
+        <span class="tx-status {{if .Transaction.Successful}}success{{else}}failed{{end}}">
+            {{if .Transaction.Successful}}SUCCESS{{else}}FAILED{{end}}
+        </span>
+    </div>
+    <div class="tx-meta-row">
+        <span class="tx-meta-label">Ledger</span>
+        <span class="tx-meta-value">{{.Transaction.Ledger}}</span>
+    </div>
+    <div class="tx-meta-row">
+        <span class="tx-meta-label">Created</span>
+        <span class="tx-meta-value">{{.Transaction.CreatedAt}}</span>
+    </div>
+    <div class="tx-meta-row">
+        <span class="tx-meta-label">Source</span>
+        <span class="tx-meta-value"><a href="/accounts/{{.Transaction.SourceAccount}}">{{accountDisplay .Transaction.SourceAccount $names}}</a> <span class="tx-account-id">{{truncateID .Transaction.SourceAccount}}</span></span>
+    </div>
+    <div class="tx-meta-row">
+        <span class="tx-meta-label">Fee</span>
+        <span class="tx-meta-value tx-fee">{{.Transaction.FeeCharged}} XLM</span>
+    </div>
+    {{if and .Transaction.Memo (ne .Transaction.MemoType "none")}}
+    <div class="tx-meta-row">
+        <span class="tx-meta-label">Memo ({{.Transaction.MemoType}})</span>
+        <span class="tx-meta-value">{{.Transaction.Memo}}</span>
+    </div>
+    {{end}}
+</div>
+
+<div id="operations" class="section">
+    <div class="section-header">
+        <span class="section-title">Operations</span>
+        <span class="section-badge">{{.Transaction.OperationCount}}</span>
+    </div>
+
+    <div class="ops-list tx-ops-list">
+        {{range $idx, $op := .Transaction.Operations}}
+        <div class="op-row tx-op-row">
+            <span class="op-index">#{{add $idx 1}}</span>
+            <span class="op-type op-{{$op.TypeCategory}}">{{$op.TypeDisplay}}</span>
+            <div class="op-details">
+                {{if eq $op.Type "payment"}}
+                    <span class="op-amount">{{$op.Amount}} {{$op.AssetCode}}</span>
+                    <span class="op-flow"><a href="/accounts/{{$op.From}}">{{accountDisplay $op.From $names}}</a> → <a href="/accounts/{{$op.To}}">{{accountDisplay $op.To $names}}</a></span>
+                {{else if eq $op.Type "create_account"}}
+                    <span class="op-amount">{{$op.StartingBalance}} XLM</span>
+                    <span class="op-flow"><a href="/accounts/{{$op.From}}">{{accountDisplay $op.From $names}}</a> → <a href="/accounts/{{$op.To}}">{{accountDisplay $op.To $names}}</a></span>
+                {{else if eq $op.Type "change_trust"}}
+                    <span class="op-asset">{{$op.AssetCode}}</span>
+                    {{if eq $op.TrustLimit "0"}}
+                        <span class="op-note">(removed)</span>
+                    {{else}}
+                        <span class="op-note">(limit: {{$op.TrustLimit}})</span>
+                    {{end}}
+                {{else if eq $op.Type "manage_data"}}
+                    <span class="op-data-name">{{$op.DataName}}</span>
+                    {{if $op.DataValue}}
+                        {{if isStellarID $op.DataValue}}
+                            <span class="op-data-value">= <a href="/accounts/{{$op.DataValue}}">{{accountDisplay $op.DataValue $names}}</a></span>
+                        {{else}}
+                            <span class="op-data-value">= "{{$op.DataValue}}"</span>
+                        {{end}}
+                    {{else}}
+                        <span class="op-note">(deleted)</span>
+                    {{end}}
+                {{else if or (eq $op.Type "path_payment_strict_send") (eq $op.Type "path_payment_strict_receive")}}
+                    <span class="op-swap">{{$op.SourceAmount}} {{$op.SourceAsset}} → {{$op.DestAmount}} {{$op.DestAsset}}</span>
+                    <span class="op-flow"><a href="/accounts/{{$op.From}}">{{accountDisplay $op.From $names}}</a> → <a href="/accounts/{{$op.To}}">{{accountDisplay $op.To $names}}</a></span>
+                {{else if or (eq $op.Type "manage_sell_offer") (eq $op.Type "manage_buy_offer") (eq $op.Type "create_passive_sell_offer")}}
+                    <span class="op-dex">{{$op.Amount}} {{$op.Selling}} → {{$op.Buying}} @ {{$op.Price}}</span>
+                {{else if eq $op.Type "account_merge"}}
+                    <span class="op-flow"><a href="/accounts/{{$op.From}}">{{accountDisplay $op.From $names}}</a> → <a href="/accounts/{{$op.To}}">{{accountDisplay $op.To $names}}</a></span>
+                {{else if or (eq $op.Type "liquidity_pool_deposit") (eq $op.Type "liquidity_pool_withdraw")}}
+                    <span class="op-lp">Shares: {{$op.Amount}}</span>
+                {{else}}
+                    <span class="op-note">{{$op.TypeDisplay}}</span>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+</div>
+
+<div class="pagination">
+    <a href="/accounts/{{.Transaction.SourceAccount}}#operations" class="btn">← Back to Account</a>
+</div>
+{{end}}

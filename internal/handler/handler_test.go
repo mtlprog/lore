@@ -318,6 +318,15 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
 		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
 
+		// Expect operations fetch
+		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(&model.OperationsPage{
+			Operations: []model.Operation{},
+			HasMore:    false,
+		}, nil)
+
+		// Expect account names lookup (empty since no operations)
+		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(map[string]string{}, nil).Maybe()
+
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "account.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
@@ -369,6 +378,8 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetTrustRatings(mock.Anything, "GABC123").Return(&repository.TrustRating{}, nil)
 		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
 		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
+		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(nil, nil)
+		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("template error"))
 
 		h, err := New(stellar, accounts, tmpl)
@@ -738,6 +749,308 @@ func TestCalculateTrustGrade(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := calculateTrustGrade(tt.score)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+// Transaction handler tests
+
+func TestTransactionHandler(t *testing.T) {
+	t.Run("missing transaction hash returns 400", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/transactions/", nil)
+		req.SetPathValue("hash", "")
+		w := httptest.NewRecorder()
+
+		h.Transaction(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Transaction hash required")
+	})
+
+	t.Run("invalid hash format returns 400", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		// Hash too short (not 64 chars)
+		req := httptest.NewRequest(http.MethodGet, "/transactions/abc123", nil)
+		req.SetPathValue("hash", "abc123")
+		w := httptest.NewRecorder()
+
+		h.Transaction(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "Invalid transaction hash format")
+	})
+
+	t.Run("transaction not found returns 404", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		txHash := "ec8d5d6e64dc4df1bc8d8c200e048d6740d1e9f680612baeda0f78678c9ca666"
+
+		notFoundErr := &horizonclient.Error{
+			Response: &http.Response{StatusCode: 404},
+		}
+		stellar.EXPECT().GetTransactionDetail(mock.Anything, txHash).Return(nil, notFoundErr)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
+		req.SetPathValue("hash", txHash)
+		w := httptest.NewRecorder()
+
+		h.Transaction(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Contains(t, w.Body.String(), "Transaction not found")
+	})
+
+	t.Run("stellar service error returns 500", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		txHash := "ec8d5d6e64dc4df1bc8d8c200e048d6740d1e9f680612baeda0f78678c9ca666"
+
+		stellar.EXPECT().GetTransactionDetail(mock.Anything, txHash).Return(nil, errors.New("horizon error"))
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
+		req.SetPathValue("hash", txHash)
+		w := httptest.NewRecorder()
+
+		h.Transaction(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "Failed to fetch transaction")
+	})
+
+	t.Run("successful transaction fetch renders template", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		txHash := "ec8d5d6e64dc4df1bc8d8c200e048d6740d1e9f680612baeda0f78678c9ca666"
+
+		stellar.EXPECT().GetTransactionDetail(mock.Anything, txHash).Return(&model.Transaction{
+			Hash:          txHash,
+			Successful:    true,
+			SourceAccount: "GABC123",
+			Operations: []model.Operation{
+				{Type: "payment", From: "GABC123", To: "GDEF456", Amount: "100", AssetCode: "XLM"},
+			},
+		}, nil)
+
+		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(map[string]string{
+			"GABC123": "Alice",
+			"GDEF456": "Bob",
+		}, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "transaction.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
+		req.SetPathValue("hash", txHash)
+		w := httptest.NewRecorder()
+
+		h.Transaction(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		txData, ok := renderedData.(TransactionData)
+		require.True(t, ok)
+		assert.Equal(t, txHash, txData.Transaction.Hash)
+		assert.True(t, txData.Transaction.Successful)
+		assert.Len(t, txData.AccountNames, 2)
+	})
+
+	t.Run("template render error returns 500", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		txHash := "ec8d5d6e64dc4df1bc8d8c200e048d6740d1e9f680612baeda0f78678c9ca666"
+
+		stellar.EXPECT().GetTransactionDetail(mock.Anything, txHash).Return(&model.Transaction{
+			Hash:          txHash,
+			SourceAccount: "GABC123",
+			Operations:    []model.Operation{},
+		}, nil)
+		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil)
+		tmpl.EXPECT().Render(mock.Anything, "transaction.html", mock.Anything).Return(errors.New("template error"))
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
+		req.SetPathValue("hash", txHash)
+		w := httptest.NewRecorder()
+
+		h.Transaction(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("filters claimable balance operations", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		txHash := "ec8d5d6e64dc4df1bc8d8c200e048d6740d1e9f680612baeda0f78678c9ca666"
+
+		stellar.EXPECT().GetTransactionDetail(mock.Anything, txHash).Return(&model.Transaction{
+			Hash:          txHash,
+			SourceAccount: "GABC123",
+			Operations: []model.Operation{
+				{Type: "payment", From: "GABC123", To: "GDEF456"},
+				{Type: "create_claimable_balance"},
+				{Type: "claim_claimable_balance"},
+				{Type: "manage_data", DataName: "test"},
+			},
+			OperationCount: 4,
+		}, nil)
+
+		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "transaction.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
+		req.SetPathValue("hash", txHash)
+		w := httptest.NewRecorder()
+
+		h.Transaction(w, req)
+
+		txData := renderedData.(TransactionData)
+		// Should have filtered out the 2 claimable balance ops, leaving 2
+		assert.Len(t, txData.Transaction.Operations, 2)
+		assert.Equal(t, 2, txData.Transaction.OperationCount)
+	})
+}
+
+// collectAccountIDs tests
+
+func TestCollectAccountIDs(t *testing.T) {
+	t.Run("empty operations returns empty slice", func(t *testing.T) {
+		result := collectAccountIDs(nil)
+		assert.Empty(t, result)
+	})
+
+	t.Run("collects unique IDs from operations", func(t *testing.T) {
+		ops := []model.Operation{
+			{From: "GABC", To: "GDEF"},
+			{From: "GABC", To: "GHIJ"}, // GABC duplicate
+			{SourceAccount: "GKLM"},
+		}
+
+		result := collectAccountIDs(ops)
+
+		assert.Len(t, result, 4)
+		assert.Contains(t, result, "GABC")
+		assert.Contains(t, result, "GDEF")
+		assert.Contains(t, result, "GHIJ")
+		assert.Contains(t, result, "GKLM")
+	})
+
+	t.Run("collects Stellar account IDs from DataValue", func(t *testing.T) {
+		// Valid Stellar account ID is exactly 56 characters starting with G or M
+		stellarID := "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567890ABCDEFGHIJKLMNOPQRST" // 56 chars
+		ops := []model.Operation{
+			{DataValue: stellarID},
+			{DataValue: "not-a-stellar-id"},
+		}
+
+		result := collectAccountIDs(ops)
+
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, stellarID)
+	})
+
+	t.Run("skips empty fields", func(t *testing.T) {
+		ops := []model.Operation{
+			{From: "", To: "GDEF", SourceAccount: ""},
+		}
+
+		result := collectAccountIDs(ops)
+
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, "GDEF")
+	})
+}
+
+// isStellarAccountID tests
+
+func TestIsStellarAccountID(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "valid G account ID",
+			input:    "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567890ABCDEFGHIJKLMNOPQRST", // 56 chars
+			expected: true,
+		},
+		{
+			name:     "valid M account ID (muxed)",
+			input:    "MABCDEFGHIJKLMNOPQRSTUVWXYZ234567890ABCDEFGHIJKLMNOPQRST", // 56 chars
+			expected: true,
+		},
+		{
+			name:     "too short",
+			input:    "GABC",
+			expected: false,
+		},
+		{
+			name:     "too long (57 chars)",
+			input:    "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567890ABCDEFGHIJKLMNOPQRSTU", // 57 chars
+			expected: false,
+		},
+		{
+			name:     "wrong prefix (S is for secret key)",
+			input:    "SABCDEFGHIJKLMNOPQRSTUVWXYZ234567890ABCDEFGHIJKLMNOPQRST", // 56 chars but S prefix
+			expected: false,
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: false,
+		},
+		{
+			name:     "hash-like string (64 chars)",
+			input:    "ec8d5d6e64dc4df1bc8d8c200e048d6740d1e9f680612baeda0f78678c9ca666",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isStellarAccountID(tt.input)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

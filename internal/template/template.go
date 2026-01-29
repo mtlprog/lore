@@ -13,6 +13,14 @@ import (
 //go:embed templates/*.html
 var templateFS embed.FS
 
+// truncateID truncates a Stellar account ID for display.
+func truncateID(s string) string {
+	if len(s) <= 15 {
+		return s
+	}
+	return s[:6] + "..." + s[len(s)-6:]
+}
+
 // funcMap provides custom template functions.
 var funcMap = template.FuncMap{
 	"add": func(a, b int) int {
@@ -27,12 +35,7 @@ var funcMap = template.FuncMap{
 		}
 		return s[:n]
 	},
-	"truncateID": func(s string) string {
-		if len(s) <= 15 {
-			return s
-		}
-		return s[:6] + "..." + s[len(s)-6:]
-	},
+	"truncateID": truncateID,
 	"slice": func(s string, start int) string {
 		if start < 0 || start >= len(s) {
 			return ""
@@ -70,6 +73,18 @@ var funcMap = template.FuncMap{
 		}
 		return "←"
 	},
+	"isStellarID": func(s string) bool {
+		return len(s) == 56 && (s[0] == 'G' || s[0] == 'M')
+	},
+	"accountDisplay": func(accountID string, names map[string]string) string {
+		if names == nil {
+			return truncateID(accountID)
+		}
+		if name, ok := names[accountID]; ok && name != "" {
+			return name
+		}
+		return truncateID(accountID)
+	},
 }
 
 // Templates holds parsed HTML templates.
@@ -88,7 +103,7 @@ func New() (*Templates, error) {
 	}
 
 	// Page templates to parse with base
-	pageNames := []string{"home.html", "account.html"}
+	pageNames := []string{"home.html", "account.html", "transaction.html"}
 
 	for _, name := range pageNames {
 		// Clone base template for each page

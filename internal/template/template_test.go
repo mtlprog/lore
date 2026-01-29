@@ -173,9 +173,10 @@ func TestNew(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, tmpl)
 
-		// Verify both pages are parsed
+		// Verify all pages are parsed
 		assert.Contains(t, tmpl.pages, "home.html")
 		assert.Contains(t, tmpl.pages, "account.html")
+		assert.Contains(t, tmpl.pages, "transaction.html")
 	})
 }
 
@@ -275,6 +276,19 @@ func TestRender(t *testing.T) {
 				TotalXLMValue float64
 				IsCorporate   bool
 			}
+			Operations *struct {
+				Operations []struct {
+					ID              string
+					Type            string
+					TypeDisplay     string
+					TypeCategory    string
+					CreatedAt       string
+					TransactionHash string
+				}
+				NextCursor string
+				HasMore    bool
+			}
+			AccountNames map[string]string
 		}{
 			Account: struct {
 				ID         string
@@ -335,6 +349,8 @@ func TestRender(t *testing.T) {
 				TotalXLMValue: 0,
 				IsCorporate:   false,
 			},
+			Operations:   nil,
+			AccountNames: nil,
 		}
 
 		err := tmpl.Render(&buf, "account.html", data)
@@ -346,5 +362,104 @@ func TestRender(t *testing.T) {
 		assert.Contains(t, output, "This is a test account")
 		assert.Contains(t, output, "https://example.com")
 		assert.Contains(t, output, "MTLAP")
+	})
+
+	t.Run("transaction template renders successfully", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Transaction struct {
+				Hash           string
+				Successful     bool
+				Ledger         int
+				CreatedAt      string
+				SourceAccount  string
+				FeeCharged     string
+				MemoType       string
+				Memo           string
+				OperationCount int
+				Operations     []struct {
+					ID              string
+					Type            string
+					TypeDisplay     string
+					TypeCategory    string
+					CreatedAt       string
+					TransactionHash string
+					Amount          string
+					AssetCode       string
+					From            string
+					To              string
+				}
+			}
+			AccountNames map[string]string
+		}{
+			Transaction: struct {
+				Hash           string
+				Successful     bool
+				Ledger         int
+				CreatedAt      string
+				SourceAccount  string
+				FeeCharged     string
+				MemoType       string
+				Memo           string
+				OperationCount int
+				Operations     []struct {
+					ID              string
+					Type            string
+					TypeDisplay     string
+					TypeCategory    string
+					CreatedAt       string
+					TransactionHash string
+					Amount          string
+					AssetCode       string
+					From            string
+					To              string
+				}
+			}{
+				Hash:           "abc123def456",
+				Successful:     true,
+				Ledger:         12345678,
+				CreatedAt:      "2024-01-29 12:00:00",
+				SourceAccount:  "GTEST1234567890",
+				FeeCharged:     "0.0001000",
+				MemoType:       "none",
+				Memo:           "",
+				OperationCount: 1,
+				Operations: []struct {
+					ID              string
+					Type            string
+					TypeDisplay     string
+					TypeCategory    string
+					CreatedAt       string
+					TransactionHash string
+					Amount          string
+					AssetCode       string
+					From            string
+					To              string
+				}{
+					{
+						ID:              "op123",
+						Type:            "payment",
+						TypeDisplay:     "Payment",
+						TypeCategory:    "payment",
+						CreatedAt:       "2024-01-29 12:00:00",
+						TransactionHash: "abc123def456",
+						Amount:          "100.00",
+						AssetCode:       "XLM",
+						From:            "GFROM123",
+						To:              "GTO456",
+					},
+				},
+			},
+			AccountNames: map[string]string{},
+		}
+
+		err := tmpl.Render(&buf, "transaction.html", data)
+		require.NoError(t, err)
+
+		output := buf.String()
+		assert.Contains(t, output, "TRANSACTION")
+		assert.Contains(t, output, "abc123def456")
+		assert.Contains(t, output, "SUCCESS")
+		assert.Contains(t, output, "12345678")
 	})
 }

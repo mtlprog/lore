@@ -15,7 +15,9 @@ import (
 
 // AccountData holds data for the account detail page template.
 type AccountData struct {
-	Account *model.AccountDetail
+	Account      *model.AccountDetail
+	Operations   *model.OperationsPage
+	AccountNames map[string]string // Map of account ID to name for linked accounts
 }
 
 // relationshipCategoryDef defines a relationship category.
@@ -104,6 +106,28 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 		accountInfo = nil
 	}
 
+	// Fetch operations with cursor-based pagination
+	opsCursor := r.URL.Query().Get("ops_cursor")
+	const operationsLimit = 10
+	operations, err := h.stellar.GetAccountOperations(ctx, accountID, opsCursor, operationsLimit)
+	if err != nil {
+		slog.Error("failed to fetch operations", "account_id", accountID, "error", err)
+		operations = nil
+	}
+
+	// Collect account IDs from operations for name lookup
+	var accountNames map[string]string
+	if operations != nil && len(operations.Operations) > 0 {
+		accountIDs := collectAccountIDs(operations.Operations)
+		if len(accountIDs) > 0 {
+			accountNames, err = h.accounts.GetAccountNames(ctx, accountIDs)
+			if err != nil {
+				slog.Error("failed to fetch account names", "account_id", accountID, "lookup_count", len(accountIDs), "error", err)
+				accountNames = make(map[string]string)
+			}
+		}
+	}
+
 	// Process relationships into categories
 	account.Categories = groupRelationships(accountID, relationships, confirmed)
 
@@ -128,7 +152,9 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := AccountData{
-		Account: account,
+		Account:      account,
+		Operations:   operations,
+		AccountNames: accountNames,
 	}
 
 	var buf bytes.Buffer
@@ -364,4 +390,33 @@ func calculateTrustGrade(score float64) string {
 	default:
 		return "D"
 	}
+}
+
+// collectAccountIDs extracts all unique account IDs from operations.
+// This includes From, To, SourceAccount, and DataValue if it looks like a Stellar account ID.
+func collectAccountIDs(ops []model.Operation) []string {
+	idSet := make(map[string]struct{})
+
+	for _, op := range ops {
+		if op.From != "" {
+			idSet[op.From] = struct{}{}
+		}
+		if op.To != "" {
+			idSet[op.To] = struct{}{}
+		}
+		if op.SourceAccount != "" {
+			idSet[op.SourceAccount] = struct{}{}
+		}
+		// Check if DataValue looks like a Stellar account ID (starts with G, 56 chars)
+		if op.DataValue != "" && isStellarAccountID(op.DataValue) {
+			idSet[op.DataValue] = struct{}{}
+		}
+	}
+
+	return lo.Keys(idSet)
+}
+
+// isStellarAccountID checks if a string looks like a Stellar account ID.
+func isStellarAccountID(s string) bool {
+	return len(s) == 56 && (s[0] == 'G' || s[0] == 'M')
 }
