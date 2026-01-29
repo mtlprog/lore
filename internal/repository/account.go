@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mtlprog/lore/internal/database"
 )
@@ -269,32 +270,6 @@ func (r *AccountRepository) GetTrustRatings(ctx context.Context, accountID strin
 	return &rating, nil
 }
 
-// IsConfirmed checks if a relationship has a confirmed pair (e.g., MyPart/PartOf).
-func (r *AccountRepository) IsConfirmed(ctx context.Context, sourceID, targetID, relationType string) (bool, error) {
-	// Check if the confirmed_relationships view has this pair
-	query, args, err := database.QB.
-		Select("1").
-		From("confirmed_relationships").
-		Where("source_account_id = ?", sourceID).
-		Where("target_account_id = ?", targetID).
-		Where("relation_type = ?", relationType).
-		Limit(1).
-		ToSql()
-	if err != nil {
-		return false, fmt.Errorf("build confirmed check query: %w", err)
-	}
-
-	var exists int
-	err = r.pool.QueryRow(ctx, query, args...).Scan(&exists)
-	if err != nil {
-		if err.Error() == "no rows in result set" {
-			return false, nil
-		}
-		return false, fmt.Errorf("query confirmed check: %w", err)
-	}
-	return true, nil
-}
-
 // GetConfirmedRelationships returns all confirmed relationships for an account.
 func (r *AccountRepository) GetConfirmedRelationships(ctx context.Context, accountID string) (map[string]bool, error) {
 	query, args, err := database.QB.
@@ -349,7 +324,7 @@ func (r *AccountRepository) GetAccountInfo(ctx context.Context, accountID string
 	var info AccountInfo
 	err = r.pool.QueryRow(ctx, query, args...).Scan(&info.TotalXLMValue, &info.MTLACBalance)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return &AccountInfo{}, nil
 		}
 		return nil, fmt.Errorf("query account info: %w", err)

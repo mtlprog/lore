@@ -475,3 +475,270 @@ func TestRegisterRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 	})
 }
+
+// groupRelationships tests
+
+func TestGroupRelationships(t *testing.T) {
+	const accountID = "GTEST1234567890123456789012345678901234567890123456"
+
+	t.Run("empty rows returns empty categories", func(t *testing.T) {
+		categories := groupRelationships(accountID, nil, nil)
+
+		assert.Len(t, categories, 5) // All category definitions
+		for _, cat := range categories {
+			assert.True(t, cat.IsEmpty)
+			assert.Empty(t, cat.Relationships)
+		}
+	})
+
+	t.Run("complementary pair MyPart/PartOf shows as confirmed", func(t *testing.T) {
+		rows := []repository.RelationshipRow{
+			{
+				SourceAccountID: accountID,
+				TargetAccountID: "GORG12345678901234567890123456789012345678901234567",
+				TargetName:      "Test Org",
+				RelationType:    "PartOf",
+				RelationIndex:   "",
+				Direction:       "outgoing",
+			},
+			{
+				SourceAccountID: "GORG12345678901234567890123456789012345678901234567",
+				TargetAccountID: accountID,
+				TargetName:      "Test Org",
+				RelationType:    "MyPart",
+				RelationIndex:   "",
+				Direction:       "incoming",
+			},
+		}
+
+		categories := groupRelationships(accountID, rows, nil)
+
+		// Find NETWORK category
+		var networkCat *model.RelationshipCategory
+		for i := range categories {
+			if categories[i].Name == "NETWORK" {
+				networkCat = &categories[i]
+				break
+			}
+		}
+
+		require.NotNil(t, networkCat)
+		assert.False(t, networkCat.IsEmpty)
+		// Should have 1 merged relationship (not 2 separate)
+		assert.Len(t, networkCat.Relationships, 1)
+		assert.True(t, networkCat.Relationships[0].IsConfirmed)
+	})
+
+	t.Run("symmetric type with one-way declaration is hidden", func(t *testing.T) {
+		rows := []repository.RelationshipRow{
+			{
+				SourceAccountID: accountID,
+				TargetAccountID: "GOTHER12345678901234567890123456789012345678901234",
+				TargetName:      "Other Account",
+				RelationType:    "FactionMember",
+				RelationIndex:   "",
+				Direction:       "outgoing",
+			},
+		}
+
+		categories := groupRelationships(accountID, rows, nil)
+
+		// Find SOCIAL category
+		var socialCat *model.RelationshipCategory
+		for i := range categories {
+			if categories[i].Name == "SOCIAL" {
+				socialCat = &categories[i]
+				break
+			}
+		}
+
+		require.NotNil(t, socialCat)
+		// One-way FactionMember should be hidden
+		assert.True(t, socialCat.IsEmpty)
+		assert.Empty(t, socialCat.Relationships)
+	})
+
+	t.Run("symmetric type with mutual declaration is shown", func(t *testing.T) {
+		otherID := "GOTHER12345678901234567890123456789012345678901234"
+		rows := []repository.RelationshipRow{
+			{
+				SourceAccountID: accountID,
+				TargetAccountID: otherID,
+				TargetName:      "Other Account",
+				RelationType:    "FactionMember",
+				RelationIndex:   "",
+				Direction:       "outgoing",
+			},
+			{
+				SourceAccountID: otherID,
+				TargetAccountID: accountID,
+				TargetName:      "Other Account",
+				RelationType:    "FactionMember",
+				RelationIndex:   "",
+				Direction:       "incoming",
+			},
+		}
+
+		categories := groupRelationships(accountID, rows, nil)
+
+		// Find SOCIAL category
+		var socialCat *model.RelationshipCategory
+		for i := range categories {
+			if categories[i].Name == "SOCIAL" {
+				socialCat = &categories[i]
+				break
+			}
+		}
+
+		require.NotNil(t, socialCat)
+		assert.False(t, socialCat.IsEmpty)
+		// Should have exactly 1 relationship (deduplicated)
+		assert.Len(t, socialCat.Relationships, 1)
+		assert.True(t, socialCat.Relationships[0].IsMutual)
+	})
+
+	t.Run("mutual relationships are deduplicated", func(t *testing.T) {
+		otherID := "GOTHER12345678901234567890123456789012345678901234"
+		rows := []repository.RelationshipRow{
+			{
+				SourceAccountID: accountID,
+				TargetAccountID: otherID,
+				TargetName:      "Other Account",
+				RelationType:    "Partnership",
+				RelationIndex:   "",
+				Direction:       "outgoing",
+			},
+			{
+				SourceAccountID: otherID,
+				TargetAccountID: accountID,
+				TargetName:      "Other Account",
+				RelationType:    "Partnership",
+				RelationIndex:   "",
+				Direction:       "incoming",
+			},
+		}
+
+		categories := groupRelationships(accountID, rows, nil)
+
+		// Find NETWORK category (Partnership is in NETWORK)
+		var networkCat *model.RelationshipCategory
+		for i := range categories {
+			if categories[i].Name == "NETWORK" {
+				networkCat = &categories[i]
+				break
+			}
+		}
+
+		require.NotNil(t, networkCat)
+		// Should have exactly 1 relationship, not 2
+		assert.Len(t, networkCat.Relationships, 1)
+		assert.True(t, networkCat.Relationships[0].IsMutual)
+	})
+
+	t.Run("unknown relationship type is skipped", func(t *testing.T) {
+		rows := []repository.RelationshipRow{
+			{
+				SourceAccountID: accountID,
+				TargetAccountID: "GOTHER12345678901234567890123456789012345678901234",
+				TargetName:      "Other Account",
+				RelationType:    "UnknownType",
+				RelationIndex:   "",
+				Direction:       "outgoing",
+			},
+		}
+
+		categories := groupRelationships(accountID, rows, nil)
+
+		// All categories should be empty
+		for _, cat := range categories {
+			assert.True(t, cat.IsEmpty)
+		}
+	})
+
+	t.Run("relationships grouped into correct categories", func(t *testing.T) {
+		rows := []repository.RelationshipRow{
+			{
+				SourceAccountID: accountID,
+				TargetAccountID: "GFAMILY123456789012345678901234567890123456789012",
+				TargetName:      "Family Member",
+				RelationType:    "Sympathy",
+				RelationIndex:   "",
+				Direction:       "outgoing",
+			},
+			{
+				SourceAccountID: accountID,
+				TargetAccountID: "GWORK12345678901234567890123456789012345678901234",
+				TargetName:      "Employer",
+				RelationType:    "Contractor",
+				RelationIndex:   "",
+				Direction:       "outgoing",
+			},
+			{
+				SourceAccountID: accountID,
+				TargetAccountID: "GOWNER12345678901234567890123456789012345678901234",
+				TargetName:      "My Company",
+				RelationType:    "Owner",
+				RelationIndex:   "",
+				Direction:       "outgoing",
+			},
+		}
+
+		categories := groupRelationships(accountID, rows, nil)
+
+		// Check FAMILY category
+		var familyCat, workCat, ownershipCat *model.RelationshipCategory
+		for i := range categories {
+			switch categories[i].Name {
+			case "FAMILY":
+				familyCat = &categories[i]
+			case "WORK":
+				workCat = &categories[i]
+			case "OWNERSHIP":
+				ownershipCat = &categories[i]
+			}
+		}
+
+		require.NotNil(t, familyCat)
+		require.NotNil(t, workCat)
+		require.NotNil(t, ownershipCat)
+
+		assert.Len(t, familyCat.Relationships, 1)
+		assert.Equal(t, "Sympathy", familyCat.Relationships[0].Type)
+
+		assert.Len(t, workCat.Relationships, 1)
+		assert.Equal(t, "Contractor", workCat.Relationships[0].Type)
+
+		assert.Len(t, ownershipCat.Relationships, 1)
+		assert.Equal(t, "Owner", ownershipCat.Relationships[0].Type)
+	})
+}
+
+// calculateTrustGrade tests
+
+func TestCalculateTrustGrade(t *testing.T) {
+	tests := []struct {
+		name     string
+		score    float64
+		expected string
+	}{
+		{"perfect score", 4.0, "A"},
+		{"high A", 3.5, "A"},
+		{"boundary A-", 3.49, "A-"},
+		{"A-", 3.0, "A-"},
+		{"boundary B+", 2.99, "B+"},
+		{"B+", 2.5, "B+"},
+		{"B", 2.0, "B"},
+		{"C+", 1.5, "C+"},
+		{"C", 1.0, "C"},
+		{"D high", 0.5, "D"},
+		{"D zero", 0.0, "D"},
+		{"D negative", -1.0, "D"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := calculateTrustGrade(tt.score)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
