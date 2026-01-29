@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/mtlprog/lore/internal/config"
@@ -1417,4 +1418,420 @@ func TestIsStellarAccountID(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+// Search handler tests
+
+func TestSearchHandler(t *testing.T) {
+	t.Run("successful render with valid query", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(2, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0, MTLACBalance: 0, TotalXLMValue: 100},
+			{AccountID: "GDEF", Name: "Test Company", MTLAPBalance: 0, MTLACBalance: 1.0, TotalXLMValue: 5000},
+		}, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.Equal(t, "test", searchData.Query)
+		assert.Len(t, searchData.Accounts, 2)
+		assert.Equal(t, 2, searchData.TotalCount)
+		assert.True(t, searchData.Accounts[0].IsPerson)
+		assert.False(t, searchData.Accounts[0].IsCorporate)
+		assert.False(t, searchData.Accounts[1].IsPerson)
+		assert.True(t, searchData.Accounts[1].IsCorporate)
+	})
+
+	t.Run("empty query renders prompt state", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// No search methods should be called with empty query
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.Equal(t, "", searchData.Query)
+		assert.Empty(t, searchData.Accounts)
+		assert.Equal(t, 0, searchData.TotalCount)
+	})
+
+	t.Run("query too short renders prompt state", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// No search methods should be called with single char query
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=a", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.Equal(t, "a", searchData.Query)
+		assert.Empty(t, searchData.Accounts)
+		assert.False(t, searchData.QueryTooLong)
+	})
+
+	t.Run("query too long sets QueryTooLong flag", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// No search methods should be called with query over 100 chars
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		longQuery := strings.Repeat("a", 101)
+		req := httptest.NewRequest(http.MethodGet, "/search?q="+longQuery, nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.True(t, searchData.QueryTooLong)
+		assert.Empty(t, searchData.Accounts)
+		assert.Equal(t, 0, searchData.TotalCount)
+	})
+
+	t.Run("query at exactly 2 chars is valid", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// 2-char query should trigger search
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "ab").Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "ab", config.DefaultPageLimit+1, 0).Return(nil, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=ab", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.Equal(t, "ab", searchData.Query)
+		assert.False(t, searchData.QueryTooLong)
+	})
+
+	t.Run("query at exactly 100 chars is valid", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		maxQuery := strings.Repeat("a", 100)
+		// 100-char query should trigger search
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, maxQuery).Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, maxQuery, config.DefaultPageLimit+1, 0).Return(nil, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q="+maxQuery, nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.False(t, searchData.QueryTooLong)
+	})
+
+	t.Run("whitespace trimmed from query", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// Expect trimmed query "test" not "  test  "
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return(nil, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=++test++", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		searchData := renderedData.(SearchData)
+		assert.Equal(t, "test", searchData.Query)
+	})
+
+	t.Run("pagination offset parsed correctly", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(50, nil)
+		// Expect offset 20
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 20).Return(nil, nil)
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test&offset=20", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("invalid offset defaults to zero", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(5, nil)
+		// Expect offset 0 (default)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return(nil, nil)
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test&offset=abc", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("negative offset defaults to zero", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(5, nil)
+		// Expect offset 0 (default)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return(nil, nil)
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test&offset=-5", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("HasMore flag set correctly when more results exist", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(30, nil)
+
+		// Return 21 items (more than DefaultPageLimit of 20)
+		rows := make([]repository.SearchAccountRow, config.DefaultPageLimit+1)
+		for i := range rows {
+			rows[i] = repository.SearchAccountRow{AccountID: "G" + string(rune('A'+i)), MTLAPBalance: 1.0}
+		}
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return(rows, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		searchData := renderedData.(SearchData)
+		assert.True(t, searchData.HasMore)
+		assert.Len(t, searchData.Accounts, config.DefaultPageLimit) // Truncated
+		assert.Equal(t, config.DefaultPageLimit, searchData.NextOffset)
+	})
+
+	t.Run("CountSearchAccounts error returns 500", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(0, errors.New("database error"))
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "Failed to search accounts")
+	})
+
+	t.Run("SearchAccounts error returns 500", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(5, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "Failed to search accounts")
+	})
+
+	t.Run("template render error returns 500", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything).Return(nil, nil)
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(errors.New("template error"))
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("IsPerson and IsCorporate thresholds", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(4, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything).Return([]repository.SearchAccountRow{
+			{AccountID: "G1", MTLAPBalance: 5.0, MTLACBalance: 0}, // IsPerson (at threshold)
+			{AccountID: "G2", MTLAPBalance: 5.1, MTLACBalance: 0}, // NOT IsPerson (over threshold)
+			{AccountID: "G3", MTLAPBalance: 0, MTLACBalance: 4.0}, // IsCorporate (at threshold)
+			{AccountID: "G4", MTLAPBalance: 0, MTLACBalance: 4.1}, // NOT IsCorporate (over threshold)
+		}, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		searchData := renderedData.(SearchData)
+		assert.True(t, searchData.Accounts[0].IsPerson)
+		assert.False(t, searchData.Accounts[1].IsPerson)
+		assert.True(t, searchData.Accounts[2].IsCorporate)
+		assert.False(t, searchData.Accounts[3].IsCorporate)
+	})
+
+	t.Run("search route registered", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// Set up expectations for search route
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		mux := http.NewServeMux()
+		h.RegisterRoutes(mux)
+
+		req := httptest.NewRequest(http.MethodGet, "/search", nil)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		// Should return 200 (route is registered and renders template)
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
 }

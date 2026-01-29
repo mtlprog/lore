@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
@@ -531,6 +532,110 @@ func (r *AccountRepository) CountAccountsByTags(ctx context.Context, tags []stri
 	err = r.pool.QueryRow(ctx, query, args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("query count by tags: %w", err)
+	}
+
+	return count, nil
+}
+
+// SearchAccountRow represents an account from a search query.
+type SearchAccountRow struct {
+	AccountID     string
+	Name          string
+	MTLAPBalance  float64
+	MTLACBalance  float64
+	TotalXLMValue float64
+}
+
+// escapeLikePattern escapes special LIKE pattern characters (%, _, \) to prevent
+// users from injecting wildcards into search queries.
+func escapeLikePattern(s string) string {
+	s = strings.ReplaceAll(s, "\\", "\\\\")
+	s = strings.ReplaceAll(s, "%", "\\%")
+	s = strings.ReplaceAll(s, "_", "\\_")
+	return s
+}
+
+// SearchAccounts searches accounts by name or account ID with case-insensitive substring matching.
+func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, limit int, offset int) ([]SearchAccountRow, error) {
+	if query == "" {
+		return nil, nil
+	}
+
+	searchPattern := "%" + escapeLikePattern(query) + "%"
+
+	sql, args, err := database.QB.
+		Select(
+			"a.account_id",
+			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 6), '...', RIGHT(a.account_id, 6))) AS name",
+			"a.mtlap_balance",
+			"a.mtlac_balance",
+			"a.total_xlm_value",
+		).
+		From("accounts a").
+		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = ''").
+		Where(sq.Or{
+			sq.ILike{"a.account_id": searchPattern},
+			sq.ILike{"m.data_value": searchPattern},
+			sq.ILike{"a.name": searchPattern},
+		}).
+		Where("(a.mtlap_balance > 0 OR a.mtlac_balance > 0)").
+		OrderBy("GREATEST(a.mtlap_balance, a.mtlac_balance) DESC", "a.total_xlm_value DESC").
+		Limit(uint64(limit)).
+		Offset(uint64(offset)).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build search query: %w", err)
+	}
+
+	rows, err := r.pool.Query(ctx, sql, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query search accounts: %w", err)
+	}
+	defer rows.Close()
+
+	var accounts []SearchAccountRow
+	for rows.Next() {
+		var acc SearchAccountRow
+		if err := rows.Scan(&acc.AccountID, &acc.Name, &acc.MTLAPBalance, &acc.MTLACBalance, &acc.TotalXLMValue); err != nil {
+			return nil, fmt.Errorf("scan search account: %w", err)
+		}
+		accounts = append(accounts, acc)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate search accounts: %w", err)
+	}
+
+	return accounts, nil
+}
+
+// CountSearchAccounts returns the total count of accounts matching the search query.
+func (r *AccountRepository) CountSearchAccounts(ctx context.Context, query string) (int, error) {
+	if query == "" {
+		return 0, nil
+	}
+
+	searchPattern := "%" + escapeLikePattern(query) + "%"
+
+	sql, args, err := database.QB.
+		Select("COUNT(*)").
+		From("accounts a").
+		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = ''").
+		Where(sq.Or{
+			sq.ILike{"a.account_id": searchPattern},
+			sq.ILike{"m.data_value": searchPattern},
+			sq.ILike{"a.name": searchPattern},
+		}).
+		Where("(a.mtlap_balance > 0 OR a.mtlac_balance > 0)").
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("build count search query: %w", err)
+	}
+
+	var count int
+	err = r.pool.QueryRow(ctx, sql, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("query count search accounts: %w", err)
 	}
 
 	return count, nil

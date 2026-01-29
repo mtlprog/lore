@@ -1,0 +1,102 @@
+{{template "base" .}}
+
+{{define "title"}}Search // LORE{{end}}
+
+{{define "content"}}
+<!-- SEARCH TERMINAL -->
+<div class="search-section">
+    <div class="search-terminal-label">QUERY TERMINAL</div>
+    <form action="/search" method="get" class="search-form">
+        <div class="search-input-wrapper">
+            <span class="search-prompt">&gt;</span>
+            <input type="text" name="q" class="search-input" value="{{.Query}}"
+                   placeholder="SEARCH BY NAME OR ACCOUNT ID..." autocomplete="off" autofocus>
+            <button type="submit" class="search-btn">[SEARCH]</button>
+        </div>
+    </form>
+</div>
+
+{{if .QueryTooLong}}
+<!-- Query too long -->
+<div class="search-prompt-section">
+    <div class="search-prompt-text">Query too long (maximum 100 characters)</div>
+</div>
+{{else if .Query}}
+{{if ge (len .Query) 2}}
+<!-- SEARCH RESULTS HEADER -->
+<div class="search-results-header">
+    <div class="search-query-display">
+        <span class="search-query-label">Query:</span>
+        <span class="search-query-value">"{{.Query}}"</span>
+    </div>
+    <div class="search-results-count">{{.TotalCount}} results found</div>
+</div>
+
+{{if .Accounts}}
+<div class="section">
+    <div class="section-header">
+        <span class="section-title">Results</span>
+        <span class="section-count">{{.TotalCount}} accounts</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th class="right">Balance</th>
+                    <th class="right">Portfolio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{$offset := .Offset}}
+                {{range $idx, $acc := .Accounts}}
+                <tr class="row-link" onclick="window.location='/accounts/{{$acc.AccountID}}'">
+                    <td class="cell-rank">{{add $offset (add $idx 1)}}</td>
+                    <td class="cell-name">
+                        <a href="/accounts/{{$acc.AccountID}}">{{$acc.Name}}</a>
+                        <div class="cell-id">{{truncateID $acc.AccountID}}</div>
+                    </td>
+                    <td>
+                        {{if $acc.IsPerson}}<span class="type-badge type-person">[MTLAP]</span>{{end}}
+                        {{if $acc.IsCorporate}}<span class="type-badge type-corporate">[MTLAC]</span>{{end}}
+                    </td>
+                    <td class="cell-num">
+                        {{if $acc.IsPerson}}{{formatNumber $acc.MTLAPBalance}}{{end}}
+                        {{if and $acc.IsPerson $acc.IsCorporate}} / {{end}}
+                        {{if $acc.IsCorporate}}{{formatNumber $acc.MTLACBalance}}{{end}}
+                    </td>
+                    <td class="cell-xlm">{{if gt $acc.TotalXLMValue 0.0}}{{formatNumber $acc.TotalXLMValue}} XLM{{else}}-{{end}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    {{if .HasMore}}
+    <div class="pagination">
+        <a href="/search?q={{.Query}}&offset={{.NextOffset}}" class="btn">Load More</a>
+    </div>
+    {{end}}
+</div>
+{{else}}
+<div class="search-no-results">
+    <div class="search-no-results-text">No accounts found matching "{{.Query}}"</div>
+</div>
+{{end}}
+
+{{else}}
+<!-- Query too short -->
+<div class="search-prompt-section">
+    <div class="search-prompt-text">Enter at least 2 characters to search</div>
+</div>
+{{end}}
+
+{{else}}
+<!-- No query entered -->
+<div class="search-prompt-section">
+    <div class="search-prompt-text">Enter a name or account ID to search</div>
+</div>
+{{end}}
+{{end}}
