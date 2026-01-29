@@ -14,17 +14,17 @@
         <div class="stat-value">{{.Stats.TotalPersons}}</div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Companies (MTLAC)</div>
+        <div class="stat-label">Corporate (MTLAC)</div>
         <div class="stat-value">{{.Stats.TotalCompanies}}</div>
     </div>
     <div class="stat-card">
         <div class="stat-label">Total Portfolio Value</div>
-        <div class="stat-value">{{printf "%.0f" .Stats.TotalXLMValue}}<span class="unit">XLM</span></div>
+        <div class="stat-value">{{formatNumber .Stats.TotalXLMValue}}<span class="unit">XLM</span></div>
     </div>
 </div>
 
 <!-- PERSONS SECTION -->
-<section class="section">
+<section class="section" id="persons-section">
     <div class="section-header">
         <h2 class="section-title">Persons</h2>
         <span class="section-badge">MTLAP</span>
@@ -39,27 +39,20 @@
                     <th>Name</th>
                     <th>Account</th>
                     <th class="right">Balance</th>
-                    <th class="right">Council</th>
+                    <th class="right">Vote</th>
                 </tr>
             </thead>
             <tbody>
                 {{range $i, $p := .Persons}}
                 <tr class="row-link" onclick="window.location='/accounts/{{$p.AccountID}}'">
-                    <td class="cell-rank">{{add $i 1}}</td>
+                    <td class="cell-rank">{{add (add $i $.PersonsOffset) 1}}</td>
                     <td class="cell-name">
                         <a href="/accounts/{{$p.AccountID}}">{{$p.Name}}</a>
                     </td>
-                    <td class="cell-id">{{truncate $p.AccountID 8}}...{{slice $p.AccountID 48}}</td>
+                    <td class="cell-id">{{truncate $p.AccountID 6}}...{{slice $p.AccountID 50}}</td>
                     <td class="cell-num">{{printf "%.2f" $p.MTLAPBalance}}</td>
                     <td class="cell-votes">
-                        {{if $p.IsCouncilReady}}
-                        <span class="badge-council">Ready</span>
-                        {{if gt $p.ReceivedVotes 0}}
-                        <span class="votes-count">{{$p.ReceivedVotes}}</span>
-                        {{end}}
-                        {{else}}
-                        <span style="color: var(--text-muted);">-</span>
-                        {{end}}
+                        <span class="votes-count">{{votePower (addFloat $p.MTLAPBalance $p.ReceivedVotes)}}</span>
                     </td>
                 </tr>
                 {{end}}
@@ -68,7 +61,7 @@
     </div>
     {{if .HasMorePersons}}
     <div class="pagination">
-        <a href="?persons_offset={{.NextPersonsOffset}}{{if .CompaniesOffset}}&companies_offset={{.CompaniesOffset}}{{end}}" class="btn">Load More &gt;</a>
+        <a href="?persons_offset={{.NextPersonsOffset}}{{if .CorporateOffset}}&corporate_offset={{.CorporateOffset}}{{end}}#persons-section" class="btn">Load More &gt;</a>
     </div>
     {{end}}
     {{else}}
@@ -76,14 +69,14 @@
     {{end}}
 </section>
 
-<!-- COMPANIES SECTION -->
-<section class="section">
+<!-- CORPORATE SECTION -->
+<section class="section" id="corporate-section">
     <div class="section-header">
-        <h2 class="section-title">Companies</h2>
+        <h2 class="section-title">Corporate</h2>
         <span class="section-badge mtlac">MTLAC</span>
         <span class="section-count">{{.Stats.TotalCompanies}} registered</span>
     </div>
-    {{if .Companies}}
+    {{if .Corporate}}
     <div class="table-wrapper">
         <table class="data-table">
             <thead>
@@ -91,32 +84,32 @@
                     <th>#</th>
                     <th>Name</th>
                     <th>Account</th>
-                    <th class="right">Shares</th>
+                    <th class="right">Tier</th>
                     <th class="right">Portfolio</th>
                 </tr>
             </thead>
             <tbody>
-                {{range $i, $c := .Companies}}
+                {{range $i, $c := .Corporate}}
                 <tr class="row-link" onclick="window.location='/accounts/{{$c.AccountID}}'">
-                    <td class="cell-rank">{{add $i 1}}</td>
+                    <td class="cell-rank">{{add (add $i $.CorporateOffset) 1}}</td>
                     <td class="cell-name">
                         <a href="/accounts/{{$c.AccountID}}">{{$c.Name}}</a>
                     </td>
-                    <td class="cell-id">{{truncate $c.AccountID 8}}...{{slice $c.AccountID 48}}</td>
+                    <td class="cell-id">{{truncate $c.AccountID 6}}...{{slice $c.AccountID 50}}</td>
                     <td class="cell-num">{{printf "%.2f" $c.MTLACBalance}}</td>
-                    <td class="cell-xlm">{{printf "%.0f" $c.TotalXLMValue}} XLM</td>
+                    <td class="cell-xlm">{{formatNumber $c.TotalXLMValue}} XLM</td>
                 </tr>
                 {{end}}
             </tbody>
         </table>
     </div>
-    {{if .HasMoreCompanies}}
+    {{if .HasMoreCorporate}}
     <div class="pagination">
-        <a href="?{{if .PersonsOffset}}persons_offset={{.PersonsOffset}}&{{end}}companies_offset={{.NextCompaniesOffset}}" class="btn">Load More &gt;</a>
+        <a href="?{{if .PersonsOffset}}persons_offset={{.PersonsOffset}}&{{end}}corporate_offset={{.NextCorporateOffset}}#corporate-section" class="btn">Load More &gt;</a>
     </div>
     {{end}}
     {{else}}
-    <div class="empty">No companies found</div>
+    <div class="empty">No corporate accounts found</div>
     {{end}}
 </section>
 {{end}}

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"math"
+	"strconv"
+	"strings"
 )
 
 //go:embed templates/*.html
@@ -14,6 +17,9 @@ var templateFS embed.FS
 var funcMap = template.FuncMap{
 	"add": func(a, b int) int {
 		return a + b
+	},
+	"addFloat": func(a float64, b int) float64 {
+		return a + float64(b)
 	},
 	"truncate": func(s string, n int) string {
 		if len(s) <= n {
@@ -26,6 +32,28 @@ var funcMap = template.FuncMap{
 			return ""
 		}
 		return s[start:]
+	},
+	"formatNumber": func(f float64) string {
+		rounded := int64(math.Round(f))
+		str := strconv.FormatInt(rounded, 10)
+		var result strings.Builder
+		for i, c := range str {
+			if i > 0 && (len(str)-i)%3 == 0 {
+				result.WriteRune(' ')
+			}
+			result.WriteRune(c)
+		}
+		return result.String()
+	},
+	"votePower": func(totalVotes float64) int {
+		if totalVotes <= 0 {
+			return 0
+		}
+		if totalVotes <= 10 {
+			return 1
+		}
+		// Logarithmic scaling: 11-100 → 2, 101-1000 → 3, etc.
+		return int(math.Ceil(math.Log10(totalVotes)))
 	},
 }
 

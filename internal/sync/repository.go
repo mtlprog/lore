@@ -73,6 +73,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 			"mtlac_balance",
 			"native_balance",
 			"delegate_to",
+			"council_delegate_to",
 			"is_council_ready",
 			"updated_at",
 		).
@@ -82,6 +83,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 			mtlacBalance,
 			nativeBalance,
 			data.DelegateTo,
+			data.CouncilDelegateTo,
 			data.CouncilReady,
 			"NOW()",
 		).
@@ -90,6 +92,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 			mtlac_balance = EXCLUDED.mtlac_balance,
 			native_balance = EXCLUDED.native_balance,
 			delegate_to = EXCLUDED.delegate_to,
+			council_delegate_to = EXCLUDED.council_delegate_to,
 			is_council_ready = EXCLUDED.is_council_ready,
 			updated_at = NOW()`).
 		ToSql()
@@ -167,7 +170,7 @@ func (r *Repository) UpsertMetadata(ctx context.Context, accountID string, metad
 		Columns("account_id", "data_key", "data_index", "data_value")
 
 	for _, m := range metadata {
-		query = query.Values(accountID, m.Key, strconv.Itoa(m.Index), m.Value)
+		query = query.Values(accountID, m.Key, m.Index, m.Value)
 	}
 
 	sql, args, err := query.ToSql()
@@ -324,7 +327,7 @@ func (r *Repository) ResetDelegations(ctx context.Context) error {
 // GetAllDelegationInfo returns delegation info for all accounts.
 func (r *Repository) GetAllDelegationInfo(ctx context.Context) ([]DelegationInfo, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT account_id, delegate_to, mtlap_balance, is_council_ready
+		SELECT account_id, delegate_to, council_delegate_to, mtlap_balance, is_council_ready
 		FROM accounts
 	`)
 	if err != nil {
@@ -335,7 +338,7 @@ func (r *Repository) GetAllDelegationInfo(ctx context.Context) ([]DelegationInfo
 	var infos []DelegationInfo
 	for rows.Next() {
 		var info DelegationInfo
-		if err := rows.Scan(&info.AccountID, &info.DelegateTo, &info.MTLAPBalance, &info.CouncilReady); err != nil {
+		if err := rows.Scan(&info.AccountID, &info.DelegateTo, &info.CouncilDelegateTo, &info.MTLAPBalance, &info.CouncilReady); err != nil {
 			return nil, fmt.Errorf("scan delegation info: %w", err)
 		}
 		infos = append(infos, info)

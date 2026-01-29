@@ -30,7 +30,7 @@
     {{end}}
 
     <div class="detail-block full-width">
-        <div class="detail-block-title">Trustlines ({{len .Account.Trustlines}})</div>
+        <div class="detail-block-title">Tokens ({{len .Account.Trustlines}})</div>
         {{if .Account.Trustlines}}
         <div class="trustlines">
             <table class="trustlines-table">
@@ -38,7 +38,6 @@
                     <tr>
                         <th>Asset</th>
                         <th>Balance</th>
-                        <th>Limit</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -46,14 +45,13 @@
                     <tr>
                         <td>{{.AssetCode}}</td>
                         <td>{{.Balance}}</td>
-                        <td>{{if .Limit}}{{.Limit}}{{else}}-{{end}}</td>
                     </tr>
                     {{end}}
                 </tbody>
             </table>
         </div>
         {{else}}
-        <div class="empty">NO TRUSTLINES</div>
+        <div class="empty">NO TOKENS</div>
         {{end}}
     </div>
 </div>

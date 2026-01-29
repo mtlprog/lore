@@ -112,7 +112,8 @@ func traceDelegationChain(startID string, accountMap map[string]*DelegationInfo)
 	return path, false
 }
 
-// calculateReceivedVotes sums MTLAP from all accounts that delegate to the target.
+// calculateReceivedVotes sums MTLAP from all accounts that delegate council votes to the target.
+// Council delegation follows the mtla_c_delegate chain, not mtla_delegate.
 func calculateReceivedVotes(targetID string, accountMap map[string]*DelegationInfo) int {
 	totalVotes := decimal.Zero
 
@@ -121,7 +122,7 @@ func calculateReceivedVotes(targetID string, accountMap map[string]*DelegationIn
 			continue
 		}
 
-		finalTarget := getFinalDelegationTarget(acc.AccountID, accountMap)
+		finalTarget := getFinalCouncilDelegationTarget(acc.AccountID, accountMap)
 		if finalTarget == targetID {
 			totalVotes = totalVotes.Add(acc.MTLAPBalance)
 		}
@@ -130,7 +131,7 @@ func calculateReceivedVotes(targetID string, accountMap map[string]*DelegationIn
 	return int(totalVotes.IntPart())
 }
 
-// getFinalDelegationTarget follows the delegation chain to find the final target.
+// getFinalDelegationTarget follows the delegation chain (mtla_delegate) to find the final target.
 func getFinalDelegationTarget(startID string, accountMap map[string]*DelegationInfo) string {
 	visited := make(map[string]bool)
 	current := startID
@@ -159,5 +160,46 @@ func getFinalDelegationTarget(startID string, accountMap map[string]*DelegationI
 		}
 
 		current = *acc.DelegateTo
+	}
+}
+
+// getFinalCouncilDelegationTarget follows the council delegation chain (mtla_c_delegate) to find the final target.
+// The chain ends when we reach a council-ready account (mtla_c_delegate == "ready").
+func getFinalCouncilDelegationTarget(startID string, accountMap map[string]*DelegationInfo) string {
+	visited := make(map[string]bool)
+	current := startID
+
+	for {
+		if visited[current] {
+			return "" // cycle detected
+		}
+		visited[current] = true
+
+		acc, exists := accountMap[current]
+		if !exists {
+			return ""
+		}
+
+		// If this account is council-ready, it's the final target
+		if acc.CouncilReady {
+			return current
+		}
+
+		// If no council delegation, the chain ends without a valid target
+		if acc.CouncilDelegateTo == nil {
+			return ""
+		}
+
+		// Follow the council delegation chain
+		delegateAcc, exists := accountMap[*acc.CouncilDelegateTo]
+		if !exists {
+			return "" // target doesn't exist
+		}
+
+		// Note: We don't check MTLAPBalance here - accounts can delegate council votes
+		// even if they have 0 MTLAP, as long as the chain eventually reaches a council-ready target
+		_ = delegateAcc // just to avoid unused variable warning
+
+		current = *acc.CouncilDelegateTo
 	}
 }

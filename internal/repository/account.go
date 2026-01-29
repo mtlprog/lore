@@ -40,8 +40,8 @@ type PersonRow struct {
 	ReceivedVotes  int
 }
 
-// CompanyRow represents a company (MTLAC holder) from the database.
-type CompanyRow struct {
+// CorporateRow represents a corporate account (MTLAC holder) from the database.
+type CorporateRow struct {
 	AccountID     string
 	Name          string
 	MTLACBalance  float64
@@ -53,8 +53,8 @@ func (r *AccountRepository) GetStats(ctx context.Context) (*Stats, error) {
 	query, args, err := database.QB.
 		Select(
 			"COUNT(*) AS total_accounts",
-			"COUNT(*) FILTER (WHERE mtlap_balance > 0) AS total_persons",
-			"COUNT(*) FILTER (WHERE mtlac_balance > 0) AS total_companies",
+			"COUNT(*) FILTER (WHERE mtlap_balance > 0 AND mtlap_balance <= 5) AS total_persons",
+			"COUNT(*) FILTER (WHERE mtlac_balance > 0 AND mtlac_balance <= 4) AS total_companies",
 			"COALESCE(SUM(total_xlm_value), 0) AS total_xlm_value",
 		).
 		From("accounts").
@@ -82,14 +82,14 @@ func (r *AccountRepository) GetPersons(ctx context.Context, limit int, offset in
 	query, args, err := database.QB.
 		Select(
 			"a.account_id",
-			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 4), '...', RIGHT(a.account_id, 4))) AS name",
+			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 6), '...', RIGHT(a.account_id, 6))) AS name",
 			"a.mtlap_balance",
 			"a.is_council_ready",
 			"a.received_votes",
 		).
 		From("accounts a").
-		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = '0'").
-		Where("a.mtlap_balance > 0").
+		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = ''").
+		Where("a.mtlap_balance > 0 AND a.mtlap_balance <= 5").
 		OrderBy("a.mtlap_balance DESC").
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).
@@ -119,43 +119,43 @@ func (r *AccountRepository) GetPersons(ctx context.Context, limit int, offset in
 	return persons, nil
 }
 
-// GetCompanies returns MTLAC holders with their names and portfolio values.
-func (r *AccountRepository) GetCompanies(ctx context.Context, limit int, offset int) ([]CompanyRow, error) {
+// GetCorporate returns MTLAC holders with their names and portfolio values.
+func (r *AccountRepository) GetCorporate(ctx context.Context, limit int, offset int) ([]CorporateRow, error) {
 	query, args, err := database.QB.
 		Select(
 			"a.account_id",
-			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 4), '...', RIGHT(a.account_id, 4))) AS name",
+			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 6), '...', RIGHT(a.account_id, 6))) AS name",
 			"a.mtlac_balance",
 			"a.total_xlm_value",
 		).
 		From("accounts a").
-		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = '0'").
-		Where("a.mtlac_balance > 0").
-		OrderBy("a.total_xlm_value DESC").
+		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = ''").
+		Where("a.mtlac_balance > 0 AND a.mtlac_balance <= 4").
+		OrderBy("a.mtlac_balance DESC", "a.total_xlm_value DESC").
 		Limit(uint64(limit)).
 		Offset(uint64(offset)).
 		ToSql()
 	if err != nil {
-		return nil, fmt.Errorf("build companies query: %w", err)
+		return nil, fmt.Errorf("build corporate query: %w", err)
 	}
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("query companies: %w", err)
+		return nil, fmt.Errorf("query corporate: %w", err)
 	}
 	defer rows.Close()
 
-	var companies []CompanyRow
+	var corporate []CorporateRow
 	for rows.Next() {
-		var c CompanyRow
+		var c CorporateRow
 		if err := rows.Scan(&c.AccountID, &c.Name, &c.MTLACBalance, &c.TotalXLMValue); err != nil {
-			return nil, fmt.Errorf("scan company: %w", err)
+			return nil, fmt.Errorf("scan corporate: %w", err)
 		}
-		companies = append(companies, c)
+		corporate = append(corporate, c)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate companies rows: %w", err)
+		return nil, fmt.Errorf("iterate corporate rows: %w", err)
 	}
-	return companies, nil
+	return corporate, nil
 }
