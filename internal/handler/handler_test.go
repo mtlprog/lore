@@ -792,10 +792,10 @@ func TestTagsHandler(t *testing.T) {
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Test"}).Return(4, nil)
 		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Test"}, mock.Anything, mock.Anything).Return([]repository.TaggedAccountRow{
-			{AccountID: "G1", MTLAPBalance: 5.0, MTLACBalance: 0},    // IsPerson (at threshold)
-			{AccountID: "G2", MTLAPBalance: 5.1, MTLACBalance: 0},    // NOT IsPerson (over threshold)
-			{AccountID: "G3", MTLAPBalance: 0, MTLACBalance: 4.0},    // IsCorporate (at threshold)
-			{AccountID: "G4", MTLAPBalance: 0, MTLACBalance: 4.1},    // NOT IsCorporate (over threshold)
+			{AccountID: "G1", MTLAPBalance: 5.0, MTLACBalance: 0}, // IsPerson (at threshold)
+			{AccountID: "G2", MTLAPBalance: 5.1, MTLACBalance: 0}, // NOT IsPerson (over threshold)
+			{AccountID: "G3", MTLAPBalance: 0, MTLACBalance: 4.0}, // IsCorporate (at threshold)
+			{AccountID: "G4", MTLAPBalance: 0, MTLACBalance: 4.1}, // NOT IsCorporate (over threshold)
 		}, nil)
 
 		var renderedData any
