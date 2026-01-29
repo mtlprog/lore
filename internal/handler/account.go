@@ -320,15 +320,16 @@ func groupRelationships(accountID string, rows []repository.RelationshipRow, con
 		categoryRels[catIdx] = append(categoryRels[catIdx], rel)
 	}
 
-	// Sort relationships: confirmed/mutual first, then unconfirmed
+	// Sort relationships: confirmed/mutual first, then unconfirmed.
+	// Prioritizes verified relationships (where both parties declared) for user trust.
 	for i := range categoryRels {
 		sort.SliceStable(categoryRels[i], func(a, b int) bool {
 			aConfirmed := categoryRels[i][a].IsConfirmed || categoryRels[i][a].IsMutual
 			bConfirmed := categoryRels[i][b].IsConfirmed || categoryRels[i][b].IsMutual
 			if aConfirmed != bConfirmed {
-				return aConfirmed // confirmed/mutual first
+				return aConfirmed
 			}
-			return false // preserve original order within groups
+			return false // stable sort: preserve insertion order within groups
 		})
 	}
 
