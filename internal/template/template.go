@@ -28,10 +28,10 @@ var funcMap = template.FuncMap{
 		return s[:n]
 	},
 	"truncateID": func(s string) string {
-		if len(s) <= 12 {
+		if len(s) <= 15 {
 			return s
 		}
-		return s[:6] + "..." + s[len(s)-4:]
+		return s[:6] + "..." + s[len(s)-6:]
 	},
 	"slice": func(s string, start int) string {
 		if start < 0 || start >= len(s) {
