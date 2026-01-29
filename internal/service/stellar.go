@@ -141,7 +141,11 @@ func findAssetBalance(balances []horizon.Balance, code, issuer string) string {
 func parseTagKeys(data map[string]string) []string {
 	var tags []string
 	for key := range data {
-		if strings.HasPrefix(key, "Tag") && len(key) > 3 {
+		if strings.HasPrefix(key, "Tag") {
+			if len(key) <= 3 {
+				slog.Debug("skipping tag key with no suffix", "key", key)
+				continue
+			}
 			tagName := key[3:] // Strip "Tag" prefix
 			tags = append(tags, tagName)
 		}

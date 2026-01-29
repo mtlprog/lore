@@ -167,6 +167,99 @@ func TestAddFloat(t *testing.T) {
 	}
 }
 
+func TestContainsTag(t *testing.T) {
+	containsTag := funcMap["containsTag"].(func([]string, string) bool)
+
+	tests := []struct {
+		name     string
+		tags     []string
+		tag      string
+		expected bool
+	}{
+		{"tag present", []string{"Belgrade", "Programmer"}, "Belgrade", true},
+		{"tag not present", []string{"Belgrade", "Programmer"}, "Developer", false},
+		{"empty tags", []string{}, "Belgrade", false},
+		{"nil tags", nil, "Belgrade", false},
+		{"empty tag search", []string{"Belgrade"}, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := containsTag(tt.tags, tt.tag)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestTagURL(t *testing.T) {
+	tagURL := funcMap["tagURL"].(func([]string, string, bool) string)
+
+	tests := []struct {
+		name        string
+		currentTags []string
+		tag         string
+		add         bool
+		expected    string
+	}{
+		{
+			name:        "add tag to empty list",
+			currentTags: []string{},
+			tag:         "Belgrade",
+			add:         true,
+			expected:    "/tags?tag=Belgrade",
+		},
+		{
+			name:        "add tag to existing list",
+			currentTags: []string{"Belgrade"},
+			tag:         "Programmer",
+			add:         true,
+			expected:    "/tags?tag=Belgrade&tag=Programmer",
+		},
+		{
+			name:        "add duplicate tag (no change)",
+			currentTags: []string{"Belgrade"},
+			tag:         "Belgrade",
+			add:         true,
+			expected:    "/tags?tag=Belgrade",
+		},
+		{
+			name:        "remove tag leaving others",
+			currentTags: []string{"Belgrade", "Programmer"},
+			tag:         "Belgrade",
+			add:         false,
+			expected:    "/tags?tag=Programmer",
+		},
+		{
+			name:        "remove last tag",
+			currentTags: []string{"Belgrade"},
+			tag:         "Belgrade",
+			add:         false,
+			expected:    "/tags",
+		},
+		{
+			name:        "remove tag not in list",
+			currentTags: []string{"Belgrade"},
+			tag:         "Programmer",
+			add:         false,
+			expected:    "/tags?tag=Belgrade",
+		},
+		{
+			name:        "URL encodes special characters",
+			currentTags: []string{},
+			tag:         "Tag With Spaces",
+			add:         true,
+			expected:    "/tags?tag=Tag+With+Spaces",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tagURL(tt.currentTags, tt.tag, tt.add)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestNew(t *testing.T) {
 	t.Run("successful parsing", func(t *testing.T) {
 		tmpl, err := New()
@@ -177,6 +270,7 @@ func TestNew(t *testing.T) {
 		assert.Contains(t, tmpl.pages, "home.html")
 		assert.Contains(t, tmpl.pages, "account.html")
 		assert.Contains(t, tmpl.pages, "transaction.html")
+		assert.Contains(t, tmpl.pages, "tags.html")
 	})
 }
 
