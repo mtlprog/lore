@@ -2,8 +2,13 @@ package service
 
 import (
 	"encoding/base64"
+	"errors"
+	"net/http"
 	"testing"
 
+	"github.com/stellar/go/clients/horizonclient"
+	"github.com/stellar/go/protocols/horizon"
+	"github.com/stellar/go/protocols/horizon/base"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -142,4 +147,143 @@ func TestDecodeBase64(t *testing.T) {
 
 func encode(s string) string {
 	return base64.StdEncoding.EncodeToString([]byte(s))
+}
+
+func TestFindAssetBalance(t *testing.T) {
+	balances := []horizon.Balance{
+		{
+			Balance: "100.0000000",
+			Asset: base.Asset{
+				Type:   "native",
+				Code:   "",
+				Issuer: "",
+			},
+		},
+		{
+			Balance: "50.0000000",
+			Asset: base.Asset{
+				Type:   "credit_alphanum4",
+				Code:   "MTLAP",
+				Issuer: "GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA",
+			},
+		},
+		{
+			Balance: "25.0000000",
+			Asset: base.Asset{
+				Type:   "credit_alphanum4",
+				Code:   "USDC",
+				Issuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		code     string
+		issuer   string
+		expected string
+	}{
+		{
+			name:     "find MTLAP",
+			code:     "MTLAP",
+			issuer:   "GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA",
+			expected: "50.0000000",
+		},
+		{
+			name:     "find USDC",
+			code:     "USDC",
+			issuer:   "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+			expected: "25.0000000",
+		},
+		{
+			name:     "asset not found",
+			code:     "BTC",
+			issuer:   "GISSUER",
+			expected: "0",
+		},
+		{
+			name:     "wrong issuer",
+			code:     "MTLAP",
+			issuer:   "GWRONGISSUER",
+			expected: "0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := findAssetBalance(balances, tt.code, tt.issuer)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestFindAssetBalance_EmptyBalances(t *testing.T) {
+	result := findAssetBalance([]horizon.Balance{}, "MTLAP", "GISSUER")
+	assert.Equal(t, "0", result)
+}
+
+func TestIsNotFound(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "nil error",
+			err:      nil,
+			expected: false,
+		},
+		{
+			name:     "regular error",
+			err:      errors.New("some error"),
+			expected: false,
+		},
+		{
+			name: "horizon 404 error",
+			err: &horizonclient.Error{
+				Response: &http.Response{
+					StatusCode: 404,
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "horizon 500 error",
+			err: &horizonclient.Error{
+				Response: &http.Response{
+					StatusCode: 500,
+				},
+			},
+			expected: false,
+		},
+		{
+			name: "horizon error without response",
+			err: &horizonclient.Error{
+				Response: nil,
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsNotFound(tt.err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestNewStellarService(t *testing.T) {
+	t.Run("creates service with custom URL", func(t *testing.T) {
+		s := NewStellarService("https://custom-horizon.example.com")
+		assert.NotNil(t, s)
+		assert.NotNil(t, s.client)
+		assert.Equal(t, "https://custom-horizon.example.com", s.client.HorizonURL)
+	})
+
+	t.Run("creates service with default URL", func(t *testing.T) {
+		s := NewStellarService("https://horizon.stellar.org")
+		assert.NotNil(t, s)
+		assert.Equal(t, "https://horizon.stellar.org", s.client.HorizonURL)
+	})
 }

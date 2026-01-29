@@ -1,24 +1,44 @@
+//go:generate mockery
+
 package handler
 
 import (
+	"context"
 	"errors"
+	"io"
 	"net/http"
 
+	"github.com/mtlprog/lore/internal/model"
 	"github.com/mtlprog/lore/internal/repository"
-	"github.com/mtlprog/lore/internal/service"
-	"github.com/mtlprog/lore/internal/template"
 )
+
+// StellarServicer defines the interface for Stellar blockchain operations.
+type StellarServicer interface {
+	GetAccountDetail(ctx context.Context, accountID string) (*model.AccountDetail, error)
+}
+
+// AccountRepositoryer defines the interface for account data access.
+type AccountRepositoryer interface {
+	GetStats(ctx context.Context) (*repository.Stats, error)
+	GetPersons(ctx context.Context, limit int, offset int) ([]repository.PersonRow, error)
+	GetCompanies(ctx context.Context, limit int, offset int) ([]repository.CompanyRow, error)
+}
+
+// TemplateRenderer defines the interface for template rendering.
+type TemplateRenderer interface {
+	Render(w io.Writer, name string, data any) error
+}
 
 // Handler holds dependencies for HTTP handlers.
 type Handler struct {
-	stellar  *service.StellarService
-	accounts *repository.AccountRepository
-	tmpl     *template.Templates
+	stellar  StellarServicer
+	accounts AccountRepositoryer
+	tmpl     TemplateRenderer
 }
 
 // New creates a new Handler with the given dependencies.
 // Returns error if any required dependency is nil.
-func New(stellar *service.StellarService, accounts *repository.AccountRepository, tmpl *template.Templates) (*Handler, error) {
+func New(stellar StellarServicer, accounts AccountRepositoryer, tmpl TemplateRenderer) (*Handler, error) {
 	if stellar == nil {
 		return nil, errors.New("stellar service is required")
 	}
