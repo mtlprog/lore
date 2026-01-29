@@ -105,7 +105,8 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 		}
 	}
 
-	// Sort trustlines by balance (descending)
+	// Sort trustlines by balance (descending) to show highest-value holdings first.
+	// Parse errors are ignored - Horizon API guarantees valid numeric strings.
 	sort.Slice(trustlines, func(i, j int) bool {
 		balI, _ := strconv.ParseFloat(trustlines[i].Balance, 64)
 		balJ, _ := strconv.ParseFloat(trustlines[j].Balance, 64)
