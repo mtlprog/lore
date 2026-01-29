@@ -131,10 +131,10 @@ func TestRender(t *testing.T) {
 				TotalCompanies: 25,
 				TotalXLMValue:  1000000.0,
 			},
-			Persons:           []any{},
-			Companies:         []any{},
-			HasMorePersons:    false,
-			HasMoreCompanies:  false,
+			Persons:          []any{},
+			Companies:        []any{},
+			HasMorePersons:   false,
+			HasMoreCompanies: false,
 		}
 
 		err := tmpl.Render(&buf, "home.html", data)
@@ -142,9 +142,9 @@ func TestRender(t *testing.T) {
 
 		output := buf.String()
 		assert.Contains(t, output, "LORE")
-		assert.Contains(t, output, "100")  // TotalAccounts
-		assert.Contains(t, output, "50")   // TotalPersons
-		assert.Contains(t, output, "25")   // TotalCompanies
+		assert.Contains(t, output, "100") // TotalAccounts
+		assert.Contains(t, output, "50")  // TotalPersons
+		assert.Contains(t, output, "25")  // TotalCompanies
 	})
 
 	t.Run("account template renders successfully", func(t *testing.T) {

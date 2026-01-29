@@ -1,6 +1,6 @@
 module github.com/mtlprog/lore
 
-go 1.25.5
+go 1.24.0
 
 require (
 	github.com/Masterminds/squirrel v1.5.4
