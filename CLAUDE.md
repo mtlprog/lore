@@ -104,6 +104,7 @@ The application follows a layered architecture:
 - **Constructor Pattern**: Constructors return `(*T, error)` with nil validation, not `*T` that silently returns nil on error.
 - **Transaction Atomicity**: Wrap DELETE + INSERT sequences in transactions to prevent partial state on failure.
 - **Database Migrations**: Add new migrations in `internal/database/migrations/` with format `NNN_description.sql`. Migrations run automatically on startup via goose.
+- **Relation Index Preservation**: Relationship indices are stored as strings, not integers, to preserve leading zeros. `PartOf002` and `PartOf2` are distinct keys in the blockchain that must remain distinct in the database. Converting to int would cause both to become `2`, violating the primary key constraint `(source_account_id, target_account_id, relation_type, relation_index)`.
 
 ## Stellar Account Data Keys
 
@@ -112,6 +113,31 @@ The application follows a layered architecture:
   - `"ready"` → account is council-ready (can receive council delegations)
   - Account ID → delegates council votes to that account
 - **Council delegation chains**: Use `council_delegate_to` column, not `delegate_to`, for vote calculations
+
+## Montelibero Relationship Types
+
+The Montelibero Blockchainization standard defines relationship types stored as account ManageData entries.
+
+### Complementary Pairs (require both for "confirmed" status)
+
+| Tag A (direction) | Tag B (direction) | Meaning |
+|-------------------|-------------------|---------|
+| MyPart (org→person) | PartOf (person→org) | Membership |
+| Guardian (guardian→ward) | Ward (ward→guardian) | Guardianship |
+| OwnershipFull (corp→owner) | Owner (owner→corp) | 95%+ ownership |
+| OwnershipMajority (corp→owner) | OwnerMajority (owner→corp) | 25-95% ownership |
+| OwnershipMinority (corp→owner) | OwnerMinority (owner→corp) | <25% ownership |
+| Employer (employer→employee) | Employee (employee→employer) | Employment |
+
+### Symmetric Types (both set same tag = "mutual")
+
+Only display when BOTH parties have declared. Hide one-way declarations.
+
+- Spouse, OneFamily, Partnership, Collaboration, FactionMember
+
+### Unilateral Tags (no confirmation needed)
+
+- A/B/C/D (credit rating), Sympathy, Love, Divorce, Contractor, Client, WelcomeGuest, RecommendToMTLA
 
 ## samber/lo - Utility Library
 

@@ -23,6 +23,124 @@ func (_m *MockAccountQuerier) EXPECT() *MockAccountQuerier_Expecter {
 	return &MockAccountQuerier_Expecter{mock: &_m.Mock}
 }
 
+// GetAccountInfo provides a mock function with given fields: ctx, accountID
+func (_m *MockAccountQuerier) GetAccountInfo(ctx context.Context, accountID string) (*repository.AccountInfo, error) {
+	ret := _m.Called(ctx, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountInfo")
+	}
+
+	var r0 *repository.AccountInfo
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*repository.AccountInfo, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *repository.AccountInfo); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repository.AccountInfo)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_GetAccountInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountInfo'
+type MockAccountQuerier_GetAccountInfo_Call struct {
+	*mock.Call
+}
+
+// GetAccountInfo is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+func (_e *MockAccountQuerier_Expecter) GetAccountInfo(ctx interface{}, accountID interface{}) *MockAccountQuerier_GetAccountInfo_Call {
+	return &MockAccountQuerier_GetAccountInfo_Call{Call: _e.mock.On("GetAccountInfo", ctx, accountID)}
+}
+
+func (_c *MockAccountQuerier_GetAccountInfo_Call) Run(run func(ctx context.Context, accountID string)) *MockAccountQuerier_GetAccountInfo_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetAccountInfo_Call) Return(_a0 *repository.AccountInfo, _a1 error) *MockAccountQuerier_GetAccountInfo_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetAccountInfo_Call) RunAndReturn(run func(context.Context, string) (*repository.AccountInfo, error)) *MockAccountQuerier_GetAccountInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetConfirmedRelationships provides a mock function with given fields: ctx, accountID
+func (_m *MockAccountQuerier) GetConfirmedRelationships(ctx context.Context, accountID string) (map[string]bool, error) {
+	ret := _m.Called(ctx, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetConfirmedRelationships")
+	}
+
+	var r0 map[string]bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (map[string]bool, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) map[string]bool); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]bool)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_GetConfirmedRelationships_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetConfirmedRelationships'
+type MockAccountQuerier_GetConfirmedRelationships_Call struct {
+	*mock.Call
+}
+
+// GetConfirmedRelationships is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+func (_e *MockAccountQuerier_Expecter) GetConfirmedRelationships(ctx interface{}, accountID interface{}) *MockAccountQuerier_GetConfirmedRelationships_Call {
+	return &MockAccountQuerier_GetConfirmedRelationships_Call{Call: _e.mock.On("GetConfirmedRelationships", ctx, accountID)}
+}
+
+func (_c *MockAccountQuerier_GetConfirmedRelationships_Call) Run(run func(ctx context.Context, accountID string)) *MockAccountQuerier_GetConfirmedRelationships_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetConfirmedRelationships_Call) Return(_a0 map[string]bool, _a1 error) *MockAccountQuerier_GetConfirmedRelationships_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetConfirmedRelationships_Call) RunAndReturn(run func(context.Context, string) (map[string]bool, error)) *MockAccountQuerier_GetConfirmedRelationships_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetCorporate provides a mock function with given fields: ctx, limit, offset
 func (_m *MockAccountQuerier) GetCorporate(ctx context.Context, limit int, offset int) ([]repository.CorporateRow, error) {
 	ret := _m.Called(ctx, limit, offset)
@@ -143,6 +261,65 @@ func (_c *MockAccountQuerier_GetPersons_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// GetRelationships provides a mock function with given fields: ctx, accountID
+func (_m *MockAccountQuerier) GetRelationships(ctx context.Context, accountID string) ([]repository.RelationshipRow, error) {
+	ret := _m.Called(ctx, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRelationships")
+	}
+
+	var r0 []repository.RelationshipRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]repository.RelationshipRow, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []repository.RelationshipRow); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]repository.RelationshipRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_GetRelationships_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRelationships'
+type MockAccountQuerier_GetRelationships_Call struct {
+	*mock.Call
+}
+
+// GetRelationships is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+func (_e *MockAccountQuerier_Expecter) GetRelationships(ctx interface{}, accountID interface{}) *MockAccountQuerier_GetRelationships_Call {
+	return &MockAccountQuerier_GetRelationships_Call{Call: _e.mock.On("GetRelationships", ctx, accountID)}
+}
+
+func (_c *MockAccountQuerier_GetRelationships_Call) Run(run func(ctx context.Context, accountID string)) *MockAccountQuerier_GetRelationships_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetRelationships_Call) Return(_a0 []repository.RelationshipRow, _a1 error) *MockAccountQuerier_GetRelationships_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetRelationships_Call) RunAndReturn(run func(context.Context, string) ([]repository.RelationshipRow, error)) *MockAccountQuerier_GetRelationships_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetStats provides a mock function with given fields: ctx
 func (_m *MockAccountQuerier) GetStats(ctx context.Context) (*repository.Stats, error) {
 	ret := _m.Called(ctx)
@@ -197,6 +374,65 @@ func (_c *MockAccountQuerier_GetStats_Call) Return(_a0 *repository.Stats, _a1 er
 }
 
 func (_c *MockAccountQuerier_GetStats_Call) RunAndReturn(run func(context.Context) (*repository.Stats, error)) *MockAccountQuerier_GetStats_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTrustRatings provides a mock function with given fields: ctx, accountID
+func (_m *MockAccountQuerier) GetTrustRatings(ctx context.Context, accountID string) (*repository.TrustRating, error) {
+	ret := _m.Called(ctx, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTrustRatings")
+	}
+
+	var r0 *repository.TrustRating
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*repository.TrustRating, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *repository.TrustRating); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*repository.TrustRating)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_GetTrustRatings_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTrustRatings'
+type MockAccountQuerier_GetTrustRatings_Call struct {
+	*mock.Call
+}
+
+// GetTrustRatings is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+func (_e *MockAccountQuerier_Expecter) GetTrustRatings(ctx interface{}, accountID interface{}) *MockAccountQuerier_GetTrustRatings_Call {
+	return &MockAccountQuerier_GetTrustRatings_Call{Call: _e.mock.On("GetTrustRatings", ctx, accountID)}
+}
+
+func (_c *MockAccountQuerier_GetTrustRatings_Call) Run(run func(ctx context.Context, accountID string)) *MockAccountQuerier_GetTrustRatings_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetTrustRatings_Call) Return(_a0 *repository.TrustRating, _a1 error) *MockAccountQuerier_GetTrustRatings_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetTrustRatings_Call) RunAndReturn(run func(context.Context, string) (*repository.TrustRating, error)) *MockAccountQuerier_GetTrustRatings_Call {
 	_c.Call.Return(run)
 	return _c
 }

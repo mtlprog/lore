@@ -8,6 +8,34 @@
     <div class="detail-id">{{.Account.ID}}</div>
 </div>
 
+{{if .Account.TrustRating}}
+<div class="trust-rating">
+    <div class="trust-header">
+        <span class="trust-title">Trust Rating</span>
+        <span class="trust-refs">{{.Account.TrustRating.Total}} references</span>
+    </div>
+    <div class="trust-bar-container">
+        <div class="trust-bar grade-{{if ge .Account.TrustRating.Score 3.0}}a{{else if ge .Account.TrustRating.Score 2.0}}b{{else if ge .Account.TrustRating.Score 1.5}}c{{else}}d{{end}}" style="width: {{trustBarWidth .Account.TrustRating.Percent}}"></div>
+        <span class="trust-grade">{{.Account.TrustRating.Grade}}</span>
+    </div>
+    <div class="trust-breakdown">
+        <span class="count-a">A: {{.Account.TrustRating.CountA}}</span>
+        <span class="count-b">B: {{.Account.TrustRating.CountB}}</span>
+        <span class="count-c">C: {{.Account.TrustRating.CountC}}</span>
+        <span class="count-d">D: {{.Account.TrustRating.CountD}}</span>
+    </div>
+</div>
+{{end}}
+
+{{if .Account.IsCorporate}}
+<div class="portfolio-value">
+    <div class="portfolio-header">
+        <span class="portfolio-title">Portfolio Value</span>
+    </div>
+    <div class="portfolio-amount">{{formatNumber .Account.TotalXLMValue}} XLM</div>
+</div>
+{{end}}
+
 <div class="detail-grid">
     {{if .Account.About}}
     <div class="detail-block">
@@ -28,7 +56,38 @@
         </div>
     </div>
     {{end}}
+</div>
 
+{{if .Account.Categories}}
+<div class="connections-section">
+    <div class="connections-header">Connections</div>
+    {{range .Account.Categories}}
+    <details class="category{{if .IsEmpty}} empty{{end}}"{{if not .IsEmpty}} open{{end}}>
+        <summary>
+            <span class="category-name" style="color: {{.Color}}">{{.Name}}</span>
+            <span class="category-count">({{len .Relationships}})</span>
+            {{if .IsEmpty}}<span class="category-empty-badge">empty</span>{{end}}
+        </summary>
+        {{if not .IsEmpty}}
+        <div class="category-content">
+            {{$catName := .Name}}
+            {{range .Relationships}}
+            <div class="relationship-row">
+                <span class="relationship-arrow {{.Direction}}">{{relationArrow .Direction}}</span>
+                <span class="relationship-type cat-{{if eq $catName "FAMILY"}}family{{else if eq $catName "WORK"}}work{{else if eq $catName "NETWORK"}}network{{else if eq $catName "OWNERSHIP"}}ownership{{else}}social{{end}}">{{.Type}}</span>
+                <a href="/accounts/{{.TargetID}}" class="relationship-name">{{.TargetName}}</a>
+                <span class="relationship-id">{{truncateID .TargetID}}</span>
+                <span class="relationship-badge-slot">{{if .IsMutual}}<span class="relationship-badge mutual">mutual</span>{{else if .IsConfirmed}}<span class="relationship-badge confirmed">confirmed</span>{{end}}</span>
+            </div>
+            {{end}}
+        </div>
+        {{end}}
+    </details>
+    {{end}}
+</div>
+{{end}}
+
+<div class="detail-grid">
     <div class="detail-block full-width">
         <div class="detail-block-title">Tokens ({{len .Account.Trustlines}})</div>
         {{if .Account.Trustlines}}

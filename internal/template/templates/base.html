@@ -765,6 +765,329 @@
             }
         }
 
+        /* TRUST RATING */
+        .trust-rating {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .trust-rating::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--accent);
+        }
+
+        .trust-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .trust-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+        }
+
+        .trust-refs {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .trust-bar-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            height: 24px;
+            position: relative;
+            margin-bottom: 0.75rem;
+        }
+
+        .trust-bar {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .trust-bar.grade-a { background: linear-gradient(90deg, #00ff88, #2da44e); }
+        .trust-bar.grade-b { background: linear-gradient(90deg, #f0b429, #c69700); }
+        .trust-bar.grade-c { background: linear-gradient(90deg, #f09000, #c06000); }
+        .trust-bar.grade-d { background: linear-gradient(90deg, #f85149, #cf222e); }
+
+        .trust-grade {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .trust-breakdown {
+            display: flex;
+            gap: 1.5rem;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .trust-breakdown span {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .trust-breakdown .count-a { color: #00ff88; }
+        .trust-breakdown .count-b { color: #f0b429; }
+        .trust-breakdown .count-c { color: #f09000; }
+        .trust-breakdown .count-d { color: #f85149; }
+
+        /* PORTFOLIO VALUE */
+        .portfolio-value {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .portfolio-value::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--warn);
+        }
+
+        .portfolio-header {
+            margin-bottom: 0.75rem;
+        }
+
+        .portfolio-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+        }
+
+        .portfolio-amount {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.75rem;
+            color: var(--warn);
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* CONNECTIONS SECTION */
+        .connections-section {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .connections-header {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--accent);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        /* CATEGORY COLLAPSIBLE */
+        .category {
+            margin-bottom: 0.5rem;
+            border: 1px solid var(--border);
+            background: var(--bg-panel);
+        }
+
+        .category.empty {
+            opacity: 0.5;
+            /* Override base .empty styles */
+            padding: 0;
+            text-align: left;
+            border: 1px solid var(--border);
+            border-style: solid;
+        }
+
+        /* Override .empty pseudo-elements for categories */
+        .category.empty::before,
+        .category.empty::after {
+            content: none;
+        }
+
+        .category summary {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8125rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            list-style: none;
+            user-select: none;
+        }
+
+        .category summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .category summary::before {
+            content: '▶';
+            font-size: 0.625rem;
+            transition: transform 0.2s ease;
+        }
+
+        .category[open] summary::before {
+            transform: rotate(90deg);
+        }
+
+        .category-name {
+            flex: 1;
+        }
+
+        .category-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .category-empty-badge {
+            font-size: 0.625rem;
+            color: var(--text-muted);
+            background: var(--bg-card);
+            padding: 0.125rem 0.375rem;
+            border: 1px solid var(--border);
+        }
+
+        .category-content {
+            padding: 0 1rem 1rem 1rem;
+        }
+
+        /* RELATIONSHIP ROW */
+        .relationship-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8125rem;
+        }
+
+        .relationship-row:last-child {
+            border-bottom: none;
+        }
+
+        .relationship-arrow {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            width: 1.25rem;
+            text-align: center;
+        }
+
+        .relationship-arrow.outgoing {
+            color: var(--accent);
+        }
+
+        .relationship-arrow.incoming {
+            color: var(--link);
+        }
+
+        .relationship-type {
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.125rem 0.5rem;
+            border-radius: 2px;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .relationship-name {
+            flex: 1;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .relationship-name:hover {
+            color: var(--accent);
+        }
+
+        .relationship-id {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            min-width: 100px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .relationship-badge-slot {
+            min-width: 70px;
+            flex-shrink: 0;
+            text-align: right;
+        }
+
+        .relationship-badge {
+            font-size: 0.5625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.125rem 0.375rem;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        .relationship-badge.mutual {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .relationship-badge.confirmed {
+            background: rgba(163, 113, 247, 0.15);
+            color: var(--council);
+            border: 1px solid rgba(163, 113, 247, 0.3);
+        }
+
+        /* Category colors for relationship types */
+        .relationship-type.cat-family { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+        .relationship-type.cat-work { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+        .relationship-type.cat-network { background: rgba(163, 113, 247, 0.2); color: #a371f7; }
+        .relationship-type.cat-ownership { background: rgba(240, 180, 41, 0.2); color: #f0b429; }
+        .relationship-type.cat-social { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+
+        @media (max-width: 768px) {
+            .relationship-id {
+                display: none;
+            }
+
+            .relationship-type {
+                min-width: 60px;
+                font-size: 0.5625rem;
+            }
+
+            .trust-breakdown {
+                flex-wrap: wrap;
+                gap: 0.75rem;
+            }
+        }
+
         /* SCANLINES */
         body::before {
             content: '';

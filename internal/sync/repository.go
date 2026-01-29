@@ -211,7 +211,7 @@ func (r *Repository) UpsertRelationships(ctx context.Context, accountID string, 
 		Columns("source_account_id", "target_account_id", "relation_type", "relation_index")
 
 	for _, rel := range relationships {
-		query = query.Values(accountID, rel.TargetAccountID, rel.RelationType, strconv.Itoa(rel.RelationIndex))
+		query = query.Values(accountID, rel.TargetAccountID, rel.RelationType, rel.RelationIndex)
 	}
 
 	sql, args, err := query.ToSql()
