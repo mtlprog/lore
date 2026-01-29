@@ -8,7 +8,25 @@ import (
 
 	"github.com/mtlprog/lore/internal/config"
 	"github.com/mtlprog/lore/internal/repository"
+	"github.com/samber/lo"
 )
+
+const maxTagLength = 100
+
+// filterValidTags removes empty and overly long tags from the input.
+func filterValidTags(tags []string) []string {
+	return lo.Filter(tags, func(t string, _ int) bool {
+		if t == "" {
+			slog.Debug("ignoring empty tag parameter")
+			return false
+		}
+		if len(t) > maxTagLength {
+			slog.Debug("ignoring overly long tag parameter", "length", len(t))
+			return false
+		}
+		return true
+	})
+}
 
 // TagsData holds data for the tags page template.
 type TagsData struct {
@@ -37,8 +55,9 @@ type TaggedAccountDisplay struct {
 func (h *Handler) Tags(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Parse selected tags from query params
-	selectedTags := r.URL.Query()["tag"]
+	// Parse and validate selected tags from query params
+	rawTags := r.URL.Query()["tag"]
+	selectedTags := filterValidTags(rawTags)
 
 	// Parse offset for pagination
 	offsetParam := r.URL.Query().Get("offset")
