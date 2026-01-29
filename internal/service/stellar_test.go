@@ -110,6 +110,60 @@ func TestParseNumberedDataKeys(t *testing.T) {
 	}
 }
 
+func TestParseTagKeys(t *testing.T) {
+	tests := []struct {
+		name     string
+		data     map[string]string
+		expected []string
+	}{
+		{
+			name:     "empty data",
+			data:     map[string]string{},
+			expected: nil,
+		},
+		{
+			name: "single tag",
+			data: map[string]string{
+				"TagBelgrade": encode("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"),
+			},
+			expected: []string{"Belgrade"},
+		},
+		{
+			name: "multiple tags",
+			data: map[string]string{
+				"TagBelgrade":   encode("GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"),
+				"TagProgrammer": encode("GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA"),
+				"TagMontenegro": encode("GTEST1234567890"),
+			},
+			expected: []string{"Belgrade", "Montenegro", "Programmer"},
+		},
+		{
+			name: "mixed keys with non-tag data",
+			data: map[string]string{
+				"TagBelgrade": encode("GACCOUNT"),
+				"Name":        encode("Test Name"),
+				"About":       encode("Test About"),
+				"Website":     encode("https://example.com"),
+			},
+			expected: []string{"Belgrade"},
+		},
+		{
+			name: "Tag key without suffix is ignored",
+			data: map[string]string{
+				"Tag": encode("GACCOUNT"),
+			},
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := parseTagKeys(tt.data)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
 func TestDecodeBase64(t *testing.T) {
 	tests := []struct {
 		name     string

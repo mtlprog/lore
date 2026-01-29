@@ -6,8 +6,11 @@ import (
 	"html/template"
 	"io"
 	"math"
+	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/samber/lo"
 )
 
 //go:embed templates/*.html
@@ -85,6 +88,33 @@ var funcMap = template.FuncMap{
 		}
 		return truncateID(accountID)
 	},
+	"containsTag": func(tags []string, tag string) bool {
+		return lo.Contains(tags, tag)
+	},
+	"tagURL": func(currentTags []string, tag string, add bool) string {
+		var newTags []string
+		if add {
+			if !lo.Contains(currentTags, tag) {
+				newTags = append(currentTags, tag)
+			} else {
+				newTags = currentTags
+			}
+		} else {
+			newTags = lo.Filter(currentTags, func(t string, _ int) bool {
+				return t != tag
+			})
+		}
+
+		if len(newTags) == 0 {
+			return "/tags"
+		}
+
+		params := url.Values{}
+		for _, t := range newTags {
+			params.Add("tag", t)
+		}
+		return "/tags?" + params.Encode()
+	},
 }
 
 // Templates holds parsed HTML templates.
@@ -103,7 +133,7 @@ func New() (*Templates, error) {
 	}
 
 	// Page templates to parse with base
-	pageNames := []string{"home.html", "account.html", "transaction.html"}
+	pageNames := []string{"home.html", "account.html", "transaction.html", "tags.html"}
 
 	for _, name := range pageNames {
 		// Clone base template for each page

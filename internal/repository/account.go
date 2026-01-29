@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mtlprog/lore/internal/database"
+	"github.com/samber/lo"
 )
 
 // AccountRepository handles account data access.
@@ -372,4 +373,165 @@ func (r *AccountRepository) GetAccountNames(ctx context.Context, accountIDs []st
 	}
 
 	return result, nil
+}
+
+// TagRow represents a tag with its usage count.
+type TagRow struct {
+	TagName string
+	Count   int
+}
+
+// TaggedAccountRow represents an account in the tags listing.
+type TaggedAccountRow struct {
+	AccountID     string
+	Name          string
+	About         string
+	MTLAPBalance  float64
+	MTLACBalance  float64
+	TotalXLMValue float64
+}
+
+// GetAllTags returns all unique tags with their account counts.
+func (r *AccountRepository) GetAllTags(ctx context.Context) ([]TagRow, error) {
+	query := `
+		SELECT SUBSTRING(data_key FROM 4) AS tag_name, COUNT(DISTINCT account_id) AS account_count
+		FROM account_metadata
+		WHERE data_key LIKE 'Tag%' AND LENGTH(data_key) > 3
+		GROUP BY data_key
+		ORDER BY account_count DESC, tag_name ASC
+	`
+
+	rows, err := r.pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("query all tags: %w", err)
+	}
+	defer rows.Close()
+
+	var tags []TagRow
+	for rows.Next() {
+		var tag TagRow
+		if err := rows.Scan(&tag.TagName, &tag.Count); err != nil {
+			return nil, fmt.Errorf("scan tag: %w", err)
+		}
+		tags = append(tags, tag)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate tags: %w", err)
+	}
+
+	return tags, nil
+}
+
+// GetAccountsByTags returns accounts that have ALL of the specified tags (AND logic).
+// Tags should be provided without the "Tag" prefix (e.g., "Belgrade", not "TagBelgrade").
+func (r *AccountRepository) GetAccountsByTags(ctx context.Context, tags []string, limit int, offset int) ([]TaggedAccountRow, error) {
+	if len(tags) == 0 {
+		return nil, nil
+	}
+
+	// Prepend "Tag" to each tag name for the database query
+	tagKeys := lo.Map(tags, func(t string, _ int) string {
+		return "Tag" + t
+	})
+
+	// Build subquery to get account IDs with ALL specified tags (AND logic)
+	// GROUP BY account_id and filter where count of distinct tags equals total number of requested tags
+	subquery, subArgs, err := database.QB.
+		Select("account_id").
+		From("account_metadata").
+		Where(sq.Eq{"data_key": tagKeys}).
+		GroupBy("account_id").
+		Having(fmt.Sprintf("COUNT(DISTINCT data_key) = %d", len(tagKeys))).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build tag subquery: %w", err)
+	}
+
+	// Main query to get account details
+	query, args, err := database.QB.
+		Select(
+			"a.account_id",
+			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 6), '...', RIGHT(a.account_id, 6))) AS name",
+			"COALESCE(ab.data_value, '') AS about",
+			"a.mtlap_balance",
+			"a.mtlac_balance",
+			"a.total_xlm_value",
+		).
+		From("accounts a").
+		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = ''").
+		LeftJoin("account_metadata ab ON a.account_id = ab.account_id AND ab.data_key = 'About' AND ab.data_index = ''").
+		Where("a.account_id IN ("+subquery+")", subArgs...).
+		Where("(a.mtlap_balance > 0 OR a.mtlac_balance > 0)").
+		OrderBy("GREATEST(a.mtlap_balance, a.mtlac_balance) DESC", "a.total_xlm_value DESC").
+		Limit(uint64(limit)).
+		Offset(uint64(offset)).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build accounts by tags query: %w", err)
+	}
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query accounts by tags: %w", err)
+	}
+	defer rows.Close()
+
+	var accounts []TaggedAccountRow
+	for rows.Next() {
+		var acc TaggedAccountRow
+		if err := rows.Scan(&acc.AccountID, &acc.Name, &acc.About, &acc.MTLAPBalance, &acc.MTLACBalance, &acc.TotalXLMValue); err != nil {
+			return nil, fmt.Errorf("scan tagged account: %w", err)
+		}
+		accounts = append(accounts, acc)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate tagged accounts: %w", err)
+	}
+
+	return accounts, nil
+}
+
+// CountAccountsByTags returns the total number of accounts with ALL of the specified tags (AND logic).
+func (r *AccountRepository) CountAccountsByTags(ctx context.Context, tags []string) (int, error) {
+	if len(tags) == 0 {
+		return 0, nil
+	}
+
+	// Prepend "Tag" to each tag name for the database query
+	tagKeys := lo.Map(tags, func(t string, _ int) string {
+		return "Tag" + t
+	})
+
+	// Build subquery to get account IDs with ALL specified tags (AND logic)
+	subquery, subArgs, err := database.QB.
+		Select("account_id").
+		From("account_metadata").
+		Where(sq.Eq{"data_key": tagKeys}).
+		GroupBy("account_id").
+		Having(fmt.Sprintf("COUNT(DISTINCT data_key) = %d", len(tagKeys))).
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("build tag count subquery: %w", err)
+	}
+
+	// Count accounts with MTLAP or MTLAC balance
+	query, args, err := database.QB.
+		Select("COUNT(*)").
+		From("accounts a").
+		Where("a.account_id IN ("+subquery+")", subArgs...).
+		Where("(a.mtlap_balance > 0 OR a.mtlac_balance > 0)").
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("build count by tags query: %w", err)
+	}
+
+	var count int
+	err = r.pool.QueryRow(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("query count by tags: %w", err)
+	}
+
+	return count, nil
 }

@@ -244,6 +244,7 @@ func TestRender(t *testing.T) {
 				Name       string
 				About      string
 				Websites   []string
+				Tags       []string
 				Trustlines []struct {
 					AssetCode   string
 					AssetIssuer string
@@ -295,6 +296,7 @@ func TestRender(t *testing.T) {
 				Name       string
 				About      string
 				Websites   []string
+				Tags       []string
 				Trustlines []struct {
 					AssetCode   string
 					AssetIssuer string
@@ -331,6 +333,7 @@ func TestRender(t *testing.T) {
 				Name:     "Test Account",
 				About:    "This is a test account",
 				Websites: []string{"https://example.com"},
+				Tags:     []string{"Belgrade", "Programmer"},
 				Trustlines: []struct {
 					AssetCode   string
 					AssetIssuer string

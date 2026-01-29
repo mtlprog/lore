@@ -151,6 +151,30 @@
             gap: 1rem;
         }
 
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--accent);
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--accent);
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background: var(--accent);
+            color: var(--bg);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
         .logo {
             font-family: 'Share Tech Mono', monospace;
             font-size: 3rem;
@@ -273,11 +297,7 @@
         /* SECTIONS */
         .section {
             margin-bottom: 3rem;
-            animation: slide-up 0.5s ease-out backwards;
         }
-
-        .section:nth-of-type(1) { animation-delay: 0.3s; }
-        .section:nth-of-type(2) { animation-delay: 0.4s; }
 
         .section-header {
             display: flex;
@@ -1614,6 +1634,212 @@
             .value-badge { border-color: #9a6700; background: rgba(154, 103, 0, 0.08); box-shadow: 0 0 15px rgba(154, 103, 0, 0.1); }
             .value-amount { color: #9a6700; }
         }
+
+        /* TAGS */
+        .tags-filter-section {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            position: relative;
+        }
+
+        .tags-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .tag-chip {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8125rem;
+            color: var(--accent);
+            background: transparent;
+            border: 1px solid var(--accent);
+            padding: 0.375rem 0.625rem;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tag-chip:hover {
+            background: rgba(0, 255, 136, 0.15);
+            box-shadow: 0 0 15px var(--accent-glow);
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .tag-chip.selected {
+            background: var(--accent);
+            color: var(--bg);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .tag-chip.selected:hover {
+            background: var(--accent);
+        }
+
+        .tag-count {
+            font-size: 0.625rem;
+            opacity: 0.7;
+        }
+
+        .tags-active-section {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .tags-active-header {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .tags-active-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .tag-active {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--bg);
+            background: var(--accent);
+            padding: 0.25rem 0.5rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            transition: all 0.2s ease;
+        }
+
+        .tag-active:hover {
+            background: var(--danger);
+        }
+
+        .tag-remove {
+            font-size: 0.625rem;
+            opacity: 0.8;
+        }
+
+        .tag-clear {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            color: var(--danger);
+            text-decoration: none;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid var(--danger);
+            transition: all 0.2s ease;
+        }
+
+        .tag-clear:hover {
+            background: var(--danger);
+            color: var(--bg);
+        }
+
+        .tags-count {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .tags-prompt {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .tags-prompt-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            color: var(--text-dim);
+        }
+
+
+        .tags-no-results {
+            background: var(--bg-panel);
+            border: 1px dashed var(--border);
+            padding: 3rem 2rem;
+            text-align: center;
+        }
+
+        .tags-no-results-text {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        .tags-empty {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            padding: 1rem;
+        }
+
+        /* Tags on account page - override .detail-block-content a styles */
+        .tags-block::before {
+            background: var(--council);
+        }
+
+        .detail-block-content .tag-chip {
+            color: var(--accent);
+        }
+
+        .detail-block-content .tag-chip:hover {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* Type badges for tags page */
+        .type-badge {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.625rem;
+            padding: 0.125rem 0.375rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .type-badge.type-person {
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .type-badge.type-corporate {
+            color: var(--warn);
+            border: 1px solid var(--warn);
+            background: rgba(240, 180, 41, 0.1);
+        }
+
+        @media (prefers-color-scheme: light) {
+            .tag-chip {
+                border-color: var(--accent);
+                color: var(--accent);
+            }
+
+            .tag-chip.selected {
+                background: var(--accent);
+                color: var(--bg-panel);
+            }
+
+            .type-badge.type-person {
+                color: var(--accent);
+                border-color: var(--accent);
+            }
+
+            .type-badge.type-corporate {
+                color: var(--warn);
+                border-color: var(--warn);
+            }
+        }
     </style>
 </head>
 <body>
@@ -1627,6 +1853,10 @@
                     </div>
                     <div class="tagline">Montelibero Lore Explorer</div>
                 </div>
+                <nav class="nav-links">
+                    <a href="/" class="nav-link">[HOME]</a>
+                    <a href="/tags" class="nav-link">[TAGS]</a>
+                </nav>
             </div>
         </header>
         <main>

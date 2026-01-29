@@ -52,6 +52,19 @@
         </div>
     </div>
     {{end}}
+
+    {{if .Account.Tags}}
+    <div class="detail-block tags-block">
+        <div class="detail-block-title">Tags</div>
+        <div class="detail-block-content">
+            <div class="tags-cloud">
+                {{range .Account.Tags}}
+                <a href="/tags?tag={{.}}" class="tag-chip">[{{.}}]</a>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    {{end}}
 </div>
 
 {{if .Account.Categories}}

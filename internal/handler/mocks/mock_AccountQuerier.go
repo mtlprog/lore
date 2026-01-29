@@ -23,6 +23,63 @@ func (_m *MockAccountQuerier) EXPECT() *MockAccountQuerier_Expecter {
 	return &MockAccountQuerier_Expecter{mock: &_m.Mock}
 }
 
+// CountAccountsByTags provides a mock function with given fields: ctx, tags
+func (_m *MockAccountQuerier) CountAccountsByTags(ctx context.Context, tags []string) (int, error) {
+	ret := _m.Called(ctx, tags)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CountAccountsByTags")
+	}
+
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) (int, error)); ok {
+		return rf(ctx, tags)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) int); ok {
+		r0 = rf(ctx, tags)
+	} else {
+		r0 = ret.Get(0).(int)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, tags)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_CountAccountsByTags_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountAccountsByTags'
+type MockAccountQuerier_CountAccountsByTags_Call struct {
+	*mock.Call
+}
+
+// CountAccountsByTags is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tags []string
+func (_e *MockAccountQuerier_Expecter) CountAccountsByTags(ctx interface{}, tags interface{}) *MockAccountQuerier_CountAccountsByTags_Call {
+	return &MockAccountQuerier_CountAccountsByTags_Call{Call: _e.mock.On("CountAccountsByTags", ctx, tags)}
+}
+
+func (_c *MockAccountQuerier_CountAccountsByTags_Call) Run(run func(ctx context.Context, tags []string)) *MockAccountQuerier_CountAccountsByTags_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_CountAccountsByTags_Call) Return(_a0 int, _a1 error) *MockAccountQuerier_CountAccountsByTags_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_CountAccountsByTags_Call) RunAndReturn(run func(context.Context, []string) (int, error)) *MockAccountQuerier_CountAccountsByTags_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAccountInfo provides a mock function with given fields: ctx, accountID
 func (_m *MockAccountQuerier) GetAccountInfo(ctx context.Context, accountID string) (*repository.AccountInfo, error) {
 	ret := _m.Called(ctx, accountID)
@@ -137,6 +194,125 @@ func (_c *MockAccountQuerier_GetAccountNames_Call) Return(_a0 map[string]string,
 }
 
 func (_c *MockAccountQuerier_GetAccountNames_Call) RunAndReturn(run func(context.Context, []string) (map[string]string, error)) *MockAccountQuerier_GetAccountNames_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAccountsByTags provides a mock function with given fields: ctx, tags, limit, offset
+func (_m *MockAccountQuerier) GetAccountsByTags(ctx context.Context, tags []string, limit int, offset int) ([]repository.TaggedAccountRow, error) {
+	ret := _m.Called(ctx, tags, limit, offset)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountsByTags")
+	}
+
+	var r0 []repository.TaggedAccountRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string, int, int) ([]repository.TaggedAccountRow, error)); ok {
+		return rf(ctx, tags, limit, offset)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string, int, int) []repository.TaggedAccountRow); ok {
+		r0 = rf(ctx, tags, limit, offset)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]repository.TaggedAccountRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string, int, int) error); ok {
+		r1 = rf(ctx, tags, limit, offset)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_GetAccountsByTags_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountsByTags'
+type MockAccountQuerier_GetAccountsByTags_Call struct {
+	*mock.Call
+}
+
+// GetAccountsByTags is a helper method to define mock.On call
+//   - ctx context.Context
+//   - tags []string
+//   - limit int
+//   - offset int
+func (_e *MockAccountQuerier_Expecter) GetAccountsByTags(ctx interface{}, tags interface{}, limit interface{}, offset interface{}) *MockAccountQuerier_GetAccountsByTags_Call {
+	return &MockAccountQuerier_GetAccountsByTags_Call{Call: _e.mock.On("GetAccountsByTags", ctx, tags, limit, offset)}
+}
+
+func (_c *MockAccountQuerier_GetAccountsByTags_Call) Run(run func(ctx context.Context, tags []string, limit int, offset int)) *MockAccountQuerier_GetAccountsByTags_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string), args[2].(int), args[3].(int))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetAccountsByTags_Call) Return(_a0 []repository.TaggedAccountRow, _a1 error) *MockAccountQuerier_GetAccountsByTags_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetAccountsByTags_Call) RunAndReturn(run func(context.Context, []string, int, int) ([]repository.TaggedAccountRow, error)) *MockAccountQuerier_GetAccountsByTags_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetAllTags provides a mock function with given fields: ctx
+func (_m *MockAccountQuerier) GetAllTags(ctx context.Context) ([]repository.TagRow, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllTags")
+	}
+
+	var r0 []repository.TagRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]repository.TagRow, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []repository.TagRow); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]repository.TagRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_GetAllTags_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllTags'
+type MockAccountQuerier_GetAllTags_Call struct {
+	*mock.Call
+}
+
+// GetAllTags is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockAccountQuerier_Expecter) GetAllTags(ctx interface{}) *MockAccountQuerier_GetAllTags_Call {
+	return &MockAccountQuerier_GetAllTags_Call{Call: _e.mock.On("GetAllTags", ctx)}
+}
+
+func (_c *MockAccountQuerier_GetAllTags_Call) Run(run func(ctx context.Context)) *MockAccountQuerier_GetAllTags_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetAllTags_Call) Return(_a0 []repository.TagRow, _a1 error) *MockAccountQuerier_GetAllTags_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetAllTags_Call) RunAndReturn(run func(context.Context) ([]repository.TagRow, error)) *MockAccountQuerier_GetAllTags_Call {
 	_c.Call.Return(run)
 	return _c
 }

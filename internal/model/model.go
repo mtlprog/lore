@@ -13,6 +13,7 @@ type AccountDetail struct {
 	Name          string
 	About         string
 	Websites      []string
+	Tags          []string
 	Trustlines    []Trustline
 	Categories    []RelationshipCategory
 	TrustRating   *TrustRating // nil if no ratings

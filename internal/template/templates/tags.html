@@ -1,0 +1,102 @@
+{{template "base" .}}
+
+{{define "title"}}Tags // LORE{{end}}
+
+{{define "content"}}
+<div class="section">
+    <div class="section-header">
+        <span class="section-title">Tags</span>
+        <span class="section-badge">Filter</span>
+        <span class="section-count">{{len .AllTags}} tags</span>
+    </div>
+    <div class="tags-filter-section">
+        <div class="tags-cloud">
+            {{range .AllTags}}
+            {{$isSelected := containsTag $.SelectedTags .TagName}}
+            <a href="{{tagURL $.SelectedTags .TagName (not $isSelected)}}" class="tag-chip{{if $isSelected}} selected{{end}}">
+                [{{.TagName}}]<span class="tag-count">{{.Count}}</span>
+            </a>
+            {{end}}
+            {{if not .AllTags}}
+            <div class="tags-empty">No tags found</div>
+            {{end}}
+        </div>
+    </div>
+</div>
+
+{{if .SelectedTags}}
+<div class="tags-active-section">
+    <div class="tags-active-header">Active Filters (AND)</div>
+    <div class="tags-active-list">
+        {{range .SelectedTags}}
+        <a href="{{tagURL $.SelectedTags . false}}" class="tag-active">
+            [{{.}}]<span class="tag-remove">x</span>
+        </a>
+        {{end}}
+        {{if gt (len .SelectedTags) 1}}
+        <a href="/tags" class="tag-clear">[CLEAR ALL]</a>
+        {{end}}
+    </div>
+    <div class="tags-count">Found {{.TotalCount}} accounts with all selected tags</div>
+</div>
+
+{{if .Accounts}}
+<div class="section">
+    <div class="section-header">
+        <span class="section-title">Results</span>
+        <span class="section-count">{{.TotalCount}} accounts</span>
+    </div>
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th class="right">Balance</th>
+                    <th class="right">Portfolio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{$offset := .Offset}}
+                {{range $idx, $acc := .Accounts}}
+                <tr class="row-link" onclick="window.location='/accounts/{{$acc.AccountID}}'">
+                    <td class="cell-rank">{{add $offset (add $idx 1)}}</td>
+                    <td class="cell-name">
+                        <a href="/accounts/{{$acc.AccountID}}">{{$acc.Name}}</a>
+                        <div class="cell-id">{{truncateID $acc.AccountID}}</div>
+                    </td>
+                    <td>
+                        {{if $acc.IsPerson}}<span class="type-badge type-person">[MTLAP]</span>{{end}}
+                        {{if $acc.IsCorporate}}<span class="type-badge type-corporate">[MTLAC]</span>{{end}}
+                    </td>
+                    <td class="cell-num">
+                        {{if $acc.IsPerson}}{{formatNumber $acc.MTLAPBalance}}{{end}}
+                        {{if and $acc.IsPerson $acc.IsCorporate}} / {{end}}
+                        {{if $acc.IsCorporate}}{{formatNumber $acc.MTLACBalance}}{{end}}
+                    </td>
+                    <td class="cell-xlm">{{if gt $acc.TotalXLMValue 0.0}}{{formatNumber $acc.TotalXLMValue}} XLM{{else}}-{{end}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+
+    {{if .HasMore}}
+    <div class="pagination">
+        <a href="/tags?{{range .SelectedTags}}tag={{.}}&{{end}}offset={{.NextOffset}}" class="btn">Load More</a>
+    </div>
+    {{end}}
+</div>
+{{else}}
+<div class="tags-no-results">
+    <div class="tags-no-results-text">No accounts found with all selected tags</div>
+</div>
+{{end}}
+
+{{else}}
+<div class="tags-prompt">
+    <div class="tags-prompt-text">Select tags to filter accounts</div>
+</div>
+{{end}}
+{{end}}

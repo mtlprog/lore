@@ -29,6 +29,9 @@ type AccountQuerier interface {
 	GetConfirmedRelationships(ctx context.Context, accountID string) (map[string]bool, error)
 	GetAccountInfo(ctx context.Context, accountID string) (*repository.AccountInfo, error)
 	GetAccountNames(ctx context.Context, accountIDs []string) (map[string]string, error)
+	GetAllTags(ctx context.Context) ([]repository.TagRow, error)
+	GetAccountsByTags(ctx context.Context, tags []string, limit int, offset int) ([]repository.TaggedAccountRow, error)
+	CountAccountsByTags(ctx context.Context, tags []string) (int, error)
 }
 
 // TemplateRenderer defines the interface for template rendering.
@@ -67,4 +70,5 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /", h.Home)
 	mux.HandleFunc("GET /accounts/{id}", h.Account)
 	mux.HandleFunc("GET /transactions/{hash}", h.Transaction)
+	mux.HandleFunc("GET /tags", h.Tags)
 }
