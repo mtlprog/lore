@@ -467,12 +467,12 @@ func TestRegisterRoutes(t *testing.T) {
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
-	t.Run("tags route registered", func(t *testing.T) {
+	t.Run("search route registered", func(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		// Set up expectations for tags route
+		// Set up expectations for search route
 		accounts.EXPECT().GetAllTags(mock.Anything).Return(nil, errors.New("expected error"))
 
 		h, err := New(stellar, accounts, tmpl)
@@ -481,7 +481,7 @@ func TestRegisterRoutes(t *testing.T) {
 		mux := http.NewServeMux()
 		h.RegisterRoutes(mux)
 
-		req := httptest.NewRequest(http.MethodGet, "/tags", nil)
+		req := httptest.NewRequest(http.MethodGet, "/search", nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
@@ -507,347 +507,6 @@ func TestRegisterRoutes(t *testing.T) {
 
 		// Go 1.22+ returns 405 Method Not Allowed for wrong method
 		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
-	})
-}
-
-// Tags handler tests
-
-func TestTagsHandler(t *testing.T) {
-	t.Run("successful render without selected tags", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{
-			{TagName: "Belgrade", Count: 10},
-			{TagName: "Programmer", Count: 5},
-		}, nil)
-
-		var renderedData any
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
-			renderedData = data
-		}).Return(nil)
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		tagsData, ok := renderedData.(TagsData)
-		require.True(t, ok)
-		assert.Len(t, tagsData.AllTags, 2)
-		assert.Empty(t, tagsData.SelectedTags)
-		assert.Empty(t, tagsData.Accounts)
-	})
-
-	t.Run("successful render with selected tags", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{
-			{TagName: "Belgrade", Count: 10},
-		}, nil)
-
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Belgrade"}).Return(5, nil)
-
-		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return([]repository.TaggedAccountRow{
-			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0, MTLACBalance: 0},
-			{AccountID: "GDEF", Name: "Test Company", MTLAPBalance: 0, MTLACBalance: 1.0, TotalXLMValue: 5000},
-		}, nil)
-
-		var renderedData any
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
-			renderedData = data
-		}).Return(nil)
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=Belgrade", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-		tagsData, ok := renderedData.(TagsData)
-		require.True(t, ok)
-		assert.Len(t, tagsData.Accounts, 2)
-		assert.Equal(t, 5, tagsData.TotalCount)
-		assert.True(t, tagsData.Accounts[0].IsPerson)
-		assert.False(t, tagsData.Accounts[0].IsCorporate)
-		assert.False(t, tagsData.Accounts[1].IsPerson)
-		assert.True(t, tagsData.Accounts[1].IsCorporate)
-	})
-
-	t.Run("GetAllTags error returns 500", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return(nil, errors.New("database error"))
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "Failed to fetch tags")
-	})
-
-	t.Run("CountAccountsByTags error returns 500", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Belgrade"}).Return(0, errors.New("database error"))
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=Belgrade", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "Failed to count accounts")
-	})
-
-	t.Run("GetAccountsByTags error returns 500", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Belgrade"}).Return(5, nil)
-		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Belgrade"}, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=Belgrade", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Contains(t, w.Body.String(), "Failed to fetch accounts")
-	})
-
-	t.Run("template render error returns 500", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Return(errors.New("template error"))
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-	})
-
-	t.Run("pagination offset parsed correctly", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Belgrade"}).Return(50, nil)
-		// Expect offset 20
-		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Belgrade"}, config.DefaultPageLimit+1, 20).Return(nil, nil)
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Return(nil)
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=Belgrade&offset=20", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("invalid offset defaults to zero", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Belgrade"}).Return(5, nil)
-		// Expect offset 0 (default)
-		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return(nil, nil)
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Return(nil)
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=Belgrade&offset=abc", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("negative offset defaults to zero", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Belgrade"}).Return(5, nil)
-		// Expect offset 0 (default)
-		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return(nil, nil)
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Return(nil)
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=Belgrade&offset=-5", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("HasMore flag set correctly when more results exist", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Belgrade"}).Return(30, nil)
-
-		// Return 21 items (more than DefaultPageLimit of 20)
-		rows := make([]repository.TaggedAccountRow, config.DefaultPageLimit+1)
-		for i := range rows {
-			rows[i] = repository.TaggedAccountRow{AccountID: "G" + string(rune('A'+i)), MTLAPBalance: 1.0}
-		}
-		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return(rows, nil)
-
-		var renderedData any
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
-			renderedData = data
-		}).Return(nil)
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=Belgrade", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		tagsData := renderedData.(TagsData)
-		assert.True(t, tagsData.HasMore)
-		assert.Len(t, tagsData.Accounts, config.DefaultPageLimit) // Truncated
-		assert.Equal(t, config.DefaultPageLimit, tagsData.NextOffset)
-	})
-
-	t.Run("empty tags are filtered out", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		// Empty tag should be filtered, only "Belgrade" should be passed
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Belgrade"}).Return(0, nil)
-		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Belgrade"}, mock.Anything, mock.Anything).Return(nil, nil)
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Return(nil)
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=&tag=Belgrade", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		assert.Equal(t, http.StatusOK, w.Code)
-	})
-
-	t.Run("IsPerson and IsCorporate thresholds", func(t *testing.T) {
-		accounts := mocks.NewMockAccountQuerier(t)
-		stellar := mocks.NewMockStellarServicer(t)
-		tmpl := mocks.NewMockTemplateRenderer(t)
-
-		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
-		accounts.EXPECT().CountAccountsByTags(mock.Anything, []string{"Test"}).Return(4, nil)
-		accounts.EXPECT().GetAccountsByTags(mock.Anything, []string{"Test"}, mock.Anything, mock.Anything).Return([]repository.TaggedAccountRow{
-			{AccountID: "G1", MTLAPBalance: 5.0, MTLACBalance: 0}, // IsPerson (at threshold)
-			{AccountID: "G2", MTLAPBalance: 5.1, MTLACBalance: 0}, // NOT IsPerson (over threshold)
-			{AccountID: "G3", MTLAPBalance: 0, MTLACBalance: 4.0}, // IsCorporate (at threshold)
-			{AccountID: "G4", MTLAPBalance: 0, MTLACBalance: 4.1}, // NOT IsCorporate (over threshold)
-		}, nil)
-
-		var renderedData any
-		tmpl.EXPECT().Render(mock.Anything, "tags.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
-			renderedData = data
-		}).Return(nil)
-
-		h, err := New(stellar, accounts, tmpl)
-		require.NoError(t, err)
-
-		req := httptest.NewRequest(http.MethodGet, "/tags?tag=Test", nil)
-		w := httptest.NewRecorder()
-
-		h.Tags(w, req)
-
-		tagsData := renderedData.(TagsData)
-		assert.True(t, tagsData.Accounts[0].IsPerson)
-		assert.False(t, tagsData.Accounts[1].IsPerson)
-		assert.True(t, tagsData.Accounts[2].IsCorporate)
-		assert.False(t, tagsData.Accounts[3].IsCorporate)
-	})
-}
-
-// filterValidTags tests
-
-func TestFilterValidTags(t *testing.T) {
-	t.Run("filters empty tags", func(t *testing.T) {
-		result := filterValidTags([]string{"Belgrade", "", "Programmer"})
-		assert.Equal(t, []string{"Belgrade", "Programmer"}, result)
-	})
-
-	t.Run("filters overly long tags", func(t *testing.T) {
-		longTag := string(make([]byte, 101)) // 101 chars
-		result := filterValidTags([]string{"Belgrade", longTag, "Programmer"})
-		assert.Equal(t, []string{"Belgrade", "Programmer"}, result)
-	})
-
-	t.Run("allows max length tags", func(t *testing.T) {
-		maxTag := string(make([]byte, 100)) // exactly 100 chars
-		result := filterValidTags([]string{maxTag})
-		assert.Len(t, result, 1)
-	})
-
-	t.Run("empty input returns empty slice", func(t *testing.T) {
-		result := filterValidTags([]string{})
-		assert.Empty(t, result)
-	})
-
-	t.Run("all invalid returns empty slice", func(t *testing.T) {
-		result := filterValidTags([]string{"", ""})
-		assert.Empty(t, result)
 	})
 }
 
@@ -1428,8 +1087,9 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(2, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(2, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
 			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0, MTLACBalance: 0, TotalXLMValue: 100},
 			{AccountID: "GDEF", Name: "Test Company", MTLAPBalance: 0, MTLACBalance: 1.0, TotalXLMValue: 5000},
 		}, nil)
@@ -1459,12 +1119,16 @@ func TestSearchHandler(t *testing.T) {
 		assert.True(t, searchData.Accounts[1].IsCorporate)
 	})
 
-	t.Run("empty query renders prompt state", func(t *testing.T) {
+	t.Run("empty query renders prompt state with tags cloud", func(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		// No search methods should be called with empty query
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{
+			{TagName: "Belgrade", Count: 10},
+			{TagName: "Programmer", Count: 5},
+		}, nil)
+
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
@@ -1484,6 +1148,7 @@ func TestSearchHandler(t *testing.T) {
 		assert.Equal(t, "", searchData.Query)
 		assert.Empty(t, searchData.Accounts)
 		assert.Equal(t, 0, searchData.TotalCount)
+		assert.Len(t, searchData.AllTags, 2)
 	})
 
 	t.Run("query too short renders prompt state", func(t *testing.T) {
@@ -1491,7 +1156,8 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		// No search methods should be called with single char query
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
@@ -1518,7 +1184,8 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		// No search methods should be called with query over 100 chars
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
@@ -1546,9 +1213,9 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		// 2-char query should trigger search
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "ab").Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "ab", config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "ab", mock.Anything).Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "ab", mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
@@ -1576,9 +1243,9 @@ func TestSearchHandler(t *testing.T) {
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
 		maxQuery := strings.Repeat("a", 100)
-		// 100-char query should trigger search
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, maxQuery).Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, maxQuery, config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, maxQuery, mock.Anything).Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, maxQuery, mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
@@ -1604,9 +1271,9 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		// Expect trimmed query "test" not "  test  "
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
@@ -1630,9 +1297,9 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(50, nil)
-		// Expect offset 20
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 20).Return(nil, nil)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(50, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 20).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, tmpl)
@@ -1651,9 +1318,9 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(5, nil)
-		// Expect offset 0 (default)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(5, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, tmpl)
@@ -1672,9 +1339,9 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(5, nil)
-		// Expect offset 0 (default)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(5, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, tmpl)
@@ -1693,14 +1360,14 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(30, nil)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(30, nil)
 
-		// Return 21 items (more than DefaultPageLimit of 20)
 		rows := make([]repository.SearchAccountRow, config.DefaultPageLimit+1)
 		for i := range rows {
 			rows[i] = repository.SearchAccountRow{AccountID: "G" + string(rune('A'+i)), MTLAPBalance: 1.0}
 		}
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", config.DefaultPageLimit+1, 0).Return(rows, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return(rows, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
@@ -1717,8 +1384,27 @@ func TestSearchHandler(t *testing.T) {
 
 		searchData := renderedData.(SearchData)
 		assert.True(t, searchData.HasMore)
-		assert.Len(t, searchData.Accounts, config.DefaultPageLimit) // Truncated
+		assert.Len(t, searchData.Accounts, config.DefaultPageLimit)
 		assert.Equal(t, config.DefaultPageLimit, searchData.NextOffset)
+	})
+
+	t.Run("GetAllTags error returns 500", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetAllTags(mock.Anything).Return(nil, errors.New("database error"))
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "Failed to fetch tags")
 	})
 
 	t.Run("CountSearchAccounts error returns 500", func(t *testing.T) {
@@ -1726,7 +1412,8 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(0, errors.New("database error"))
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(0, errors.New("database error"))
 
 		h, err := New(stellar, accounts, tmpl)
 		require.NoError(t, err)
@@ -1745,8 +1432,9 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(5, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(5, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
 
 		h, err := New(stellar, accounts, tmpl)
 		require.NoError(t, err)
@@ -1765,8 +1453,9 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(errors.New("template error"))
 
 		h, err := New(stellar, accounts, tmpl)
@@ -1785,12 +1474,13 @@ func TestSearchHandler(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test").Return(4, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything).Return([]repository.SearchAccountRow{
-			{AccountID: "G1", MTLAPBalance: 5.0, MTLACBalance: 0}, // IsPerson (at threshold)
-			{AccountID: "G2", MTLAPBalance: 5.1, MTLACBalance: 0}, // NOT IsPerson (over threshold)
-			{AccountID: "G3", MTLAPBalance: 0, MTLACBalance: 4.0}, // IsCorporate (at threshold)
-			{AccountID: "G4", MTLAPBalance: 0, MTLACBalance: 4.1}, // NOT IsCorporate (over threshold)
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(4, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything).Return([]repository.SearchAccountRow{
+			{AccountID: "G1", MTLAPBalance: 5.0, MTLACBalance: 0},
+			{AccountID: "G2", MTLAPBalance: 5.1, MTLACBalance: 0},
+			{AccountID: "G3", MTLAPBalance: 0, MTLACBalance: 4.0},
+			{AccountID: "G4", MTLAPBalance: 0, MTLACBalance: 4.1},
 		}, nil)
 
 		var renderedData any
@@ -1813,12 +1503,126 @@ func TestSearchHandler(t *testing.T) {
 		assert.False(t, searchData.Accounts[3].IsCorporate)
 	})
 
-	t.Run("search route registered", func(t *testing.T) {
+	// Tag-specific tests
+	t.Run("search by tag only without query", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{
+			{TagName: "Belgrade", Count: 10},
+		}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "", []string{"Belgrade"}).Return(5, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0},
+		}, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?tag=Belgrade", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData := renderedData.(SearchData)
+		assert.Equal(t, "", searchData.Query)
+		assert.Equal(t, []string{"Belgrade"}, searchData.Tags)
+		assert.Len(t, searchData.Accounts, 1)
+	})
+
+	t.Run("search with query and tag (AND logic)", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", []string{"Belgrade"}).Return(2, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0},
+		}, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=test&tag=Belgrade", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData := renderedData.(SearchData)
+		assert.Equal(t, "test", searchData.Query)
+		assert.Equal(t, []string{"Belgrade"}, searchData.Tags)
+	})
+
+	t.Run("search with multiple tags (AND logic)", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "", []string{"Belgrade", "Programmer"}).Return(3, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade", "Programmer"}, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0},
+		}, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?tag=Belgrade&tag=Programmer", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData := renderedData.(SearchData)
+		assert.Equal(t, []string{"Belgrade", "Programmer"}, searchData.Tags)
+	})
+
+	t.Run("empty tags are filtered out", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "", []string{"Belgrade"}).Return(0, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, mock.Anything, mock.Anything).Return(nil, nil)
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?tag=&tag=Belgrade", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("search route via mux", func(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		// Set up expectations for search route
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, tmpl)
@@ -1831,7 +1635,37 @@ func TestSearchHandler(t *testing.T) {
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
 
-		// Should return 200 (route is registered and renders template)
 		assert.Equal(t, http.StatusOK, w.Code)
+	})
+}
+
+// filterValidTags tests
+
+func TestFilterValidTags(t *testing.T) {
+	t.Run("filters empty tags", func(t *testing.T) {
+		result := filterValidTags([]string{"Belgrade", "", "Programmer"})
+		assert.Equal(t, []string{"Belgrade", "Programmer"}, result)
+	})
+
+	t.Run("filters overly long tags", func(t *testing.T) {
+		longTag := string(make([]byte, 101))
+		result := filterValidTags([]string{"Belgrade", longTag, "Programmer"})
+		assert.Equal(t, []string{"Belgrade", "Programmer"}, result)
+	})
+
+	t.Run("allows max length tags", func(t *testing.T) {
+		maxTag := string(make([]byte, 100))
+		result := filterValidTags([]string{maxTag})
+		assert.Len(t, result, 1)
+	})
+
+	t.Run("empty input returns empty slice", func(t *testing.T) {
+		result := filterValidTags([]string{})
+		assert.Empty(t, result)
+	})
+
+	t.Run("all invalid returns empty slice", func(t *testing.T) {
+		result := filterValidTags([]string{"", ""})
+		assert.Empty(t, result)
 	})
 }

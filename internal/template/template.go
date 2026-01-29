@@ -91,7 +91,7 @@ var funcMap = template.FuncMap{
 	"containsTag": func(tags []string, tag string) bool {
 		return lo.Contains(tags, tag)
 	},
-	"tagURL": func(currentTags []string, tag string, add bool) string {
+	"tagURL": func(currentTags []string, tag string, add bool, currentQuery string) string {
 		var newTags []string
 		if add {
 			if !lo.Contains(currentTags, tag) {
@@ -105,15 +105,18 @@ var funcMap = template.FuncMap{
 			})
 		}
 
-		if len(newTags) == 0 {
-			return "/tags"
-		}
-
 		params := url.Values{}
+		if currentQuery != "" {
+			params.Set("q", currentQuery)
+		}
 		for _, t := range newTags {
 			params.Add("tag", t)
 		}
-		return "/tags?" + params.Encode()
+
+		if len(params) == 0 {
+			return "/search"
+		}
+		return "/search?" + params.Encode()
 	},
 }
 
@@ -133,7 +136,7 @@ func New() (*Templates, error) {
 	}
 
 	// Page templates to parse with base
-	pageNames := []string{"home.html", "account.html", "transaction.html", "tags.html", "search.html"}
+	pageNames := []string{"home.html", "account.html", "transaction.html", "search.html"}
 
 	for _, name := range pageNames {
 		// Clone base template for each page

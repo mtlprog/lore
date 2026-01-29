@@ -43,9 +43,15 @@ make db-reset && make dev
 
 ### How it works
 - `docker-compose.dev.yml` mounts the local binary into containers
-- Cross-compile for Linux containers: `CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -o lore ./cmd/lore`
-- Then restart the container - no Docker image rebuild needed
+- `make dev` and `make dev-restart` use `build-linux` target which cross-compiles for Linux
 - Syncer runs once on startup; restart it manually with `docker compose restart syncer`
+
+### IMPORTANT: Cross-compilation for Docker
+Docker containers run Linux. The Makefile handles this automatically:
+- `make build` — builds for local macOS (use with `make run`)
+- `make build-linux` — builds for Linux/arm64 (used by `make dev` and `make dev-restart`)
+
+**Never run `go build` manually before `make dev-restart`** — it will build a macOS binary that won't work in the Linux container. Always use the Makefile targets.
 
 ## Docker Production
 
