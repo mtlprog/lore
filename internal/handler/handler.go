@@ -17,8 +17,8 @@ type StellarServicer interface {
 	GetAccountDetail(ctx context.Context, accountID string) (*model.AccountDetail, error)
 }
 
-// AccountRepositoryer defines the interface for account data access.
-type AccountRepositoryer interface {
+// AccountQuerier defines the interface for account data access.
+type AccountQuerier interface {
 	GetStats(ctx context.Context) (*repository.Stats, error)
 	GetPersons(ctx context.Context, limit int, offset int) ([]repository.PersonRow, error)
 	GetCompanies(ctx context.Context, limit int, offset int) ([]repository.CompanyRow, error)
@@ -32,13 +32,13 @@ type TemplateRenderer interface {
 // Handler holds dependencies for HTTP handlers.
 type Handler struct {
 	stellar  StellarServicer
-	accounts AccountRepositoryer
+	accounts AccountQuerier
 	tmpl     TemplateRenderer
 }
 
 // New creates a new Handler with the given dependencies.
 // Returns error if any required dependency is nil.
-func New(stellar StellarServicer, accounts AccountRepositoryer, tmpl TemplateRenderer) (*Handler, error) {
+func New(stellar StellarServicer, accounts AccountQuerier, tmpl TemplateRenderer) (*Handler, error) {
 	if stellar == nil {
 		return nil, errors.New("stellar service is required")
 	}

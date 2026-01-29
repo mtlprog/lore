@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"log/slog"
 	"net/http"
 
@@ -38,8 +39,13 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 		Account: account,
 	}
 
-	if err := h.tmpl.Render(w, "account.html", data); err != nil {
+	var buf bytes.Buffer
+	if err := h.tmpl.Render(&buf, "account.html", data); err != nil {
 		slog.Error("failed to render account template", "account_id", accountID, "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = buf.WriteTo(w)
 }

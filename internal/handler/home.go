@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -26,12 +27,20 @@ type HomeData struct {
 func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	personsOffset, err := strconv.Atoi(r.URL.Query().Get("persons_offset"))
+	personsOffsetParam := r.URL.Query().Get("persons_offset")
+	personsOffset, err := strconv.Atoi(personsOffsetParam)
 	if err != nil || personsOffset < 0 {
+		if personsOffsetParam != "" {
+			slog.Debug("invalid persons_offset parameter, defaulting to 0", "value", personsOffsetParam)
+		}
 		personsOffset = 0
 	}
-	companiesOffset, err := strconv.Atoi(r.URL.Query().Get("companies_offset"))
+	companiesOffsetParam := r.URL.Query().Get("companies_offset")
+	companiesOffset, err := strconv.Atoi(companiesOffsetParam)
 	if err != nil || companiesOffset < 0 {
+		if companiesOffsetParam != "" {
+			slog.Debug("invalid companies_offset parameter, defaulting to 0", "value", companiesOffsetParam)
+		}
 		companiesOffset = 0
 	}
 
@@ -78,8 +87,13 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		HasMoreCompanies:    hasMoreCompanies,
 	}
 
-	if err := h.tmpl.Render(w, "home.html", data); err != nil {
+	var buf bytes.Buffer
+	if err := h.tmpl.Render(&buf, "home.html", data); err != nil {
 		slog.Error("failed to render home template", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
 	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = buf.WriteTo(w)
 }

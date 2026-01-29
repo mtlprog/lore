@@ -44,7 +44,7 @@ internal/
 
 ## Prerequisites
 
-- Go 1.22+
+- Go 1.24+
 - PostgreSQL 16+
 - Docker (optional, for local PostgreSQL)
 

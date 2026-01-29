@@ -7,9 +7,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/mtlprog/lore/internal/config"
 	"github.com/mtlprog/lore/internal/handler/mocks"
 	"github.com/mtlprog/lore/internal/model"
 	"github.com/mtlprog/lore/internal/repository"
+	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -19,7 +21,7 @@ import (
 
 func TestNewHandler(t *testing.T) {
 	stellar := mocks.NewMockStellarServicer(t)
-	accounts := mocks.NewMockAccountRepositoryer(t)
+	accounts := mocks.NewMockAccountQuerier(t)
 	tmpl := mocks.NewMockTemplateRenderer(t)
 
 	t.Run("nil stellar service returns error", func(t *testing.T) {
@@ -54,7 +56,7 @@ func TestNewHandler(t *testing.T) {
 
 func TestHomeHandler(t *testing.T) {
 	t.Run("successful render with data", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -95,7 +97,7 @@ func TestHomeHandler(t *testing.T) {
 	})
 
 	t.Run("pagination parameters parsed correctly", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -117,7 +119,7 @@ func TestHomeHandler(t *testing.T) {
 	})
 
 	t.Run("negative offset defaults to zero", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -138,7 +140,7 @@ func TestHomeHandler(t *testing.T) {
 	})
 
 	t.Run("invalid offset defaults to zero", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -159,7 +161,7 @@ func TestHomeHandler(t *testing.T) {
 	})
 
 	t.Run("stats error returns 500", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -178,7 +180,7 @@ func TestHomeHandler(t *testing.T) {
 	})
 
 	t.Run("persons error returns 500", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -198,7 +200,7 @@ func TestHomeHandler(t *testing.T) {
 	})
 
 	t.Run("companies error returns 500", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -219,7 +221,7 @@ func TestHomeHandler(t *testing.T) {
 	})
 
 	t.Run("template render error returns 500", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -240,7 +242,7 @@ func TestHomeHandler(t *testing.T) {
 	})
 
 	t.Run("has more pagination flags set correctly", func(t *testing.T) {
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
@@ -269,7 +271,7 @@ func TestHomeHandler(t *testing.T) {
 
 		homeData := renderedData.(HomeData)
 		assert.True(t, homeData.HasMorePersons)
-		assert.Len(t, homeData.Persons, 20) // Should be truncated to DefaultPageLimit
+		assert.Len(t, homeData.Persons, config.DefaultPageLimit) // Should be truncated to DefaultPageLimit
 	})
 }
 
@@ -278,7 +280,7 @@ func TestHomeHandler(t *testing.T) {
 func TestAccountHandler(t *testing.T) {
 	t.Run("missing account ID returns 400", func(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
 		h, err := New(stellar, accounts, tmpl)
@@ -297,7 +299,7 @@ func TestAccountHandler(t *testing.T) {
 
 	t.Run("successful account fetch renders template", func(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
 		stellar.EXPECT().GetAccountDetail(mock.Anything, "GABC123").Return(&model.AccountDetail{
@@ -333,7 +335,7 @@ func TestAccountHandler(t *testing.T) {
 
 	t.Run("stellar service error returns 500", func(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
 		stellar.EXPECT().GetAccountDetail(mock.Anything, "GABC123").Return(nil, errors.New("horizon error"))
@@ -353,7 +355,7 @@ func TestAccountHandler(t *testing.T) {
 
 	t.Run("template render error returns 500", func(t *testing.T) {
 		stellar := mocks.NewMockStellarServicer(t)
-		accounts := mocks.NewMockAccountRepositoryer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
 		stellar.EXPECT().GetAccountDetail(mock.Anything, "GABC123").Return(&model.AccountDetail{ID: "GABC123"}, nil)
@@ -370,43 +372,96 @@ func TestAccountHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
+
+	t.Run("account not found returns 404", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// Create a Horizon "not found" error
+		notFoundErr := &horizonclient.Error{
+			Response: &http.Response{StatusCode: 404},
+		}
+		stellar.EXPECT().GetAccountDetail(mock.Anything, "GNOTFOUND").Return(nil, notFoundErr)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/accounts/GNOTFOUND", nil)
+		req.SetPathValue("id", "GNOTFOUND")
+		w := httptest.NewRecorder()
+
+		h.Account(w, req)
+
+		assert.Equal(t, http.StatusNotFound, w.Code)
+		assert.Contains(t, w.Body.String(), "Account not found")
+	})
 }
 
 // RegisterRoutes test
 
 func TestRegisterRoutes(t *testing.T) {
-	stellar := mocks.NewMockStellarServicer(t)
-	accounts := mocks.NewMockAccountRepositoryer(t)
-	tmpl := mocks.NewMockTemplateRenderer(t)
-
-	// Set up expectations for when routes are called
-	accounts.EXPECT().GetStats(mock.Anything).Return(nil, errors.New("not implemented")).Maybe()
-	accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("not implemented")).Maybe()
-	accounts.EXPECT().GetCompanies(mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("not implemented")).Maybe()
-	stellar.EXPECT().GetAccountDetail(mock.Anything, mock.Anything).Return(nil, errors.New("not implemented")).Maybe()
-
-	h, err := New(stellar, accounts, tmpl)
-	require.NoError(t, err)
-
-	mux := http.NewServeMux()
-	h.RegisterRoutes(mux)
-
-	// Test that routes are registered by checking if they don't 404
-	// Note: The actual handler functionality is tested separately
-
 	t.Run("home route registered", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// Set up expectations for home route
+		accounts.EXPECT().GetStats(mock.Anything).Return(nil, errors.New("expected error"))
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		mux := http.NewServeMux()
+		h.RegisterRoutes(mux)
+
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
-		// Should not be 404 (routes are registered)
-		assert.NotEqual(t, http.StatusNotFound, w.Code)
+
+		// Should return 500 because GetStats fails, not 404 (route is registered)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
 
 	t.Run("account route registered", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		// Set up expectations for account route
+		stellar.EXPECT().GetAccountDetail(mock.Anything, "test").Return(nil, errors.New("expected error"))
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		mux := http.NewServeMux()
+		h.RegisterRoutes(mux)
+
 		req := httptest.NewRequest(http.MethodGet, "/accounts/test", nil)
 		w := httptest.NewRecorder()
 		mux.ServeHTTP(w, req)
-		// Should not be 404 (routes are registered)
-		assert.NotEqual(t, http.StatusNotFound, w.Code)
+
+		// Should return 500 because GetAccountDetail fails, not 404 (route is registered)
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+
+	t.Run("POST method not allowed", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		mux := http.NewServeMux()
+		h.RegisterRoutes(mux)
+
+		// POST to a GET-only route should fail
+		req := httptest.NewRequest(http.MethodPost, "/accounts/test", nil)
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, req)
+
+		// Go 1.22+ returns 405 Method Not Allowed for wrong method
+		assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 	})
 }

@@ -160,7 +160,7 @@ func parseAccountData(acc *horizon.Account) *AccountData {
 
 	// Parse balances using lo.Map
 	data.Balances = lo.Map(acc.Balances, func(bal horizon.Balance, _ int) Balance {
-		if bal.Asset.Type == "native" {
+		if bal.Type == "native" {
 			return Balance{
 				AssetCode:   "XLM",
 				AssetIssuer: "",
@@ -168,8 +168,8 @@ func parseAccountData(acc *horizon.Account) *AccountData {
 			}
 		}
 		return Balance{
-			AssetCode:   bal.Asset.Code,
-			AssetIssuer: bal.Asset.Issuer,
+			AssetCode:   bal.Code,
+			AssetIssuer: bal.Issuer,
 			Balance:     decimal.RequireFromString(bal.Balance),
 		}
 	})

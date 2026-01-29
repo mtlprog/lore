@@ -88,7 +88,7 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 
 	trustlines := make([]model.Trustline, 0, len(acc.Balances))
 	for _, bal := range acc.Balances {
-		if bal.Asset.Type == "native" {
+		if bal.Type == "native" {
 			trustlines = append(trustlines, model.Trustline{
 				AssetCode:   "XLM",
 				AssetIssuer: "native",
@@ -97,8 +97,8 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 			})
 		} else {
 			trustlines = append(trustlines, model.Trustline{
-				AssetCode:   bal.Asset.Code,
-				AssetIssuer: bal.Asset.Issuer,
+				AssetCode:   bal.Code,
+				AssetIssuer: bal.Issuer,
 				Balance:     bal.Balance,
 				Limit:       bal.Limit,
 			})
@@ -117,7 +117,7 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 // findAssetBalance finds the balance for a specific asset.
 func findAssetBalance(balances []horizon.Balance, code, issuer string) string {
 	for _, bal := range balances {
-		if bal.Asset.Code == code && bal.Asset.Issuer == issuer {
+		if bal.Code == code && bal.Issuer == issuer {
 			return bal.Balance
 		}
 	}

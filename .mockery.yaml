@@ -9,7 +9,7 @@ packages:
         config:
           dir: "internal/handler/mocks"
           outpkg: "mocks"
-      AccountRepositoryer:
+      AccountQuerier:
         config:
           dir: "internal/handler/mocks"
           outpkg: "mocks"
