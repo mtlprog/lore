@@ -27,6 +27,12 @@ var funcMap = template.FuncMap{
 		}
 		return s[:n]
 	},
+	"truncateID": func(s string) string {
+		if len(s) <= 12 {
+			return s
+		}
+		return s[:6] + "..." + s[len(s)-4:]
+	},
 	"slice": func(s string, start int) string {
 		if start < 0 || start >= len(s) {
 			return ""
@@ -54,6 +60,15 @@ var funcMap = template.FuncMap{
 		}
 		// Logarithmic scaling: 11-100 → 2, 101-1000 → 3, etc.
 		return int(math.Ceil(math.Log10(totalVotes)))
+	},
+	"trustBarWidth": func(percent int) string {
+		return fmt.Sprintf("%d%%", percent)
+	},
+	"relationArrow": func(direction string) string {
+		if direction == "outgoing" {
+			return "→"
+		}
+		return "←"
 	},
 }
 

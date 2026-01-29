@@ -305,8 +305,16 @@ func parseManageData(rawData map[string]string) ([]Metadata, []Relationship, *st
 	return metadata, relationships, delegateTo, councilDelegateTo, councilReady
 }
 
-// parseRelationship attempts to parse a key as a relationship.
-func parseRelationship(key, _ string) *Relationship {
+// parseRelationship attempts to parse a key/value pair as a relationship.
+// Key format: "Type" or "Type0", "Type1", "Type002" (with optional index suffix)
+// Value format: Account ID (56 chars starting with G)
+// RelationIndex preserves the original suffix string (e.g., "002" vs "2") to avoid conflicts.
+func parseRelationship(key, value string) *Relationship {
+	// Value must be a valid Stellar account ID
+	if len(value) != 56 || !strings.HasPrefix(value, "G") {
+		return nil
+	}
+
 	// Try each known relation type as prefix
 	for _, prefix := range relationTypePrefixes {
 		if !strings.HasPrefix(key, prefix) {
@@ -314,25 +322,10 @@ func parseRelationship(key, _ string) *Relationship {
 		}
 
 		rest := key[len(prefix):]
-		if len(rest) < 56 {
-			continue
-		}
 
-		// Extract account ID (first 56 characters after prefix)
-		targetID := rest[:56]
-
-		// Verify target looks like a Stellar account ID
-		if !strings.HasPrefix(targetID, "G") {
-			continue
-		}
-
-		// Extract optional index (remaining characters after account ID)
-		relIndex := 0
-		if len(rest) > 56 {
-			indexStr := rest[56:]
-			var err error
-			relIndex, err = strconv.Atoi(indexStr)
-			if err != nil {
+		// Verify rest is numeric only (if present)
+		if len(rest) > 0 {
+			if _, err := strconv.Atoi(rest); err != nil {
 				continue
 			}
 		}
@@ -343,9 +336,9 @@ func parseRelationship(key, _ string) *Relationship {
 		}
 
 		return &Relationship{
-			TargetAccountID: targetID,
+			TargetAccountID: value,
 			RelationType:    relType,
-			RelationIndex:   relIndex,
+			RelationIndex:   rest, // Keep original suffix string (empty string for no suffix)
 		}
 	}
 

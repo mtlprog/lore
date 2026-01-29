@@ -312,6 +312,12 @@ func TestAccountHandler(t *testing.T) {
 			},
 		}, nil)
 
+		// Expect relationship/trust rating calls
+		accounts.EXPECT().GetRelationships(mock.Anything, "GABC123").Return(nil, nil)
+		accounts.EXPECT().GetTrustRatings(mock.Anything, "GABC123").Return(&repository.TrustRating{}, nil)
+		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
+		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
+
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "account.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
@@ -359,6 +365,10 @@ func TestAccountHandler(t *testing.T) {
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
 		stellar.EXPECT().GetAccountDetail(mock.Anything, "GABC123").Return(&model.AccountDetail{ID: "GABC123"}, nil)
+		accounts.EXPECT().GetRelationships(mock.Anything, "GABC123").Return(nil, nil)
+		accounts.EXPECT().GetTrustRatings(mock.Anything, "GABC123").Return(&repository.TrustRating{}, nil)
+		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
+		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("template error"))
 
 		h, err := New(stellar, accounts, tmpl)

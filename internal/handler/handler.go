@@ -22,6 +22,10 @@ type AccountQuerier interface {
 	GetStats(ctx context.Context) (*repository.Stats, error)
 	GetPersons(ctx context.Context, limit int, offset int) ([]repository.PersonRow, error)
 	GetCorporate(ctx context.Context, limit int, offset int) ([]repository.CorporateRow, error)
+	GetRelationships(ctx context.Context, accountID string) ([]repository.RelationshipRow, error)
+	GetTrustRatings(ctx context.Context, accountID string) (*repository.TrustRating, error)
+	GetConfirmedRelationships(ctx context.Context, accountID string) (map[string]bool, error)
+	GetAccountInfo(ctx context.Context, accountID string) (*repository.AccountInfo, error)
 }
 
 // TemplateRenderer defines the interface for template rendering.

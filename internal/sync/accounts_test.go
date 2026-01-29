@@ -104,35 +104,87 @@ func TestParseRelationship(t *testing.T) {
 		expected *Relationship
 	}{
 		{
-			name:  "valid PartOf relationship",
-			key:   "PartOf" + validAccountID,
-			value: "1",
+			name:  "valid PartOf relationship without index",
+			key:   "PartOf",
+			value: validAccountID,
 			expected: &Relationship{
 				TargetAccountID: validAccountID,
 				RelationType:    RelationPartOf,
-				RelationIndex:   0,
+				RelationIndex:   "",
 			},
 		},
 		{
 			name:  "valid relationship with index",
-			key:   "MyPart" + validAccountID + "1",
-			value: "1",
+			key:   "MyPart1",
+			value: validAccountID,
 			expected: &Relationship{
 				TargetAccountID: validAccountID,
 				RelationType:    RelationMyPart,
-				RelationIndex:   1,
+				RelationIndex:   "1",
 			},
 		},
 		{
-			name:     "invalid - short account ID",
-			key:      "PartOfGCNVDZ",
-			value:    "1",
+			name:  "valid A rating",
+			key:   "A",
+			value: validAccountID,
+			expected: &Relationship{
+				TargetAccountID: validAccountID,
+				RelationType:    RelationA,
+				RelationIndex:   "",
+			},
+		},
+		{
+			name:  "valid A rating with index",
+			key:   "A5",
+			value: validAccountID,
+			expected: &Relationship{
+				TargetAccountID: validAccountID,
+				RelationType:    RelationA,
+				RelationIndex:   "5",
+			},
+		},
+		{
+			name:  "preserves leading zeros in index (PartOf002 vs PartOf2)",
+			key:   "PartOf002",
+			value: validAccountID,
+			expected: &Relationship{
+				TargetAccountID: validAccountID,
+				RelationType:    RelationPartOf,
+				RelationIndex:   "002",
+			},
+		},
+		{
+			name:  "valid FactionMember without index",
+			key:   "FactionMember",
+			value: validAccountID,
+			expected: &Relationship{
+				TargetAccountID: validAccountID,
+				RelationType:    RelationFactionMember,
+				RelationIndex:   "",
+			},
+		},
+		{
+			name:     "invalid - value not an account ID",
+			key:      "PartOf",
+			value:    "not-an-account",
+			expected: nil,
+		},
+		{
+			name:     "invalid - value too short",
+			key:      "PartOf",
+			value:    "GCNVDZ",
 			expected: nil,
 		},
 		{
 			name:     "invalid - unknown relation type",
-			key:      "Unknown" + validAccountID,
-			value:    "1",
+			key:      "Unknown",
+			value:    validAccountID,
+			expected: nil,
+		},
+		{
+			name:     "invalid - key has non-numeric suffix",
+			key:      "PartOfABC",
+			value:    validAccountID,
 			expected: nil,
 		},
 		{
@@ -211,7 +263,7 @@ func TestParseManageData(t *testing.T) {
 		{
 			name: "with relationship",
 			data: map[string]string{
-				"PartOf" + validAccountID: base64.StdEncoding.EncodeToString([]byte("1")),
+				"PartOf": base64.StdEncoding.EncodeToString([]byte(validAccountID)),
 			},
 			expectedMeta:            0,
 			expectedRels:            1,

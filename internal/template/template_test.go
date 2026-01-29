@@ -249,6 +249,31 @@ func TestRender(t *testing.T) {
 					Balance     string
 					Limit       string
 				}
+				Categories []struct {
+					Name          string
+					Color         string
+					Relationships []struct {
+						Type        string
+						TargetID    string
+						TargetName  string
+						Direction   string
+						IsMutual    bool
+						IsConfirmed bool
+					}
+					IsEmpty bool
+				}
+				TrustRating *struct {
+					CountA  int
+					CountB  int
+					CountC  int
+					CountD  int
+					Total   int
+					Score   float64
+					Grade   string
+					Percent int
+				}
+				TotalXLMValue float64
+				IsCorporate   bool
 			}
 		}{
 			Account: struct {
@@ -262,6 +287,31 @@ func TestRender(t *testing.T) {
 					Balance     string
 					Limit       string
 				}
+				Categories []struct {
+					Name          string
+					Color         string
+					Relationships []struct {
+						Type        string
+						TargetID    string
+						TargetName  string
+						Direction   string
+						IsMutual    bool
+						IsConfirmed bool
+					}
+					IsEmpty bool
+				}
+				TrustRating *struct {
+					CountA  int
+					CountB  int
+					CountC  int
+					CountD  int
+					Total   int
+					Score   float64
+					Grade   string
+					Percent int
+				}
+				TotalXLMValue float64
+				IsCorporate   bool
 			}{
 				ID:       "GTEST1234567890",
 				Name:     "Test Account",
@@ -280,6 +330,10 @@ func TestRender(t *testing.T) {
 						Limit:       "1000.00",
 					},
 				},
+				Categories:    nil,
+				TrustRating:   nil,
+				TotalXLMValue: 0,
+				IsCorporate:   false,
 			},
 		}
 

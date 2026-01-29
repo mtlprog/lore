@@ -63,7 +63,7 @@ type Metadata struct {
 type Relationship struct {
 	TargetAccountID string
 	RelationType    RelationType
-	RelationIndex   int
+	RelationIndex   string // Keep original suffix (e.g., "002" vs "2") to avoid conflicts
 }
 
 // AssociationTag represents an association tag.
