@@ -192,69 +192,93 @@ func TestContainsTag(t *testing.T) {
 }
 
 func TestTagURL(t *testing.T) {
-	tagURL := funcMap["tagURL"].(func([]string, string, bool) string)
+	tagURL := funcMap["tagURL"].(func([]string, string, bool, string) string)
 
 	tests := []struct {
-		name        string
-		currentTags []string
-		tag         string
-		add         bool
-		expected    string
+		name         string
+		currentTags  []string
+		tag          string
+		add          bool
+		currentQuery string
+		expected     string
 	}{
 		{
-			name:        "add tag to empty list",
-			currentTags: []string{},
-			tag:         "Belgrade",
-			add:         true,
-			expected:    "/tags?tag=Belgrade",
+			name:         "add tag to empty list",
+			currentTags:  []string{},
+			tag:          "Belgrade",
+			add:          true,
+			currentQuery: "",
+			expected:     "/search?tag=Belgrade",
 		},
 		{
-			name:        "add tag to existing list",
-			currentTags: []string{"Belgrade"},
-			tag:         "Programmer",
-			add:         true,
-			expected:    "/tags?tag=Belgrade&tag=Programmer",
+			name:         "add tag to existing list",
+			currentTags:  []string{"Belgrade"},
+			tag:          "Programmer",
+			add:          true,
+			currentQuery: "",
+			expected:     "/search?tag=Belgrade&tag=Programmer",
 		},
 		{
-			name:        "add duplicate tag (no change)",
-			currentTags: []string{"Belgrade"},
-			tag:         "Belgrade",
-			add:         true,
-			expected:    "/tags?tag=Belgrade",
+			name:         "add duplicate tag (no change)",
+			currentTags:  []string{"Belgrade"},
+			tag:          "Belgrade",
+			add:          true,
+			currentQuery: "",
+			expected:     "/search?tag=Belgrade",
 		},
 		{
-			name:        "remove tag leaving others",
-			currentTags: []string{"Belgrade", "Programmer"},
-			tag:         "Belgrade",
-			add:         false,
-			expected:    "/tags?tag=Programmer",
+			name:         "remove tag leaving others",
+			currentTags:  []string{"Belgrade", "Programmer"},
+			tag:          "Belgrade",
+			add:          false,
+			currentQuery: "",
+			expected:     "/search?tag=Programmer",
 		},
 		{
-			name:        "remove last tag",
-			currentTags: []string{"Belgrade"},
-			tag:         "Belgrade",
-			add:         false,
-			expected:    "/tags",
+			name:         "remove last tag",
+			currentTags:  []string{"Belgrade"},
+			tag:          "Belgrade",
+			add:          false,
+			currentQuery: "",
+			expected:     "/search",
 		},
 		{
-			name:        "remove tag not in list",
-			currentTags: []string{"Belgrade"},
-			tag:         "Programmer",
-			add:         false,
-			expected:    "/tags?tag=Belgrade",
+			name:         "remove tag not in list",
+			currentTags:  []string{"Belgrade"},
+			tag:          "Programmer",
+			add:          false,
+			currentQuery: "",
+			expected:     "/search?tag=Belgrade",
 		},
 		{
-			name:        "URL encodes special characters",
-			currentTags: []string{},
-			tag:         "Tag With Spaces",
-			add:         true,
-			expected:    "/tags?tag=Tag+With+Spaces",
+			name:         "URL encodes special characters",
+			currentTags:  []string{},
+			tag:          "Tag With Spaces",
+			add:          true,
+			currentQuery: "",
+			expected:     "/search?tag=Tag+With+Spaces",
+		},
+		{
+			name:         "preserves query when adding tag",
+			currentTags:  []string{},
+			tag:          "Belgrade",
+			add:          true,
+			currentQuery: "test",
+			expected:     "/search?q=test&tag=Belgrade",
+		},
+		{
+			name:         "preserves query when removing last tag",
+			currentTags:  []string{"Belgrade"},
+			tag:          "Belgrade",
+			add:          false,
+			currentQuery: "test",
+			expected:     "/search?q=test",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tagURL(tt.currentTags, tt.tag, tt.add)
+			result := tagURL(tt.currentTags, tt.tag, tt.add, tt.currentQuery)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -270,7 +294,7 @@ func TestNew(t *testing.T) {
 		assert.Contains(t, tmpl.pages, "home.html")
 		assert.Contains(t, tmpl.pages, "account.html")
 		assert.Contains(t, tmpl.pages, "transaction.html")
-		assert.Contains(t, tmpl.pages, "tags.html")
+		assert.Contains(t, tmpl.pages, "search.html")
 	})
 }
 

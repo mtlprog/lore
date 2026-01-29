@@ -23,66 +23,9 @@ func (_m *MockAccountQuerier) EXPECT() *MockAccountQuerier_Expecter {
 	return &MockAccountQuerier_Expecter{mock: &_m.Mock}
 }
 
-// CountAccountsByTags provides a mock function with given fields: ctx, tags
-func (_m *MockAccountQuerier) CountAccountsByTags(ctx context.Context, tags []string) (int, error) {
-	ret := _m.Called(ctx, tags)
-
-	if len(ret) == 0 {
-		panic("no return value specified for CountAccountsByTags")
-	}
-
-	var r0 int
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []string) (int, error)); ok {
-		return rf(ctx, tags)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, []string) int); ok {
-		r0 = rf(ctx, tags)
-	} else {
-		r0 = ret.Get(0).(int)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
-		r1 = rf(ctx, tags)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockAccountQuerier_CountAccountsByTags_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CountAccountsByTags'
-type MockAccountQuerier_CountAccountsByTags_Call struct {
-	*mock.Call
-}
-
-// CountAccountsByTags is a helper method to define mock.On call
-//   - ctx context.Context
-//   - tags []string
-func (_e *MockAccountQuerier_Expecter) CountAccountsByTags(ctx interface{}, tags interface{}) *MockAccountQuerier_CountAccountsByTags_Call {
-	return &MockAccountQuerier_CountAccountsByTags_Call{Call: _e.mock.On("CountAccountsByTags", ctx, tags)}
-}
-
-func (_c *MockAccountQuerier_CountAccountsByTags_Call) Run(run func(ctx context.Context, tags []string)) *MockAccountQuerier_CountAccountsByTags_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string))
-	})
-	return _c
-}
-
-func (_c *MockAccountQuerier_CountAccountsByTags_Call) Return(_a0 int, _a1 error) *MockAccountQuerier_CountAccountsByTags_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockAccountQuerier_CountAccountsByTags_Call) RunAndReturn(run func(context.Context, []string) (int, error)) *MockAccountQuerier_CountAccountsByTags_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// CountSearchAccounts provides a mock function with given fields: ctx, query
-func (_m *MockAccountQuerier) CountSearchAccounts(ctx context.Context, query string) (int, error) {
-	ret := _m.Called(ctx, query)
+// CountSearchAccounts provides a mock function with given fields: ctx, query, tags
+func (_m *MockAccountQuerier) CountSearchAccounts(ctx context.Context, query string, tags []string) (int, error) {
+	ret := _m.Called(ctx, query, tags)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CountSearchAccounts")
@@ -90,17 +33,17 @@ func (_m *MockAccountQuerier) CountSearchAccounts(ctx context.Context, query str
 
 	var r0 int
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (int, error)); ok {
-		return rf(ctx, query)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) (int, error)); ok {
+		return rf(ctx, query, tags)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) int); ok {
-		r0 = rf(ctx, query)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string) int); ok {
+		r0 = rf(ctx, query, tags)
 	} else {
 		r0 = ret.Get(0).(int)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, query)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []string) error); ok {
+		r1 = rf(ctx, query, tags)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -116,13 +59,14 @@ type MockAccountQuerier_CountSearchAccounts_Call struct {
 // CountSearchAccounts is a helper method to define mock.On call
 //   - ctx context.Context
 //   - query string
-func (_e *MockAccountQuerier_Expecter) CountSearchAccounts(ctx interface{}, query interface{}) *MockAccountQuerier_CountSearchAccounts_Call {
-	return &MockAccountQuerier_CountSearchAccounts_Call{Call: _e.mock.On("CountSearchAccounts", ctx, query)}
+//   - tags []string
+func (_e *MockAccountQuerier_Expecter) CountSearchAccounts(ctx interface{}, query interface{}, tags interface{}) *MockAccountQuerier_CountSearchAccounts_Call {
+	return &MockAccountQuerier_CountSearchAccounts_Call{Call: _e.mock.On("CountSearchAccounts", ctx, query, tags)}
 }
 
-func (_c *MockAccountQuerier_CountSearchAccounts_Call) Run(run func(ctx context.Context, query string)) *MockAccountQuerier_CountSearchAccounts_Call {
+func (_c *MockAccountQuerier_CountSearchAccounts_Call) Run(run func(ctx context.Context, query string, tags []string)) *MockAccountQuerier_CountSearchAccounts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].([]string))
 	})
 	return _c
 }
@@ -132,7 +76,7 @@ func (_c *MockAccountQuerier_CountSearchAccounts_Call) Return(_a0 int, _a1 error
 	return _c
 }
 
-func (_c *MockAccountQuerier_CountSearchAccounts_Call) RunAndReturn(run func(context.Context, string) (int, error)) *MockAccountQuerier_CountSearchAccounts_Call {
+func (_c *MockAccountQuerier_CountSearchAccounts_Call) RunAndReturn(run func(context.Context, string, []string) (int, error)) *MockAccountQuerier_CountSearchAccounts_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -251,67 +195,6 @@ func (_c *MockAccountQuerier_GetAccountNames_Call) Return(_a0 map[string]string,
 }
 
 func (_c *MockAccountQuerier_GetAccountNames_Call) RunAndReturn(run func(context.Context, []string) (map[string]string, error)) *MockAccountQuerier_GetAccountNames_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetAccountsByTags provides a mock function with given fields: ctx, tags, limit, offset
-func (_m *MockAccountQuerier) GetAccountsByTags(ctx context.Context, tags []string, limit int, offset int) ([]repository.TaggedAccountRow, error) {
-	ret := _m.Called(ctx, tags, limit, offset)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetAccountsByTags")
-	}
-
-	var r0 []repository.TaggedAccountRow
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []string, int, int) ([]repository.TaggedAccountRow, error)); ok {
-		return rf(ctx, tags, limit, offset)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, []string, int, int) []repository.TaggedAccountRow); ok {
-		r0 = rf(ctx, tags, limit, offset)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]repository.TaggedAccountRow)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, []string, int, int) error); ok {
-		r1 = rf(ctx, tags, limit, offset)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockAccountQuerier_GetAccountsByTags_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountsByTags'
-type MockAccountQuerier_GetAccountsByTags_Call struct {
-	*mock.Call
-}
-
-// GetAccountsByTags is a helper method to define mock.On call
-//   - ctx context.Context
-//   - tags []string
-//   - limit int
-//   - offset int
-func (_e *MockAccountQuerier_Expecter) GetAccountsByTags(ctx interface{}, tags interface{}, limit interface{}, offset interface{}) *MockAccountQuerier_GetAccountsByTags_Call {
-	return &MockAccountQuerier_GetAccountsByTags_Call{Call: _e.mock.On("GetAccountsByTags", ctx, tags, limit, offset)}
-}
-
-func (_c *MockAccountQuerier_GetAccountsByTags_Call) Run(run func(ctx context.Context, tags []string, limit int, offset int)) *MockAccountQuerier_GetAccountsByTags_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string), args[2].(int), args[3].(int))
-	})
-	return _c
-}
-
-func (_c *MockAccountQuerier_GetAccountsByTags_Call) Return(_a0 []repository.TaggedAccountRow, _a1 error) *MockAccountQuerier_GetAccountsByTags_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockAccountQuerier_GetAccountsByTags_Call) RunAndReturn(run func(context.Context, []string, int, int) ([]repository.TaggedAccountRow, error)) *MockAccountQuerier_GetAccountsByTags_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -729,9 +612,9 @@ func (_c *MockAccountQuerier_GetTrustRatings_Call) RunAndReturn(run func(context
 	return _c
 }
 
-// SearchAccounts provides a mock function with given fields: ctx, query, limit, offset
-func (_m *MockAccountQuerier) SearchAccounts(ctx context.Context, query string, limit int, offset int) ([]repository.SearchAccountRow, error) {
-	ret := _m.Called(ctx, query, limit, offset)
+// SearchAccounts provides a mock function with given fields: ctx, query, tags, limit, offset
+func (_m *MockAccountQuerier) SearchAccounts(ctx context.Context, query string, tags []string, limit int, offset int) ([]repository.SearchAccountRow, error) {
+	ret := _m.Called(ctx, query, tags, limit, offset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchAccounts")
@@ -739,19 +622,19 @@ func (_m *MockAccountQuerier) SearchAccounts(ctx context.Context, query string, 
 
 	var r0 []repository.SearchAccountRow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int) ([]repository.SearchAccountRow, error)); ok {
-		return rf(ctx, query, limit, offset)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string, int, int) ([]repository.SearchAccountRow, error)); ok {
+		return rf(ctx, query, tags, limit, offset)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, int, int) []repository.SearchAccountRow); ok {
-		r0 = rf(ctx, query, limit, offset)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string, int, int) []repository.SearchAccountRow); ok {
+		r0 = rf(ctx, query, tags, limit, offset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]repository.SearchAccountRow)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, int, int) error); ok {
-		r1 = rf(ctx, query, limit, offset)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []string, int, int) error); ok {
+		r1 = rf(ctx, query, tags, limit, offset)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -767,15 +650,16 @@ type MockAccountQuerier_SearchAccounts_Call struct {
 // SearchAccounts is a helper method to define mock.On call
 //   - ctx context.Context
 //   - query string
+//   - tags []string
 //   - limit int
 //   - offset int
-func (_e *MockAccountQuerier_Expecter) SearchAccounts(ctx interface{}, query interface{}, limit interface{}, offset interface{}) *MockAccountQuerier_SearchAccounts_Call {
-	return &MockAccountQuerier_SearchAccounts_Call{Call: _e.mock.On("SearchAccounts", ctx, query, limit, offset)}
+func (_e *MockAccountQuerier_Expecter) SearchAccounts(ctx interface{}, query interface{}, tags interface{}, limit interface{}, offset interface{}) *MockAccountQuerier_SearchAccounts_Call {
+	return &MockAccountQuerier_SearchAccounts_Call{Call: _e.mock.On("SearchAccounts", ctx, query, tags, limit, offset)}
 }
 
-func (_c *MockAccountQuerier_SearchAccounts_Call) Run(run func(ctx context.Context, query string, limit int, offset int)) *MockAccountQuerier_SearchAccounts_Call {
+func (_c *MockAccountQuerier_SearchAccounts_Call) Run(run func(ctx context.Context, query string, tags []string, limit int, offset int)) *MockAccountQuerier_SearchAccounts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(int), args[3].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].([]string), args[3].(int), args[4].(int))
 	})
 	return _c
 }
@@ -785,7 +669,7 @@ func (_c *MockAccountQuerier_SearchAccounts_Call) Return(_a0 []repository.Search
 	return _c
 }
 
-func (_c *MockAccountQuerier_SearchAccounts_Call) RunAndReturn(run func(context.Context, string, int, int) ([]repository.SearchAccountRow, error)) *MockAccountQuerier_SearchAccounts_Call {
+func (_c *MockAccountQuerier_SearchAccounts_Call) RunAndReturn(run func(context.Context, string, []string, int, int) ([]repository.SearchAccountRow, error)) *MockAccountQuerier_SearchAccounts_Call {
 	_c.Call.Return(run)
 	return _c
 }

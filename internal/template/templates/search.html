@@ -3,10 +3,35 @@
 {{define "title"}}Search // LORE{{end}}
 
 {{define "content"}}
+<!-- TAGS CLOUD -->
+<div class="section">
+    <div class="section-header">
+        <span class="section-title">Tags</span>
+        <span class="section-badge">Filter</span>
+        <span class="section-count">{{len .AllTags}} tags</span>
+    </div>
+    <div class="tags-filter-section">
+        <div class="tags-cloud">
+            {{range .AllTags}}
+            {{$isSelected := containsTag $.Tags .TagName}}
+            <a href="{{tagURL $.Tags .TagName (not $isSelected) $.Query}}" class="tag-chip{{if $isSelected}} selected{{end}}">
+                [{{.TagName}}]<span class="tag-count">{{.Count}}</span>
+            </a>
+            {{end}}
+            {{if not .AllTags}}
+            <div class="tags-empty">No tags found</div>
+            {{end}}
+        </div>
+    </div>
+</div>
+
 <!-- SEARCH TERMINAL -->
 <div class="search-section">
     <div class="search-terminal-label">QUERY TERMINAL</div>
     <form action="/search" method="get" class="search-form">
+        {{range .Tags}}
+        <input type="hidden" name="tag" value="{{.}}">
+        {{end}}
         <div class="search-input-wrapper">
             <span class="search-prompt">&gt;</span>
             <input type="text" name="q" class="search-input" value="{{.Query}}"
@@ -16,18 +41,43 @@
     </form>
 </div>
 
+{{if .Tags}}
+<div class="tags-active-section">
+    <div class="tags-active-header">Active Filters (AND)</div>
+    <div class="tags-active-list">
+        {{range .Tags}}
+        <a href="{{tagURL $.Tags . false $.Query}}" class="tag-active">
+            [{{.}}]<span class="tag-remove">x</span>
+        </a>
+        {{end}}
+        {{if gt (len .Tags) 1}}
+        <a href="/search{{if .Query}}?q={{.Query}}{{end}}" class="tag-clear">[CLEAR ALL]</a>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
 {{if .QueryTooLong}}
 <!-- Query too long -->
 <div class="search-prompt-section">
     <div class="search-prompt-text">Query too long (maximum 100 characters)</div>
 </div>
-{{else if .Query}}
-{{if ge (len .Query) 2}}
+{{else if or .Query .Tags}}
+{{if or (ge (len .Query) 2) .Tags}}
 <!-- SEARCH RESULTS HEADER -->
 <div class="search-results-header">
     <div class="search-query-display">
+        {{if .Query}}
         <span class="search-query-label">Query:</span>
         <span class="search-query-value">"{{.Query}}"</span>
+        {{end}}
+        {{if and .Query .Tags}}
+        <span class="search-query-label">+</span>
+        {{end}}
+        {{if .Tags}}
+        <span class="search-query-label">Tags:</span>
+        <span class="search-query-value">{{range $i, $t := .Tags}}{{if $i}}, {{end}}{{$t}}{{end}}</span>
+        {{end}}
     </div>
     <div class="search-results-count">{{.TotalCount}} results found</div>
 </div>
@@ -76,17 +126,17 @@
 
     {{if .HasMore}}
     <div class="pagination">
-        <a href="/search?q={{.Query}}&offset={{.NextOffset}}" class="btn">Load More</a>
+        <a href="/search?{{if .Query}}q={{.Query}}&{{end}}{{range .Tags}}tag={{.}}&{{end}}offset={{.NextOffset}}" class="btn">Load More</a>
     </div>
     {{end}}
 </div>
 {{else}}
 <div class="search-no-results">
-    <div class="search-no-results-text">No accounts found matching "{{.Query}}"</div>
+    <div class="search-no-results-text">No accounts found matching your search criteria</div>
 </div>
 {{end}}
 
-{{else}}
+{{else if .Query}}
 <!-- Query too short -->
 <div class="search-prompt-section">
     <div class="search-prompt-text">Enter at least 2 characters to search</div>
@@ -96,7 +146,7 @@
 {{else}}
 <!-- No query entered -->
 <div class="search-prompt-section">
-    <div class="search-prompt-text">Enter a name or account ID to search</div>
+    <div class="search-prompt-text">Enter a name or account ID to search, or select tags to filter</div>
 </div>
 {{end}}
 {{end}}

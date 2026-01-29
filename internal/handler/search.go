@@ -8,17 +8,37 @@ import (
 	"strings"
 
 	"github.com/mtlprog/lore/internal/config"
+	"github.com/mtlprog/lore/internal/repository"
+	"github.com/samber/lo"
 )
 
 const (
 	minSearchQueryLength = 2
 	maxSearchQueryLength = 100
+	maxTagLength         = 100
 )
+
+// filterValidTags removes empty and overly long tags from the input.
+func filterValidTags(tags []string) []string {
+	return lo.Filter(tags, func(t string, _ int) bool {
+		if t == "" {
+			slog.Debug("ignoring empty tag parameter")
+			return false
+		}
+		if len(t) > maxTagLength {
+			slog.Debug("ignoring overly long tag parameter", "length", len(t))
+			return false
+		}
+		return true
+	})
+}
 
 // SearchData holds data for the search page template.
 type SearchData struct {
 	Query        string
 	QueryTooLong bool
+	Tags         []string
+	AllTags      []repository.TagRow
 	Accounts     []SearchAccountDisplay
 	TotalCount   int
 	Offset       int
@@ -44,6 +64,10 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	// Parse and validate search query
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 
+	// Parse and validate selected tags from query params
+	rawTags := r.URL.Query()["tag"]
+	selectedTags := filterValidTags(rawTags)
+
 	// Parse offset for pagination
 	offsetParam := r.URL.Query().Get("offset")
 	offset, err := strconv.Atoi(offsetParam)
@@ -52,6 +76,14 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 			slog.Debug("invalid offset parameter, defaulting to 0", "value", offsetParam)
 		}
 		offset = 0
+	}
+
+	// Fetch all available tags for the tag cloud
+	allTags, err := h.accounts.GetAllTags(ctx)
+	if err != nil {
+		slog.Error("failed to fetch tags", "error", err)
+		http.Error(w, "Failed to fetch tags", http.StatusInternalServerError)
+		return
 	}
 
 	var accounts []SearchAccountDisplay
@@ -63,20 +95,20 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	if len(query) > maxSearchQueryLength {
 		slog.Debug("search query exceeds maximum length", "length", len(query), "max", maxSearchQueryLength)
 		queryTooLong = true
-	} else if len(query) >= minSearchQueryLength {
-		// Only search if query is valid
+	} else if len(query) >= minSearchQueryLength || len(selectedTags) > 0 {
+		// Search if query is valid OR tags are selected
 		// Fetch total count
-		totalCount, err = h.accounts.CountSearchAccounts(ctx, query)
+		totalCount, err = h.accounts.CountSearchAccounts(ctx, query, selectedTags)
 		if err != nil {
-			slog.Error("failed to count search accounts", "query", query, "error", err)
+			slog.Error("failed to count search accounts", "query", query, "tags", selectedTags, "error", err)
 			http.Error(w, "Failed to search accounts", http.StatusInternalServerError)
 			return
 		}
 
 		// Fetch accounts with pagination (fetch one extra to check for more)
-		rows, err := h.accounts.SearchAccounts(ctx, query, config.DefaultPageLimit+1, offset)
+		rows, err := h.accounts.SearchAccounts(ctx, query, selectedTags, config.DefaultPageLimit+1, offset)
 		if err != nil {
-			slog.Error("failed to search accounts", "query", query, "offset", offset, "error", err)
+			slog.Error("failed to search accounts", "query", query, "tags", selectedTags, "offset", offset, "error", err)
 			http.Error(w, "Failed to search accounts", http.StatusInternalServerError)
 			return
 		}
@@ -103,6 +135,8 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	data := SearchData{
 		Query:        query,
 		QueryTooLong: queryTooLong,
+		Tags:         selectedTags,
+		AllTags:      allTags,
 		Accounts:     accounts,
 		TotalCount:   totalCount,
 		Offset:       offset,
