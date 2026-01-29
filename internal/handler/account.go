@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sort"
 
 	"github.com/mtlprog/lore/internal/model"
 	"github.com/mtlprog/lore/internal/repository"
@@ -317,6 +318,18 @@ func groupRelationships(accountID string, rows []repository.RelationshipRow, con
 		}
 
 		categoryRels[catIdx] = append(categoryRels[catIdx], rel)
+	}
+
+	// Sort relationships: confirmed/mutual first, then unconfirmed
+	for i := range categoryRels {
+		sort.SliceStable(categoryRels[i], func(a, b int) bool {
+			aConfirmed := categoryRels[i][a].IsConfirmed || categoryRels[i][a].IsMutual
+			bConfirmed := categoryRels[i][b].IsConfirmed || categoryRels[i][b].IsMutual
+			if aConfirmed != bConfirmed {
+				return aConfirmed // confirmed/mutual first
+			}
+			return false // preserve original order within groups
+		})
 	}
 
 	// Build final categories
