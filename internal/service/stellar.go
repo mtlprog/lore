@@ -87,6 +87,7 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 
 	about := decodeBase64(acc.Data["About"])
 	websites := parseNumberedDataKeys(acc.Data, "Website")
+	tags := parseTagKeys(acc.Data)
 
 	trustlines := make([]model.Trustline, 0, len(acc.Balances))
 	for _, bal := range acc.Balances {
@@ -120,6 +121,7 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 		Name:       name,
 		About:      about,
 		Websites:   websites,
+		Tags:       tags,
 		Trustlines: trustlines,
 	}, nil
 }
@@ -132,6 +134,20 @@ func findAssetBalance(balances []horizon.Balance, code, issuer string) string {
 		}
 	}
 	return "0"
+}
+
+// parseTagKeys extracts tag names from "Tag*" keys (e.g., "TagBelgrade" -> "Belgrade").
+// The value of each tag key is an account ID which is ignored for display purposes.
+func parseTagKeys(data map[string]string) []string {
+	var tags []string
+	for key := range data {
+		if strings.HasPrefix(key, "Tag") && len(key) > 3 {
+			tagName := key[3:] // Strip "Tag" prefix
+			tags = append(tags, tagName)
+		}
+	}
+	sort.Strings(tags)
+	return tags
 }
 
 // parseNumberedDataKeys extracts values from numbered data keys like "Website", "Website1", "Website0002".
