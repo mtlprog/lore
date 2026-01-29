@@ -1179,6 +1179,41 @@ func TestSearchHandler(t *testing.T) {
 		assert.False(t, searchData.QueryTooLong)
 	})
 
+	t.Run("short query with tags still performs search", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{
+			{TagName: "Belgrade", Count: 5},
+		}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "a", []string{"Belgrade"}).Return(1, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "a", []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+			{AccountID: "GTEST1", Name: "Test Account", MTLAPBalance: 10.0},
+		}, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?q=a&tag=Belgrade", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.Equal(t, "a", searchData.Query)
+		assert.Equal(t, []string{"Belgrade"}, searchData.Tags)
+		assert.Len(t, searchData.Accounts, 1)
+		assert.Equal(t, 1, searchData.TotalCount)
+	})
+
 	t.Run("query too long sets QueryTooLong flag", func(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		stellar := mocks.NewMockStellarServicer(t)
@@ -1206,6 +1241,39 @@ func TestSearchHandler(t *testing.T) {
 		assert.True(t, searchData.QueryTooLong)
 		assert.Empty(t, searchData.Accounts)
 		assert.Equal(t, 0, searchData.TotalCount)
+	})
+
+	t.Run("query too long with tags does not search", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{
+			{TagName: "Belgrade", Count: 5},
+		}, nil)
+		// SearchAccounts should NOT be called because query is too long
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		longQuery := strings.Repeat("a", 101)
+		req := httptest.NewRequest(http.MethodGet, "/search?q="+longQuery+"&tag=Belgrade", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.True(t, searchData.QueryTooLong)
+		assert.Empty(t, searchData.Accounts)
+		assert.Equal(t, 0, searchData.TotalCount)
+		assert.Equal(t, []string{"Belgrade"}, searchData.Tags)
 	})
 
 	t.Run("query at exactly 2 chars is valid", func(t *testing.T) {
@@ -1353,6 +1421,41 @@ func TestSearchHandler(t *testing.T) {
 		h.Search(w, req)
 
 		assert.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("pagination with tags only", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{
+			{TagName: "Belgrade", Count: 10},
+		}, nil)
+		accounts.EXPECT().CountSearchAccounts(mock.Anything, "", []string{"Belgrade"}).Return(25, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, config.DefaultPageLimit+1, 20).Return([]repository.SearchAccountRow{
+			{AccountID: "GTEST1", Name: "Test", MTLAPBalance: 10.0},
+		}, nil)
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/search?tag=Belgrade&offset=20", nil)
+		w := httptest.NewRecorder()
+
+		h.Search(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		searchData, ok := renderedData.(SearchData)
+		require.True(t, ok)
+		assert.Equal(t, "", searchData.Query)
+		assert.Equal(t, []string{"Belgrade"}, searchData.Tags)
+		assert.Equal(t, 20, searchData.Offset)
+		assert.Len(t, searchData.Accounts, 1)
 	})
 
 	t.Run("HasMore flag set correctly when more results exist", func(t *testing.T) {
