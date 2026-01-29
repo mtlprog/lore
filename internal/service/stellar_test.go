@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/mtlprog/lore/internal/model"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/base"
@@ -286,4 +287,85 @@ func TestNewStellarService(t *testing.T) {
 		assert.NotNil(t, s)
 		assert.Equal(t, "https://horizon.stellar.org", s.client.HorizonURL)
 	})
+}
+
+func TestIsSpamOperation(t *testing.T) {
+	tests := []struct {
+		name string
+		op   model.Operation
+		want bool
+	}{
+		{
+			name: "create_claimable_balance is spam",
+			op:   model.Operation{Type: "create_claimable_balance"},
+			want: true,
+		},
+		{
+			name: "claim_claimable_balance is spam",
+			op:   model.Operation{Type: "claim_claimable_balance"},
+			want: true,
+		},
+		{
+			name: "small XLM payment (0.5) is spam",
+			op:   model.Operation{Type: "payment", AssetCode: "XLM", Amount: "0.5"},
+			want: true,
+		},
+		{
+			name: "very small XLM payment (0.0001) is spam",
+			op:   model.Operation{Type: "payment", AssetCode: "XLM", Amount: "0.0001"},
+			want: true,
+		},
+		{
+			name: "exactly 1 XLM is NOT spam",
+			op:   model.Operation{Type: "payment", AssetCode: "XLM", Amount: "1.0"},
+			want: false,
+		},
+		{
+			name: "exactly 1 XLM integer is NOT spam",
+			op:   model.Operation{Type: "payment", AssetCode: "XLM", Amount: "1"},
+			want: false,
+		},
+		{
+			name: "large XLM payment is NOT spam",
+			op:   model.Operation{Type: "payment", AssetCode: "XLM", Amount: "100.5"},
+			want: false,
+		},
+		{
+			name: "small non-XLM payment is NOT spam",
+			op:   model.Operation{Type: "payment", AssetCode: "USDC", Amount: "0.5"},
+			want: false,
+		},
+		{
+			name: "small MTLAP payment is NOT spam",
+			op:   model.Operation{Type: "payment", AssetCode: "MTLAP", Amount: "0.001"},
+			want: false,
+		},
+		{
+			name: "manage_data is NOT spam",
+			op:   model.Operation{Type: "manage_data", DataName: "test"},
+			want: false,
+		},
+		{
+			name: "change_trust is NOT spam",
+			op:   model.Operation{Type: "change_trust", AssetCode: "MTLAP"},
+			want: false,
+		},
+		{
+			name: "invalid amount string is NOT spam (parse fails)",
+			op:   model.Operation{Type: "payment", AssetCode: "XLM", Amount: "invalid"},
+			want: false,
+		},
+		{
+			name: "empty amount is NOT spam (parse fails)",
+			op:   model.Operation{Type: "payment", AssetCode: "XLM", Amount: ""},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isSpamOperation(tt.op)
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }

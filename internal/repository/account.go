@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mtlprog/lore/internal/database"
@@ -331,4 +332,44 @@ func (r *AccountRepository) GetAccountInfo(ctx context.Context, accountID string
 	}
 
 	return &info, nil
+}
+
+// GetAccountNames returns a map of account IDs to names for the given IDs.
+// Accounts not found in the database will not be included in the result.
+func (r *AccountRepository) GetAccountNames(ctx context.Context, accountIDs []string) (map[string]string, error) {
+	if len(accountIDs) == 0 {
+		return make(map[string]string), nil
+	}
+
+	query, args, err := database.QB.
+		Select("account_id", "name").
+		From("accounts").
+		Where(sq.Eq{"account_id": accountIDs}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build account names query: %w", err)
+	}
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query account names: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]string)
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, fmt.Errorf("scan account name: %w", err)
+		}
+		if name != "" {
+			result[id] = name
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate account names: %w", err)
+	}
+
+	return result, nil
 }

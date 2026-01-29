@@ -82,6 +82,126 @@ func (_c *MockStellarServicer_GetAccountDetail_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// GetAccountOperations provides a mock function with given fields: ctx, accountID, cursor, limit
+func (_m *MockStellarServicer) GetAccountOperations(ctx context.Context, accountID string, cursor string, limit int) (*model.OperationsPage, error) {
+	ret := _m.Called(ctx, accountID, cursor, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountOperations")
+	}
+
+	var r0 *model.OperationsPage
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, int) (*model.OperationsPage, error)); ok {
+		return rf(ctx, accountID, cursor, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, int) *model.OperationsPage); ok {
+		r0 = rf(ctx, accountID, cursor, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.OperationsPage)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, int) error); ok {
+		r1 = rf(ctx, accountID, cursor, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStellarServicer_GetAccountOperations_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountOperations'
+type MockStellarServicer_GetAccountOperations_Call struct {
+	*mock.Call
+}
+
+// GetAccountOperations is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+//   - cursor string
+//   - limit int
+func (_e *MockStellarServicer_Expecter) GetAccountOperations(ctx interface{}, accountID interface{}, cursor interface{}, limit interface{}) *MockStellarServicer_GetAccountOperations_Call {
+	return &MockStellarServicer_GetAccountOperations_Call{Call: _e.mock.On("GetAccountOperations", ctx, accountID, cursor, limit)}
+}
+
+func (_c *MockStellarServicer_GetAccountOperations_Call) Run(run func(ctx context.Context, accountID string, cursor string, limit int)) *MockStellarServicer_GetAccountOperations_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(int))
+	})
+	return _c
+}
+
+func (_c *MockStellarServicer_GetAccountOperations_Call) Return(_a0 *model.OperationsPage, _a1 error) *MockStellarServicer_GetAccountOperations_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStellarServicer_GetAccountOperations_Call) RunAndReturn(run func(context.Context, string, string, int) (*model.OperationsPage, error)) *MockStellarServicer_GetAccountOperations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTransactionDetail provides a mock function with given fields: ctx, txHash
+func (_m *MockStellarServicer) GetTransactionDetail(ctx context.Context, txHash string) (*model.Transaction, error) {
+	ret := _m.Called(ctx, txHash)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTransactionDetail")
+	}
+
+	var r0 *model.Transaction
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.Transaction, error)); ok {
+		return rf(ctx, txHash)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.Transaction); ok {
+		r0 = rf(ctx, txHash)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.Transaction)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, txHash)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStellarServicer_GetTransactionDetail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTransactionDetail'
+type MockStellarServicer_GetTransactionDetail_Call struct {
+	*mock.Call
+}
+
+// GetTransactionDetail is a helper method to define mock.On call
+//   - ctx context.Context
+//   - txHash string
+func (_e *MockStellarServicer_Expecter) GetTransactionDetail(ctx interface{}, txHash interface{}) *MockStellarServicer_GetTransactionDetail_Call {
+	return &MockStellarServicer_GetTransactionDetail_Call{Call: _e.mock.On("GetTransactionDetail", ctx, txHash)}
+}
+
+func (_c *MockStellarServicer_GetTransactionDetail_Call) Run(run func(ctx context.Context, txHash string)) *MockStellarServicer_GetTransactionDetail_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStellarServicer_GetTransactionDetail_Call) Return(_a0 *model.Transaction, _a1 error) *MockStellarServicer_GetTransactionDetail_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStellarServicer_GetTransactionDetail_Call) RunAndReturn(run func(context.Context, string) (*model.Transaction, error)) *MockStellarServicer_GetTransactionDetail_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockStellarServicer creates a new instance of MockStellarServicer. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockStellarServicer(t interface {

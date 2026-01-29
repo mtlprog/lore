@@ -128,4 +128,50 @@
         {{end}}
     </div>
 </div>
+
+{{if .Operations}}
+{{$names := .AccountNames}}
+<div id="operations" class="section ops-section">
+    <div class="section-header">
+        <span class="section-title">Operations</span>
+        <span class="section-count">Newest first</span>
+    </div>
+
+    <div class="ops-list">
+        {{range .Operations.Operations}}
+        <a href="/transactions/{{.TransactionHash}}#operations" class="op-row">
+            <span class="op-time">{{.CreatedAt}}</span>
+            <span class="op-type op-{{.TypeCategory}}">{{.TypeDisplay}}</span>
+            <span class="op-summary">
+                {{if eq .Type "payment"}}
+                    {{if .Amount}}{{.Amount}} {{.AssetCode}}{{end}}
+                    {{if .To}}→ <span class="op-account-link">{{accountDisplay .To $names}}</span>{{end}}
+                {{else if eq .Type "create_account"}}
+                    {{.StartingBalance}} XLM → <span class="op-account-link">{{accountDisplay .To $names}}</span>
+                {{else if eq .Type "change_trust"}}
+                    {{.AssetCode}}{{if eq .TrustLimit "0"}} (remove){{end}}
+                {{else if eq .Type "manage_data"}}
+                    {{if .DataValue}}{{.DataName}} = {{if isStellarID .DataValue}}<span class="op-account-link">{{accountDisplay .DataValue $names}}</span>{{else}}"{{.DataValue}}"{{end}}{{else}}deleted {{.DataName}}{{end}}
+                {{else if or (eq .Type "path_payment_strict_send") (eq .Type "path_payment_strict_receive")}}
+                    {{.SourceAmount}} {{.SourceAsset}} → {{.DestAmount}} {{.DestAsset}}
+                {{else if or (eq .Type "manage_sell_offer") (eq .Type "manage_buy_offer")}}
+                    {{if .Amount}}{{.Amount}} {{end}}{{.Selling}} → {{.Buying}}{{if .Price}} @ {{.Price}}{{end}}
+                {{else if eq .Type "account_merge"}}
+                    → <span class="op-account-link">{{accountDisplay .To $names}}</span>
+                {{else}}
+                    {{.TypeDisplay}}
+                {{end}}
+            </span>
+            <span class="op-arrow">▶</span>
+        </a>
+        {{end}}
+    </div>
+
+    {{if .Operations.HasMore}}
+    <div class="pagination">
+        <a href="/accounts/{{.Account.ID}}?ops_cursor={{.Operations.NextCursor}}#operations" class="btn">Load More</a>
+    </div>
+    {{end}}
+</div>
+{{end}}
 {{end}}

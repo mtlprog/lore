@@ -1309,6 +1309,261 @@
             }
         }
 
+        /* OPERATIONS LIST */
+        .ops-section {
+            margin-top: 2rem;
+        }
+
+        .ops-list {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+        }
+
+        .op-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            text-decoration: none;
+            color: var(--text);
+            transition: background 0.15s ease;
+        }
+
+        .op-row:last-child {
+            border-bottom: none;
+        }
+
+        .op-row:hover {
+            background: var(--bg-card);
+        }
+
+        .op-time {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+
+        .op-type {
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.125rem 0.5rem;
+            min-width: 90px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .op-type.op-payment { background: rgba(0, 255, 136, 0.15); color: var(--accent); }
+        .op-type.op-trust { background: rgba(88, 166, 255, 0.15); color: var(--link); }
+        .op-type.op-data { background: rgba(163, 113, 247, 0.15); color: var(--council); }
+        .op-type.op-dex { background: rgba(240, 180, 41, 0.15); color: var(--warn); }
+        .op-type.op-account { background: rgba(248, 81, 73, 0.15); color: var(--danger); }
+        .op-type.op-other { background: rgba(125, 133, 144, 0.15); color: var(--text-muted); }
+
+        .op-summary {
+            flex: 1;
+            font-size: 0.8125rem;
+            color: var(--text-dim);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .op-arrow {
+            color: var(--text-muted);
+            font-size: 0.625rem;
+            flex-shrink: 0;
+        }
+
+        /* Transaction page operations */
+        .tx-ops-list .op-row {
+            cursor: default;
+        }
+
+        .tx-ops-list .op-row:hover {
+            background: transparent;
+        }
+
+        .tx-op-row {
+            flex-wrap: wrap;
+        }
+
+        .op-index {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            min-width: 30px;
+            flex-shrink: 0;
+        }
+
+        .op-details {
+            flex: 1;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+        }
+
+        .op-amount {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--num);
+        }
+
+        .op-flow {
+            color: var(--text-dim);
+        }
+
+        .op-flow a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        .op-flow a:hover {
+            text-decoration: underline;
+        }
+
+        .op-asset {
+            color: var(--warn);
+            font-weight: 700;
+        }
+
+        .op-note {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .op-data-name {
+            color: var(--council);
+        }
+
+        .op-data-value {
+            color: var(--text-dim);
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .op-data-value a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        .op-data-value a:hover {
+            text-decoration: underline;
+        }
+
+        .op-swap, .op-dex, .op-lp {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--warn);
+        }
+
+        /* Transaction meta */
+        .tx-meta {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .tx-meta::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--accent);
+        }
+
+        .tx-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tx-meta-row:last-child {
+            border-bottom: none;
+        }
+
+        .tx-meta-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            min-width: 80px;
+            flex-shrink: 0;
+        }
+
+        .tx-meta-value {
+            font-size: 0.875rem;
+            color: var(--text);
+        }
+
+        .tx-meta-value a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        .tx-meta-value a:hover {
+            text-decoration: underline;
+        }
+
+        .tx-status {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0.25rem 0.75rem;
+        }
+
+        .tx-status.success {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .tx-status.failed {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+        }
+
+        .tx-fee {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--text-dim);
+        }
+
+        .tx-account-id {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin-left: 0.5rem;
+        }
+
+        .op-account-link {
+            color: var(--link);
+        }
+
+        @media (max-width: 768px) {
+            .op-time {
+                display: none;
+            }
+
+            .op-type {
+                min-width: 70px;
+                font-size: 0.5625rem;
+            }
+
+            .tx-meta-label {
+                min-width: 60px;
+            }
+        }
+
         /* SCANLINES */
         body::before {
             content: '';

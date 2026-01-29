@@ -15,6 +15,8 @@ import (
 // StellarServicer defines the interface for Stellar blockchain operations.
 type StellarServicer interface {
 	GetAccountDetail(ctx context.Context, accountID string) (*model.AccountDetail, error)
+	GetAccountOperations(ctx context.Context, accountID, cursor string, limit int) (*model.OperationsPage, error)
+	GetTransactionDetail(ctx context.Context, txHash string) (*model.Transaction, error)
 }
 
 // AccountQuerier defines the interface for account data access.
@@ -26,6 +28,7 @@ type AccountQuerier interface {
 	GetTrustRatings(ctx context.Context, accountID string) (*repository.TrustRating, error)
 	GetConfirmedRelationships(ctx context.Context, accountID string) (map[string]bool, error)
 	GetAccountInfo(ctx context.Context, accountID string) (*repository.AccountInfo, error)
+	GetAccountNames(ctx context.Context, accountIDs []string) (map[string]string, error)
 }
 
 // TemplateRenderer defines the interface for template rendering.
@@ -63,4 +66,5 @@ func New(stellar StellarServicer, accounts AccountQuerier, tmpl TemplateRenderer
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /", h.Home)
 	mux.HandleFunc("GET /accounts/{id}", h.Account)
+	mux.HandleFunc("GET /transactions/{hash}", h.Transaction)
 }

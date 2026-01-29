@@ -99,6 +99,7 @@ type Asset struct {
 // AccountData holds parsed account information from Horizon.
 type AccountData struct {
 	ID                string
+	Name              string // Primary name from ManageData "Name" key
 	Balances          []Balance
 	Metadata          []Metadata
 	Relationships     []Relationship

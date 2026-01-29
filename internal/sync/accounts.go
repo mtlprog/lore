@@ -177,6 +177,14 @@ func parseAccountData(acc *horizon.Account) *AccountData {
 	// Parse ManageData
 	data.Metadata, data.Relationships, data.DelegateTo, data.CouncilDelegateTo, data.CouncilReady = parseManageData(acc.Data)
 
+	// Extract primary name from metadata (key="Name", index="")
+	for _, m := range data.Metadata {
+		if m.Key == "Name" && m.Index == "" {
+			data.Name = m.Value
+			break
+		}
+	}
+
 	return data
 }
 
