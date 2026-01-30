@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/russross/blackfriday/v2"
 	"github.com/samber/lo"
 )
 
@@ -140,6 +141,15 @@ var funcMap = template.FuncMap{
 			return "/search"
 		}
 		return "/search?" + params.Encode()
+	},
+	"markdown": func(s string) template.HTML {
+		// Use GitHub Flavored Markdown extensions
+		extensions := blackfriday.CommonExtensions | blackfriday.AutoHeadingIDs | blackfriday.Autolink
+		renderer := blackfriday.NewHTMLRenderer(blackfriday.HTMLRendererParameters{
+			Flags: blackfriday.CommonHTMLFlags,
+		})
+		output := blackfriday.Run([]byte(s), blackfriday.WithRenderer(renderer), blackfriday.WithExtensions(extensions))
+		return template.HTML(output)
 	},
 }
 

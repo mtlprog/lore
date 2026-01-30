@@ -150,6 +150,30 @@ type NFTMetadata struct {
 	ContentType     string
 }
 
+// IsImage returns true if the NFT content is an image.
+// Returns false if ContentType indicates non-image, or if FileURL is set (file takes precedence),
+// or if FullDescription suggests this is a document NFT.
+func (n *NFTMetadata) IsImage() bool {
+	if n == nil {
+		return false
+	}
+	// If ContentType is explicitly set, check if it's an image type
+	if n.ContentType != "" {
+		return len(n.ContentType) >= 6 && n.ContentType[:6] == "image/"
+	}
+	// If there's a FileURL, the main content is a file (not an image)
+	if n.FileURL != "" {
+		return false
+	}
+	// If there's substantial FullDescription content, this is likely a document NFT
+	// (contracts, agreements, etc.) even if ImageURL is set incorrectly
+	if len(n.FullDescription) > 500 {
+		return false
+	}
+	// Only assume image if ImageURL is set and no FileURL
+	return n.ImageURL != ""
+}
+
 // OrderbookEntry - entry from orderbook.
 type OrderbookEntry struct {
 	Price  string
