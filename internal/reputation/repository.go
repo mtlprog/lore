@@ -27,17 +27,20 @@ func NewRepository(pool *pgxpool.Pool) (*Repository, error) {
 }
 
 // GetRatingEdges returns all A/B/C/D relationships.
+// Deduplicates by (rater, ratee) pair - only one rating per pair is counted.
+// Takes the first by relation_index for deterministic results.
 func (r *Repository) GetRatingEdges(ctx context.Context) ([]RatingEdge, error) {
-	query, args, err := database.QB.
-		Select("source_account_id", "target_account_id", "relation_type").
-		From("relationships").
-		Where(sq.Eq{"relation_type": []string{"A", "B", "C", "D"}}).
-		ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("build rating edges query: %w", err)
-	}
+	// Use DISTINCT ON to get one rating per (source, target) pair
+	// ORDER BY relation_index ensures deterministic selection
+	query := `
+		SELECT DISTINCT ON (source_account_id, target_account_id)
+			source_account_id, target_account_id, relation_type
+		FROM relationships
+		WHERE relation_type IN ('A', 'B', 'C', 'D')
+		ORDER BY source_account_id, target_account_id, relation_index
+	`
 
-	rows, err := r.pool.Query(ctx, query, args...)
+	rows, err := r.pool.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("query rating edges: %w", err)
 	}
