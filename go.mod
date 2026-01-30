@@ -6,6 +6,7 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/jackc/pgx/v5 v5.8.0
+	github.com/microcosm-cc/bluemonday v1.0.27
 	github.com/pressly/goose/v3 v3.26.0
 	github.com/russross/blackfriday/v2 v2.1.0
 	github.com/samber/lo v1.52.0
@@ -33,7 +34,6 @@ require (
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
 	github.com/manucorporat/sse v0.0.0-20160126180136-ee05b128a739 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
-	github.com/microcosm-cc/bluemonday v1.0.27 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/segmentio/go-loggly v0.5.1-0.20171222203950-eb91657e62b2 // indirect
