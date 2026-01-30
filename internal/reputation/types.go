@@ -46,16 +46,16 @@ func (r Rating) Value() float64 {
 
 // Score represents a calculated reputation score for an account.
 type Score struct {
-	AccountID    string
+	AccountID     string
 	WeightedScore float64 // 0.0-4.0 weighted by rater portfolio/connections
-	BaseScore    float64  // 0.0-4.0 simple average
-	RatingCountA int
-	RatingCountB int
-	RatingCountC int
-	RatingCountD int
-	TotalRatings int
-	TotalWeight  float64
-	CalculatedAt time.Time
+	BaseScore     float64 // 0.0-4.0 simple average
+	RatingCountA  int
+	RatingCountB  int
+	RatingCountC  int
+	RatingCountD  int
+	TotalRatings  int
+	TotalWeight   float64
+	CalculatedAt  time.Time
 }
 
 // Grade converts a score (0-4) to a letter grade.
@@ -87,9 +87,9 @@ func ScoreToGrade(score float64) string {
 
 // RatingEdge represents a rating relationship from rater to ratee.
 type RatingEdge struct {
-	RaterAccountID  string
-	RateeAccountID  string
-	Rating          Rating
+	RaterAccountID string
+	RateeAccountID string
+	Rating         Rating
 }
 
 // RaterInfo contains information about a rater for weight calculation.
