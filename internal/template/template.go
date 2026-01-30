@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/microcosm-cc/bluemonday"
 	"github.com/russross/blackfriday/v2"
 	"github.com/samber/lo"
 )
@@ -148,8 +149,11 @@ var funcMap = template.FuncMap{
 		renderer := blackfriday.NewHTMLRenderer(blackfriday.HTMLRendererParameters{
 			Flags: blackfriday.CommonHTMLFlags,
 		})
-		output := blackfriday.Run([]byte(s), blackfriday.WithRenderer(renderer), blackfriday.WithExtensions(extensions))
-		return template.HTML(output)
+		unsafe := blackfriday.Run([]byte(s), blackfriday.WithRenderer(renderer), blackfriday.WithExtensions(extensions))
+		// Sanitize HTML to prevent XSS attacks from untrusted blockchain data
+		p := bluemonday.UGCPolicy()
+		safe := p.SanitizeBytes(unsafe)
+		return template.HTML(safe)
 	},
 }
 
