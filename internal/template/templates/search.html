@@ -79,7 +79,14 @@
         <span class="search-query-value">{{range $i, $t := .Tags}}{{if $i}}, {{end}}{{$t}}{{end}}</span>
         {{end}}
     </div>
-    <div class="search-results-count">{{.TotalCount}} results found</div>
+    <div class="search-results-meta">
+        <div class="search-results-count">{{.TotalCount}} results found</div>
+        <div class="search-sort-toggle">
+            <span class="sort-label">Sort:</span>
+            <a href="/search?{{if .Query}}q={{urlquery .Query}}&{{end}}{{range .Tags}}tag={{urlquery .}}&{{end}}sort=balance" class="sort-option{{if eq .SortBy "balance"}} active{{end}}">[Balance]</a>
+            <a href="/search?{{if .Query}}q={{urlquery .Query}}&{{end}}{{range .Tags}}tag={{urlquery .}}&{{end}}sort=reputation" class="sort-option{{if eq .SortBy "reputation"}} active{{end}}">[Reputation]</a>
+        </div>
+    </div>
 </div>
 
 {{if .Accounts}}
@@ -97,6 +104,7 @@
                     <th>Type</th>
                     <th class="right">Balance</th>
                     <th class="right">Portfolio</th>
+                    <th class="right">Rep</th>
                 </tr>
             </thead>
             <tbody>
@@ -118,6 +126,7 @@
                         {{if $acc.IsCorporate}}{{formatNumber $acc.MTLACBalance}}{{end}}
                     </td>
                     <td class="cell-xlm">{{if gt $acc.TotalXLMValue 0.0}}{{formatNumber $acc.TotalXLMValue}} XLM{{else}}-{{end}}</td>
+                    <td class="cell-rep">{{if $acc.ReputationGrade}}<span class="rep-grade">{{$acc.ReputationGrade}}</span> <span class="rep-weight">({{printf "%.1f" $acc.ReputationWeight}})</span>{{else}}-{{end}}</td>
                 </tr>
                 {{end}}
             </tbody>
@@ -126,7 +135,7 @@
 
     {{if .HasMore}}
     <div class="pagination">
-        <a href="/search?{{if .Query}}q={{urlquery .Query}}&{{end}}{{range .Tags}}tag={{urlquery .}}&{{end}}offset={{.NextOffset}}" class="btn">Load More</a>
+        <a href="/search?{{if .Query}}q={{urlquery .Query}}&{{end}}{{range .Tags}}tag={{urlquery .}}&{{end}}sort={{.SortBy}}&offset={{.NextOffset}}" class="btn">Load More</a>
     </div>
     {{end}}
 </div>

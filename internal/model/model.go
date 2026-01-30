@@ -74,6 +74,40 @@ type TrustRating struct {
 	Percent int    // For progress bar width
 }
 
+// ReputationScore represents a weighted reputation score for display.
+type ReputationScore struct {
+	WeightedScore float64 // 0.0-4.0 weighted by rater portfolio/connections
+	BaseScore     float64 // 0.0-4.0 simple average
+	Grade         string  // "A", "B+", "C", etc.
+	RatingCountA  int
+	RatingCountB  int
+	RatingCountC  int
+	RatingCountD  int
+	TotalRatings  int
+	TotalWeight   float64 // Sum of rater weights
+}
+
+// ReputationNode represents a node in the reputation graph.
+type ReputationNode struct {
+	AccountID    string
+	Name         string
+	Rating       string  // "A", "B", "C", "D"
+	Weight       float64 // Calculated rater weight
+	PortfolioXLM float64
+	Connections  int
+	OwnScore     float64 // Their own reputation score
+	Distance     int     // 1 = direct rater, 2 = rater of rater
+}
+
+// ReputationGraph represents a 2-level reputation graph for display.
+type ReputationGraph struct {
+	TargetAccountID string
+	TargetName      string
+	Score           *ReputationScore
+	Level1Nodes     []ReputationNode // Direct raters
+	Level2Nodes     []ReputationNode // Raters of raters
+}
+
 // Operation represents a Stellar operation for display.
 type Operation struct {
 	ID              string

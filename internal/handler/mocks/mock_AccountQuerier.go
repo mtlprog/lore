@@ -612,9 +612,9 @@ func (_c *MockAccountQuerier_GetTrustRatings_Call) RunAndReturn(run func(context
 	return _c
 }
 
-// SearchAccounts provides a mock function with given fields: ctx, query, tags, limit, offset
-func (_m *MockAccountQuerier) SearchAccounts(ctx context.Context, query string, tags []string, limit int, offset int) ([]repository.SearchAccountRow, error) {
-	ret := _m.Called(ctx, query, tags, limit, offset)
+// SearchAccounts provides a mock function with given fields: ctx, query, tags, limit, offset, sortBy
+func (_m *MockAccountQuerier) SearchAccounts(ctx context.Context, query string, tags []string, limit int, offset int, sortBy repository.SearchSortOrder) ([]repository.SearchAccountRow, error) {
+	ret := _m.Called(ctx, query, tags, limit, offset, sortBy)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SearchAccounts")
@@ -622,19 +622,19 @@ func (_m *MockAccountQuerier) SearchAccounts(ctx context.Context, query string, 
 
 	var r0 []repository.SearchAccountRow
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, []string, int, int) ([]repository.SearchAccountRow, error)); ok {
-		return rf(ctx, query, tags, limit, offset)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string, int, int, repository.SearchSortOrder) ([]repository.SearchAccountRow, error)); ok {
+		return rf(ctx, query, tags, limit, offset, sortBy)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, []string, int, int) []repository.SearchAccountRow); ok {
-		r0 = rf(ctx, query, tags, limit, offset)
+	if rf, ok := ret.Get(0).(func(context.Context, string, []string, int, int, repository.SearchSortOrder) []repository.SearchAccountRow); ok {
+		r0 = rf(ctx, query, tags, limit, offset, sortBy)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]repository.SearchAccountRow)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, []string, int, int) error); ok {
-		r1 = rf(ctx, query, tags, limit, offset)
+	if rf, ok := ret.Get(1).(func(context.Context, string, []string, int, int, repository.SearchSortOrder) error); ok {
+		r1 = rf(ctx, query, tags, limit, offset, sortBy)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -653,13 +653,14 @@ type MockAccountQuerier_SearchAccounts_Call struct {
 //   - tags []string
 //   - limit int
 //   - offset int
-func (_e *MockAccountQuerier_Expecter) SearchAccounts(ctx interface{}, query interface{}, tags interface{}, limit interface{}, offset interface{}) *MockAccountQuerier_SearchAccounts_Call {
-	return &MockAccountQuerier_SearchAccounts_Call{Call: _e.mock.On("SearchAccounts", ctx, query, tags, limit, offset)}
+//   - sortBy repository.SearchSortOrder
+func (_e *MockAccountQuerier_Expecter) SearchAccounts(ctx interface{}, query interface{}, tags interface{}, limit interface{}, offset interface{}, sortBy interface{}) *MockAccountQuerier_SearchAccounts_Call {
+	return &MockAccountQuerier_SearchAccounts_Call{Call: _e.mock.On("SearchAccounts", ctx, query, tags, limit, offset, sortBy)}
 }
 
-func (_c *MockAccountQuerier_SearchAccounts_Call) Run(run func(ctx context.Context, query string, tags []string, limit int, offset int)) *MockAccountQuerier_SearchAccounts_Call {
+func (_c *MockAccountQuerier_SearchAccounts_Call) Run(run func(ctx context.Context, query string, tags []string, limit int, offset int, sortBy repository.SearchSortOrder)) *MockAccountQuerier_SearchAccounts_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].([]string), args[3].(int), args[4].(int))
+		run(args[0].(context.Context), args[1].(string), args[2].([]string), args[3].(int), args[4].(int), args[5].(repository.SearchSortOrder))
 	})
 	return _c
 }
@@ -669,7 +670,7 @@ func (_c *MockAccountQuerier_SearchAccounts_Call) Return(_a0 []repository.Search
 	return _c
 }
 
-func (_c *MockAccountQuerier_SearchAccounts_Call) RunAndReturn(run func(context.Context, string, []string, int, int) ([]repository.SearchAccountRow, error)) *MockAccountQuerier_SearchAccounts_Call {
+func (_c *MockAccountQuerier_SearchAccounts_Call) RunAndReturn(run func(context.Context, string, []string, int, int, repository.SearchSortOrder) ([]repository.SearchAccountRow, error)) *MockAccountQuerier_SearchAccounts_Call {
 	_c.Call.Return(run)
 	return _c
 }

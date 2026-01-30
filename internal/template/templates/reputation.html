@@ -1,0 +1,428 @@
+{{template "base" .}}
+
+{{define "title"}}{{.AccountName}} Reputation // LORE{{end}}
+
+{{define "content"}}
+<div class="detail-header">
+    <h1 class="detail-name">Reputation: {{.AccountName}}</h1>
+    <div class="detail-id">{{.AccountID}}</div>
+</div>
+
+<div class="reputation-back">
+    <a href="/accounts/{{.AccountID}}" class="btn">&larr; Back to Account</a>
+</div>
+
+{{if .Score}}
+<div class="reputation-score-card">
+    <div class="reputation-score-header">
+        <div class="reputation-grade grade-{{lower (slice .Score.Grade 0 1)}}">
+            <span class="grade-letter">{{.Score.Grade}}</span>
+            <span class="grade-label">Weighted Score</span>
+        </div>
+        <div class="reputation-score-details">
+            <div class="score-row">
+                <span class="score-label">Weighted Score</span>
+                <span class="score-value">{{printf "%.2f" .Score.WeightedScore}} / 4.00</span>
+            </div>
+            <div class="score-row">
+                <span class="score-label">Base Score</span>
+                <span class="score-value">{{printf "%.2f" .Score.BaseScore}} / 4.00</span>
+            </div>
+            <div class="score-row">
+                <span class="score-label">Total Ratings</span>
+                <span class="score-value">{{.Score.TotalRatings}}</span>
+            </div>
+            <div class="score-row">
+                <span class="score-label">Total Weight</span>
+                <span class="score-value">{{printf "%.2f" .Score.TotalWeight}}</span>
+            </div>
+        </div>
+    </div>
+    <div class="reputation-breakdown">
+        <div class="breakdown-item grade-a">
+            <span class="breakdown-count">{{.Score.RatingCountA}}</span>
+            <span class="breakdown-label">A Ratings</span>
+        </div>
+        <div class="breakdown-item grade-b">
+            <span class="breakdown-count">{{.Score.RatingCountB}}</span>
+            <span class="breakdown-label">B Ratings</span>
+        </div>
+        <div class="breakdown-item grade-c">
+            <span class="breakdown-count">{{.Score.RatingCountC}}</span>
+            <span class="breakdown-label">C Ratings</span>
+        </div>
+        <div class="breakdown-item grade-d">
+            <span class="breakdown-count">{{.Score.RatingCountD}}</span>
+            <span class="breakdown-label">D Ratings</span>
+        </div>
+    </div>
+</div>
+
+<div class="reputation-explanation">
+    <div class="detail-block full-width">
+        <div class="detail-block-title">How Reputation is Calculated</div>
+        <div class="detail-block-content">
+            <p>The <strong>weighted score</strong> takes into account the credibility of each rater based on:</p>
+            <ul>
+                <li><strong>Portfolio size</strong>: Accounts with larger portfolios (in XLM) have more weight</li>
+                <li><strong>Network connections</strong>: Accounts with more verified relationships have more weight</li>
+            </ul>
+            <p>Formula: <code>weight = log10(portfolio + 1) &times; sqrt(connections + 1)</code></p>
+            <p>Ratings are valued as: A=4, B=3, C=2, D=1</p>
+        </div>
+    </div>
+</div>
+{{else}}
+<div class="empty">No reputation data available</div>
+{{end}}
+
+{{if .Graph}}
+{{if or .Graph.Level1Nodes .Graph.Level2Nodes}}
+<div class="section reputation-graph-section">
+    <div class="section-header">
+        <span class="section-title">Reputation Graph</span>
+        <span class="section-count">Who rated this account and who rated them</span>
+    </div>
+
+    {{if .Graph.Level1Nodes}}
+    <div class="reputation-level">
+        <h3 class="level-title">Direct Raters (Level 1)</h3>
+        <div class="raters-list">
+            {{range .Graph.Level1Nodes}}
+            <div class="rater-card">
+                <div class="rater-header">
+                    <a href="/accounts/{{.AccountID}}" class="rater-name">{{.Name}}</a>
+                    <span class="rater-rating rating-{{lower .Rating}}">{{.Rating}}</span>
+                </div>
+                <div class="rater-details">
+                    <span class="rater-stat">
+                        <span class="stat-label">Weight</span>
+                        <span class="stat-value">{{printf "%.2f" .Weight}}</span>
+                    </span>
+                    <span class="rater-stat">
+                        <span class="stat-label">Portfolio</span>
+                        <span class="stat-value">{{formatNumber .PortfolioXLM}} XLM</span>
+                    </span>
+                    <span class="rater-stat">
+                        <span class="stat-label">Connections</span>
+                        <span class="stat-value">{{.Connections}}</span>
+                    </span>
+                    {{if gt .OwnScore 0.0}}
+                    <span class="rater-stat">
+                        <span class="stat-label">Own Score</span>
+                        <span class="stat-value">{{printf "%.2f" .OwnScore}}</span>
+                    </span>
+                    {{end}}
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+
+    {{if .Graph.Level2Nodes}}
+    <div class="reputation-level level-2">
+        <h3 class="level-title">Raters of Raters (Level 2)</h3>
+        <div class="raters-list">
+            {{range .Graph.Level2Nodes}}
+            <div class="rater-card">
+                <div class="rater-header">
+                    <a href="/accounts/{{.AccountID}}" class="rater-name">{{.Name}}</a>
+                    <span class="rater-rating rating-{{lower .Rating}}">{{.Rating}}</span>
+                </div>
+                <div class="rater-details">
+                    <span class="rater-stat">
+                        <span class="stat-label">Weight</span>
+                        <span class="stat-value">{{printf "%.2f" .Weight}}</span>
+                    </span>
+                    <span class="rater-stat">
+                        <span class="stat-label">Portfolio</span>
+                        <span class="stat-value">{{formatNumber .PortfolioXLM}} XLM</span>
+                    </span>
+                    <span class="rater-stat">
+                        <span class="stat-label">Connections</span>
+                        <span class="stat-value">{{.Connections}}</span>
+                    </span>
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+</div>
+{{end}}
+{{end}}
+
+<style>
+/* Reputation Page Styles */
+.reputation-back {
+    margin-bottom: 2rem;
+}
+
+.reputation-score-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.reputation-score-header {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+}
+
+.reputation-grade {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 2rem;
+    border: 2px solid var(--border);
+    min-width: 120px;
+}
+
+.reputation-grade.grade-a { border-color: var(--grade-a); background: color-mix(in srgb, var(--grade-a) 12%, transparent); }
+.reputation-grade.grade-b { border-color: var(--grade-b); background: color-mix(in srgb, var(--grade-b) 12%, transparent); }
+.reputation-grade.grade-c { border-color: var(--grade-c); background: color-mix(in srgb, var(--grade-c) 12%, transparent); }
+.reputation-grade.grade-d { border-color: var(--grade-d); background: color-mix(in srgb, var(--grade-d) 12%, transparent); }
+
+.grade-letter {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.reputation-grade.grade-a .grade-letter { color: var(--grade-a); }
+.reputation-grade.grade-b .grade-letter { color: var(--grade-b); }
+.reputation-grade.grade-c .grade-letter { color: var(--grade-c); }
+.reputation-grade.grade-d .grade-letter { color: var(--grade-d); }
+
+.grade-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-top: 0.5rem;
+}
+
+.reputation-score-details {
+    flex: 1;
+}
+
+.score-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.score-row:last-child {
+    border-bottom: none;
+}
+
+.score-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+.score-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.875rem;
+    color: var(--text);
+}
+
+.reputation-breakdown {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+.breakdown-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    border: 1px solid var(--border);
+}
+
+.breakdown-item.grade-a { border-color: var(--grade-a); }
+.breakdown-item.grade-b { border-color: var(--grade-b); }
+.breakdown-item.grade-c { border-color: var(--grade-c); }
+.breakdown-item.grade-d { border-color: var(--grade-d); }
+
+.breakdown-count {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.breakdown-item.grade-a .breakdown-count { color: var(--grade-a); }
+.breakdown-item.grade-b .breakdown-count { color: var(--grade-b); }
+.breakdown-item.grade-c .breakdown-count { color: var(--grade-c); }
+.breakdown-item.grade-d .breakdown-count { color: var(--grade-d); }
+
+.breakdown-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
+.reputation-explanation {
+    margin-bottom: 2rem;
+}
+
+.reputation-explanation p {
+    margin-bottom: 0.75rem;
+}
+
+.reputation-explanation ul {
+    list-style: none;
+    margin-bottom: 0.75rem;
+}
+
+.reputation-explanation li {
+    padding: 0.25rem 0;
+}
+
+.reputation-explanation li::before {
+    content: '>';
+    color: var(--accent);
+    margin-right: 0.5rem;
+}
+
+.reputation-explanation code {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.875rem;
+    background: var(--bg-card);
+    padding: 0.125rem 0.375rem;
+    border: 1px solid var(--border);
+}
+
+.reputation-graph-section {
+    margin-top: 2rem;
+}
+
+.reputation-level {
+    margin-bottom: 2rem;
+}
+
+.reputation-level.level-2 {
+    opacity: 0.8;
+}
+
+.level-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.875rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.level-2 .level-title {
+    color: var(--text-dim);
+}
+
+.raters-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.rater-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    padding: 1rem;
+}
+
+.rater-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.rater-name {
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.rater-name:hover {
+    color: var(--accent);
+}
+
+.rater-rating {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid;
+}
+
+.rater-rating.rating-a { color: var(--grade-a); border-color: var(--grade-a); background: color-mix(in srgb, var(--grade-a) 15%, transparent); }
+.rater-rating.rating-b { color: var(--grade-b); border-color: var(--grade-b); background: color-mix(in srgb, var(--grade-b) 15%, transparent); }
+.rater-rating.rating-c { color: var(--grade-c); border-color: var(--grade-c); background: color-mix(in srgb, var(--grade-c) 15%, transparent); }
+.rater-rating.rating-d { color: var(--grade-d); border-color: var(--grade-d); background: color-mix(in srgb, var(--grade-d) 15%, transparent); }
+
+.rater-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.rater-stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.5625rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+}
+
+.stat-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text);
+}
+
+@media (max-width: 768px) {
+    .reputation-score-header {
+        flex-direction: column;
+    }
+
+    .reputation-grade {
+        width: 100%;
+    }
+
+    .reputation-breakdown {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .raters-list {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{{end}}

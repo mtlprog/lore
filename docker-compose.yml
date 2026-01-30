@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lore
+      POSTGRES_PASSWORD: lore
+      POSTGRES_DB: lore
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lore"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  server:
+    image: alpine:3.19
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./lore:/app/lore:ro
+    working_dir: /app
+    entrypoint: ["/app/lore"]
+    command: ["--database-url", "postgres://lore:lore@db:5432/lore?sslmode=disable", "serve"]
+    restart: unless-stopped
+
+  syncer:
+    image: alpine:3.19
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./lore:/app/lore:ro
+    working_dir: /app
+    entrypoint: ["/app/lore"]
+    command: ["--database-url", "postgres://lore:lore@db:5432/lore?sslmode=disable", "sync"]
+    restart: "no"
+
+volumes:
+  pgdata:

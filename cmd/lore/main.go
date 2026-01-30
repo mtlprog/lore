@@ -15,6 +15,7 @@ import (
 	"github.com/mtlprog/lore/internal/handler"
 	"github.com/mtlprog/lore/internal/logger"
 	"github.com/mtlprog/lore/internal/repository"
+	"github.com/mtlprog/lore/internal/reputation"
 	"github.com/mtlprog/lore/internal/service"
 	"github.com/mtlprog/lore/internal/sync"
 	"github.com/mtlprog/lore/internal/template"
@@ -119,7 +120,14 @@ func runServe(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to create account repository: %w", err)
 	}
-	h, err := handler.New(stellar, accounts, tmpl)
+
+	// Create reputation service (optional, non-critical feature)
+	repService, err := reputation.NewService(db.Pool())
+	if err != nil {
+		slog.Warn("failed to create reputation service, feature will be disabled", "error", err)
+	}
+
+	h, err := handler.New(stellar, accounts, repService, tmpl)
 	if err != nil {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}

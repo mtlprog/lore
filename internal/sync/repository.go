@@ -25,19 +25,26 @@ func NewRepository(pool *pgxpool.Pool) (*Repository, error) {
 	return &Repository{pool: pool}, nil
 }
 
+// Pool returns the underlying database pool.
+func (r *Repository) Pool() *pgxpool.Pool {
+	return r.pool
+}
+
 // allowedTruncateTables is the whitelist of tables that can be truncated.
 var allowedTruncateTables = map[string]bool{
-	"association_tags": true,
-	"relationships":    true,
-	"account_metadata": true,
-	"account_balances": true,
-	"token_prices":     true,
-	"accounts":         true,
+	"reputation_scores": true,
+	"association_tags":  true,
+	"relationships":     true,
+	"account_metadata":  true,
+	"account_balances":  true,
+	"token_prices":      true,
+	"accounts":          true,
 }
 
 // Truncate clears all syncable tables (preserves settings tables).
 func (r *Repository) Truncate(ctx context.Context) error {
 	tables := []string{
+		"reputation_scores",
 		"association_tags",
 		"relationships",
 		"account_metadata",

@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mtlprog/lore/internal/config"
+	"github.com/mtlprog/lore/internal/reputation"
 	"github.com/samber/lo"
 	"github.com/stellar/go/clients/horizonclient"
 )
@@ -129,6 +130,13 @@ func (s *Syncer) Run(ctx context.Context, full bool) (*SyncResult, error) {
 		return result, fmt.Errorf("sync association tags: %w", err)
 	}
 
+	// Step 7: Calculate reputation scores
+	s.logger.Info("calculating reputation scores")
+	if err := s.calculateReputationScores(ctx); err != nil {
+		// Log error but don't fail sync - reputation is non-critical
+		s.logger.Error("failed to calculate reputation scores", "error", err)
+	}
+
 	// Get final stats
 	stats, err := s.repo.GetSyncStats(ctx)
 	if err != nil {
@@ -144,4 +152,47 @@ func (s *Syncer) Run(ctx context.Context, full bool) (*SyncResult, error) {
 	)
 
 	return result, nil
+}
+
+// calculateReputationScores computes and stores weighted reputation scores for all accounts.
+func (s *Syncer) calculateReputationScores(ctx context.Context) error {
+	// Create reputation repository
+	repRepo, err := reputation.NewRepository(s.repo.Pool())
+	if err != nil {
+		return fmt.Errorf("create reputation repository: %w", err)
+	}
+
+	// Fetch all rating edges (A/B/C/D relationships)
+	ratings, err := repRepo.GetRatingEdges(ctx)
+	if err != nil {
+		return fmt.Errorf("get rating edges: %w", err)
+	}
+	if len(ratings) == 0 {
+		s.logger.Info("no reputation ratings found")
+		return nil
+	}
+
+	// Fetch portfolios
+	portfolios, err := repRepo.GetPortfolios(ctx)
+	if err != nil {
+		return fmt.Errorf("get portfolios: %w", err)
+	}
+
+	// Fetch connection counts
+	connections, err := repRepo.GetConnectionCounts(ctx)
+	if err != nil {
+		return fmt.Errorf("get connection counts: %w", err)
+	}
+
+	// Calculate scores
+	calc := reputation.NewCalculator()
+	scores := calc.CalculateScores(ratings, portfolios, connections)
+
+	// Store scores
+	if err := repRepo.UpsertScores(ctx, scores); err != nil {
+		return fmt.Errorf("upsert reputation scores: %w", err)
+	}
+
+	s.logger.Info("calculated reputation scores", "count", len(scores))
+	return nil
 }

@@ -9,19 +9,24 @@
         <div class="account-id">{{.Account.ID}}</div>
     </div>
     <div class="account-badges">
-        {{if .Account.TrustRating}}
-        <div class="rating-badge grade-{{if ge .Account.TrustRating.Score 3.0}}a{{else if ge .Account.TrustRating.Score 2.0}}b{{else if ge .Account.TrustRating.Score 1.5}}c{{else}}d{{end}}">
-            <div class="rating-grade">{{.Account.TrustRating.Grade}}</div>
-            <div class="rating-details">
-                <div class="rating-label">Trust Rating</div>
-                <div class="rating-counts">
-                    <span class="rc-a">A:{{.Account.TrustRating.CountA}}</span>
-                    <span class="rc-b">B:{{.Account.TrustRating.CountB}}</span>
-                    <span class="rc-c">C:{{.Account.TrustRating.CountC}}</span>
-                    <span class="rc-d">D:{{.Account.TrustRating.CountD}}</span>
+        {{if .ReputationScore}}
+        <a href="/accounts/{{.Account.ID}}/reputation" class="reputation-badge-link">
+            <div class="reputation-badge grade-{{lower (slice .ReputationScore.Grade 0 1)}}">
+                <div class="rep-main">
+                    <span class="rep-grade">{{.ReputationScore.Grade}}</span>
+                </div>
+                <div class="rep-stats">
+                    <div class="rep-stat">
+                        <span class="rep-stat-label">WEIGHT</span>
+                        <span class="rep-stat-value">{{printf "%.1f" .ReputationScore.TotalWeight}}</span>
+                    </div>
+                    <div class="rep-stat">
+                        <span class="rep-stat-label">RATINGS</span>
+                        <span class="rep-stat-value">{{.ReputationScore.TotalRatings}}</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </a>
         {{end}}
         {{if .Account.IsCorporate}}
         <div class="value-badge">

@@ -416,12 +416,22 @@ func (r *AccountRepository) GetAllTags(ctx context.Context) ([]TagRow, error) {
 
 // SearchAccountRow represents an account from a search query.
 type SearchAccountRow struct {
-	AccountID     string
-	Name          string
-	MTLAPBalance  float64
-	MTLACBalance  float64
-	TotalXLMValue float64
+	AccountID        string
+	Name             string
+	MTLAPBalance     float64
+	MTLACBalance     float64
+	TotalXLMValue    float64
+	ReputationScore  float64 // Weighted reputation score (0 if no ratings)
+	ReputationWeight float64 // Total weight of raters
 }
+
+// SearchSortOrder defines sorting options for search results.
+type SearchSortOrder string
+
+const (
+	SearchSortByBalance    SearchSortOrder = "balance"
+	SearchSortByReputation SearchSortOrder = "reputation"
+)
 
 // escapeLikePattern escapes special LIKE pattern characters (%, _, \) to prevent
 // users from injecting wildcards into search queries.
@@ -435,7 +445,8 @@ func escapeLikePattern(s string) string {
 // SearchAccounts searches accounts by name or account ID with case-insensitive substring matching.
 // If tags are provided, accounts must have ALL specified tags (AND logic).
 // Tags should be provided without the "Tag" prefix (e.g., "Belgrade", not "TagBelgrade").
-func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, tags []string, limit int, offset int) ([]SearchAccountRow, error) {
+// sortBy specifies the sorting order: "balance" (default) or "reputation".
+func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, tags []string, limit int, offset int, sortBy SearchSortOrder) ([]SearchAccountRow, error) {
 	// If both query and tags are empty, return nothing
 	if query == "" && len(tags) == 0 {
 		return nil, nil
@@ -449,9 +460,12 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 			"a.mtlap_balance",
 			"a.mtlac_balance",
 			"a.total_xlm_value",
+			"COALESCE(rs.weighted_score, 0) AS reputation_score",
+			"COALESCE(rs.total_weight, 0) AS reputation_weight",
 		).
 		From("accounts a").
-		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = ''")
+		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = ''").
+		LeftJoin("reputation_scores rs ON a.account_id = rs.account_id")
 
 	// Add text search condition if query provided
 	if query != "" {
@@ -473,15 +487,32 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 		qb = qb.
 			Join("account_metadata tags ON a.account_id = tags.account_id").
 			Where(sq.Eq{"tags.data_key": tagKeys}).
-			GroupBy("a.account_id", "m.data_value").
+			GroupBy("a.account_id", "m.data_value", "rs.weighted_score", "rs.total_weight").
 			Having(fmt.Sprintf("COUNT(DISTINCT tags.data_key) = %d", len(tagKeys)))
 	}
 
-	// Add common filters
-	qb = qb.Where("(a.mtlap_balance > 0 OR a.mtlac_balance > 0)").
-		OrderBy("GREATEST(a.mtlap_balance, a.mtlac_balance) DESC", "a.total_xlm_value DESC").
-		Limit(uint64(limit)).
-		Offset(uint64(offset))
+	// Add common filters and sorting
+	qb = qb.Where("(a.mtlap_balance > 0 OR a.mtlac_balance > 0)")
+
+	// Apply sorting
+	switch sortBy {
+	case SearchSortByReputation:
+		// Sort by grade bucket first (A=1, A-=2, B+=3, etc), then by weight within grade
+		qb = qb.OrderBy(`CASE
+			WHEN COALESCE(rs.weighted_score, 0) >= 3.5 THEN 1
+			WHEN COALESCE(rs.weighted_score, 0) >= 3.0 THEN 2
+			WHEN COALESCE(rs.weighted_score, 0) >= 2.5 THEN 3
+			WHEN COALESCE(rs.weighted_score, 0) >= 2.0 THEN 4
+			WHEN COALESCE(rs.weighted_score, 0) >= 1.5 THEN 5
+			WHEN COALESCE(rs.weighted_score, 0) >= 1.0 THEN 6
+			WHEN COALESCE(rs.weighted_score, 0) > 0 THEN 7
+			ELSE 8
+		END ASC`, "COALESCE(rs.total_weight, 0) DESC")
+	default: // SearchSortByBalance
+		qb = qb.OrderBy("GREATEST(a.mtlap_balance, a.mtlac_balance) DESC", "a.total_xlm_value DESC")
+	}
+
+	qb = qb.Limit(uint64(limit)).Offset(uint64(offset))
 
 	sql, args, err := qb.ToSql()
 	if err != nil {
@@ -497,7 +528,7 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 	var accounts []SearchAccountRow
 	for rows.Next() {
 		var acc SearchAccountRow
-		if err := rows.Scan(&acc.AccountID, &acc.Name, &acc.MTLAPBalance, &acc.MTLACBalance, &acc.TotalXLMValue); err != nil {
+		if err := rows.Scan(&acc.AccountID, &acc.Name, &acc.MTLAPBalance, &acc.MTLACBalance, &acc.TotalXLMValue, &acc.ReputationScore, &acc.ReputationWeight); err != nil {
 			return nil, fmt.Errorf("scan search account: %w", err)
 		}
 		accounts = append(accounts, acc)
