@@ -107,6 +107,20 @@
 {{end}}
 
 <div class="detail-grid">
+    {{if .Account.NFTTrustlines}}
+    <div class="detail-block full-width">
+        <div class="detail-block-title">NFTs ({{len .Account.NFTTrustlines}})</div>
+        <div class="nfts-grid">
+            {{range .Account.NFTTrustlines}}
+            <a href="/tokens/{{.AssetIssuer}}/{{.AssetCode}}" class="nft-card">
+                <span class="nft-code">{{.AssetCode}}</span>
+                <span class="nft-issuer">{{truncateID .AssetIssuer}}</span>
+            </a>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+
     <div class="detail-block full-width">
         <div class="detail-block-title">Tokens ({{len .Account.Trustlines}})</div>
         {{if .Account.Trustlines}}
@@ -123,7 +137,17 @@
                 <tbody class="tokens-body">
                     {{range .Account.Trustlines}}
                     <tr>
-                        <td>{{.AssetCode}}</td>
+                        {{if eq .AssetIssuer "native"}}
+                        <td>
+                            {{.AssetCode}}
+                            <div class="cell-issuer">&nbsp;</div>
+                        </td>
+                        {{else}}
+                        <td>
+                            <a href="/tokens/{{.AssetIssuer}}/{{.AssetCode}}">{{.AssetCode}}</a>
+                            <div class="cell-issuer">{{truncateID .AssetIssuer}}</div>
+                        </td>
+                        {{end}}
                         <td>{{.Balance}}</td>
                     </tr>
                     {{end}}

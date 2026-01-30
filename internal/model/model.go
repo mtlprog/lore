@@ -15,6 +15,7 @@ type AccountDetail struct {
 	Websites      []string
 	Tags          []string
 	Trustlines    []Trustline
+	NFTTrustlines []Trustline // Trustlines where balance == "0.0000001" (NFTs)
 	Categories    []RelationshipCategory
 	TrustRating   *TrustRating // nil if no ratings
 	TotalXLMValue float64      // Portfolio value in XLM (for corporate accounts)
@@ -121,4 +122,51 @@ type Transaction struct {
 	Memo           string
 	OperationCount int
 	Operations     []Operation
+}
+
+// TokenDetail - information about a token.
+type TokenDetail struct {
+	AssetCode   string
+	AssetIssuer string
+	IssuerName  string // Name from account metadata
+	NumAccounts int64  // Number of trustlines
+	Amount      string // Total supply
+	BestBid     string // Best buy price (XLM)
+	BestAsk     string // Best sell price (XLM)
+	Description string // From stellar.toml
+	ImageURL    string // Token image
+	HomeDomain  string // Issuer home domain
+	IsNFT       bool
+	NFTMetadata *NFTMetadata
+}
+
+// NFTMetadata - SEP-0039 metadata.
+type NFTMetadata struct {
+	Name            string
+	Description     string // Decoded description
+	FullDescription string // base64 decoded fulldescription
+	ImageURL        string // ipfs.io gateway URL
+	FileURL         string // For non-image files
+	ContentType     string
+}
+
+// OrderbookEntry - entry from orderbook.
+type OrderbookEntry struct {
+	Price  string
+	Amount string
+}
+
+// TokenOrderbook - orderbook summary.
+type TokenOrderbook struct {
+	Bids []OrderbookEntry
+	Asks []OrderbookEntry
+}
+
+// StellarTomlCurrency represents a currency entry in stellar.toml.
+type StellarTomlCurrency struct {
+	Code        string
+	Issuer      string
+	Name        string
+	Description string
+	Image       string
 }

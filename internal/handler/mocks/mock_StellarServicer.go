@@ -23,6 +23,72 @@ func (_m *MockStellarServicer) EXPECT() *MockStellarServicer_Expecter {
 	return &MockStellarServicer_Expecter{mock: &_m.Mock}
 }
 
+// FetchStellarToml provides a mock function with given fields: ctx, homeDomain
+func (_m *MockStellarServicer) FetchStellarToml(ctx context.Context, homeDomain string) (*model.StellarTomlCurrency, string, error) {
+	ret := _m.Called(ctx, homeDomain)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FetchStellarToml")
+	}
+
+	var r0 *model.StellarTomlCurrency
+	var r1 string
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.StellarTomlCurrency, string, error)); ok {
+		return rf(ctx, homeDomain)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) *model.StellarTomlCurrency); ok {
+		r0 = rf(ctx, homeDomain)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.StellarTomlCurrency)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) string); ok {
+		r1 = rf(ctx, homeDomain)
+	} else {
+		r1 = ret.Get(1).(string)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, string) error); ok {
+		r2 = rf(ctx, homeDomain)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockStellarServicer_FetchStellarToml_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FetchStellarToml'
+type MockStellarServicer_FetchStellarToml_Call struct {
+	*mock.Call
+}
+
+// FetchStellarToml is a helper method to define mock.On call
+//   - ctx context.Context
+//   - homeDomain string
+func (_e *MockStellarServicer_Expecter) FetchStellarToml(ctx interface{}, homeDomain interface{}) *MockStellarServicer_FetchStellarToml_Call {
+	return &MockStellarServicer_FetchStellarToml_Call{Call: _e.mock.On("FetchStellarToml", ctx, homeDomain)}
+}
+
+func (_c *MockStellarServicer_FetchStellarToml_Call) Run(run func(ctx context.Context, homeDomain string)) *MockStellarServicer_FetchStellarToml_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStellarServicer_FetchStellarToml_Call) Return(_a0 *model.StellarTomlCurrency, _a1 string, _a2 error) *MockStellarServicer_FetchStellarToml_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockStellarServicer_FetchStellarToml_Call) RunAndReturn(run func(context.Context, string) (*model.StellarTomlCurrency, string, error)) *MockStellarServicer_FetchStellarToml_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAccountDetail provides a mock function with given fields: ctx, accountID
 func (_m *MockStellarServicer) GetAccountDetail(ctx context.Context, accountID string) (*model.AccountDetail, error) {
 	ret := _m.Called(ctx, accountID)
@@ -139,6 +205,187 @@ func (_c *MockStellarServicer_GetAccountOperations_Call) Return(_a0 *model.Opera
 }
 
 func (_c *MockStellarServicer_GetAccountOperations_Call) RunAndReturn(run func(context.Context, string, string, int) (*model.OperationsPage, error)) *MockStellarServicer_GetAccountOperations_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetIssuerNFTMetadata provides a mock function with given fields: ctx, issuerID, assetCode
+func (_m *MockStellarServicer) GetIssuerNFTMetadata(ctx context.Context, issuerID string, assetCode string) (*model.NFTMetadata, error) {
+	ret := _m.Called(ctx, issuerID, assetCode)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetIssuerNFTMetadata")
+	}
+
+	var r0 *model.NFTMetadata
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*model.NFTMetadata, error)); ok {
+		return rf(ctx, issuerID, assetCode)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *model.NFTMetadata); ok {
+		r0 = rf(ctx, issuerID, assetCode)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.NFTMetadata)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, issuerID, assetCode)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStellarServicer_GetIssuerNFTMetadata_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetIssuerNFTMetadata'
+type MockStellarServicer_GetIssuerNFTMetadata_Call struct {
+	*mock.Call
+}
+
+// GetIssuerNFTMetadata is a helper method to define mock.On call
+//   - ctx context.Context
+//   - issuerID string
+//   - assetCode string
+func (_e *MockStellarServicer_Expecter) GetIssuerNFTMetadata(ctx interface{}, issuerID interface{}, assetCode interface{}) *MockStellarServicer_GetIssuerNFTMetadata_Call {
+	return &MockStellarServicer_GetIssuerNFTMetadata_Call{Call: _e.mock.On("GetIssuerNFTMetadata", ctx, issuerID, assetCode)}
+}
+
+func (_c *MockStellarServicer_GetIssuerNFTMetadata_Call) Run(run func(ctx context.Context, issuerID string, assetCode string)) *MockStellarServicer_GetIssuerNFTMetadata_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockStellarServicer_GetIssuerNFTMetadata_Call) Return(_a0 *model.NFTMetadata, _a1 error) *MockStellarServicer_GetIssuerNFTMetadata_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStellarServicer_GetIssuerNFTMetadata_Call) RunAndReturn(run func(context.Context, string, string) (*model.NFTMetadata, error)) *MockStellarServicer_GetIssuerNFTMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTokenDetail provides a mock function with given fields: ctx, code, issuer
+func (_m *MockStellarServicer) GetTokenDetail(ctx context.Context, code string, issuer string) (*model.TokenDetail, error) {
+	ret := _m.Called(ctx, code, issuer)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTokenDetail")
+	}
+
+	var r0 *model.TokenDetail
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*model.TokenDetail, error)); ok {
+		return rf(ctx, code, issuer)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *model.TokenDetail); ok {
+		r0 = rf(ctx, code, issuer)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.TokenDetail)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, code, issuer)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStellarServicer_GetTokenDetail_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTokenDetail'
+type MockStellarServicer_GetTokenDetail_Call struct {
+	*mock.Call
+}
+
+// GetTokenDetail is a helper method to define mock.On call
+//   - ctx context.Context
+//   - code string
+//   - issuer string
+func (_e *MockStellarServicer_Expecter) GetTokenDetail(ctx interface{}, code interface{}, issuer interface{}) *MockStellarServicer_GetTokenDetail_Call {
+	return &MockStellarServicer_GetTokenDetail_Call{Call: _e.mock.On("GetTokenDetail", ctx, code, issuer)}
+}
+
+func (_c *MockStellarServicer_GetTokenDetail_Call) Run(run func(ctx context.Context, code string, issuer string)) *MockStellarServicer_GetTokenDetail_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockStellarServicer_GetTokenDetail_Call) Return(_a0 *model.TokenDetail, _a1 error) *MockStellarServicer_GetTokenDetail_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStellarServicer_GetTokenDetail_Call) RunAndReturn(run func(context.Context, string, string) (*model.TokenDetail, error)) *MockStellarServicer_GetTokenDetail_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTokenOrderbook provides a mock function with given fields: ctx, code, issuer, limit
+func (_m *MockStellarServicer) GetTokenOrderbook(ctx context.Context, code string, issuer string, limit int) (*model.TokenOrderbook, error) {
+	ret := _m.Called(ctx, code, issuer, limit)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTokenOrderbook")
+	}
+
+	var r0 *model.TokenOrderbook
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, int) (*model.TokenOrderbook, error)); ok {
+		return rf(ctx, code, issuer, limit)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, int) *model.TokenOrderbook); ok {
+		r0 = rf(ctx, code, issuer, limit)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.TokenOrderbook)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, int) error); ok {
+		r1 = rf(ctx, code, issuer, limit)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStellarServicer_GetTokenOrderbook_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTokenOrderbook'
+type MockStellarServicer_GetTokenOrderbook_Call struct {
+	*mock.Call
+}
+
+// GetTokenOrderbook is a helper method to define mock.On call
+//   - ctx context.Context
+//   - code string
+//   - issuer string
+//   - limit int
+func (_e *MockStellarServicer_Expecter) GetTokenOrderbook(ctx interface{}, code interface{}, issuer interface{}, limit interface{}) *MockStellarServicer_GetTokenOrderbook_Call {
+	return &MockStellarServicer_GetTokenOrderbook_Call{Call: _e.mock.On("GetTokenOrderbook", ctx, code, issuer, limit)}
+}
+
+func (_c *MockStellarServicer_GetTokenOrderbook_Call) Run(run func(ctx context.Context, code string, issuer string, limit int)) *MockStellarServicer_GetTokenOrderbook_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(int))
+	})
+	return _c
+}
+
+func (_c *MockStellarServicer_GetTokenOrderbook_Call) Return(_a0 *model.TokenOrderbook, _a1 error) *MockStellarServicer_GetTokenOrderbook_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStellarServicer_GetTokenOrderbook_Call) RunAndReturn(run func(context.Context, string, string, int) (*model.TokenOrderbook, error)) *MockStellarServicer_GetTokenOrderbook_Call {
 	_c.Call.Return(run)
 	return _c
 }

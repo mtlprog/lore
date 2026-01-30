@@ -3,6 +3,7 @@ module github.com/mtlprog/lore
 go 1.24.0
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/Masterminds/squirrel v1.5.4
 	github.com/jackc/pgx/v5 v5.8.0
 	github.com/pressly/goose/v3 v3.26.0

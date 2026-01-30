@@ -55,25 +55,37 @@ func TestTruncate(t *testing.T) {
 }
 
 func TestSlice(t *testing.T) {
-	slice := funcMap["slice"].(func(string, int) string)
+	slice := funcMap["slice"].(func(string, ...int) string)
 
 	tests := []struct {
 		name     string
 		s        string
-		start    int
+		indices  []int
 		expected string
 	}{
-		{"slice from middle", "hello world", 6, "world"},
-		{"slice from start", "hello", 0, "hello"},
-		{"slice from end", "hello", 5, ""},
-		{"negative start", "hello", -1, ""},
-		{"start beyond length", "hello", 10, ""},
-		{"empty string", "", 0, ""},
+		// No indices (returns whole string)
+		{"no indices", "hello", []int{}, "hello"},
+		// Single index (start only)
+		{"slice from middle", "hello world", []int{6}, "world"},
+		{"slice from start", "hello", []int{0}, "hello"},
+		{"slice from end", "hello", []int{5}, ""},
+		{"negative start clamped", "hello", []int{-1}, "hello"},
+		{"start beyond length", "hello", []int{10}, ""},
+		// Two indices (start, end)
+		{"slice with end", "hello", []int{0, 1}, "h"},
+		{"slice middle portion", "hello world", []int{6, 11}, "world"},
+		{"slice first char (NRX case)", "NRX", []int{0, 1}, "N"},
+		{"end beyond length clamped", "hello", []int{0, 100}, "hello"},
+		{"start equals end", "hello", []int{2, 2}, ""},
+		{"start greater than end", "hello", []int{3, 2}, ""},
+		// Empty string
+		{"empty string no indices", "", []int{}, ""},
+		{"empty string with indices", "", []int{0, 1}, ""},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := slice(tt.s, tt.start)
+			result := slice(tt.s, tt.indices...)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -369,6 +381,12 @@ func TestRender(t *testing.T) {
 					Balance     string
 					Limit       string
 				}
+				NFTTrustlines []struct {
+					AssetCode   string
+					AssetIssuer string
+					Balance     string
+					Limit       string
+				}
 				Categories []struct {
 					Name          string
 					Color         string
@@ -421,6 +439,12 @@ func TestRender(t *testing.T) {
 					Balance     string
 					Limit       string
 				}
+				NFTTrustlines []struct {
+					AssetCode   string
+					AssetIssuer string
+					Balance     string
+					Limit       string
+				}
 				Categories []struct {
 					Name          string
 					Color         string
@@ -465,6 +489,7 @@ func TestRender(t *testing.T) {
 						Limit:       "1000.00",
 					},
 				},
+				NFTTrustlines: nil,
 				Categories:    nil,
 				TrustRating:   nil,
 				TotalXLMValue: 0,
