@@ -6,8 +6,14 @@
 <div class="token-page">
     <!-- HEADER -->
     <div class="token-header">
-        {{if .Token.ImageURL}}
+        {{if and .Token.NFTMetadata .Token.NFTMetadata.IsImage .Token.NFTMetadata.ImageURL}}
+        <img src="{{.Token.NFTMetadata.ImageURL}}" class="token-image" alt="{{.Token.AssetCode}}">
+        {{else if and .Token.ImageURL (not .Token.IsNFT)}}
         <img src="{{.Token.ImageURL}}" class="token-image" alt="{{.Token.AssetCode}}">
+        {{else if and .Token.NFTMetadata (not .Token.NFTMetadata.IsImage)}}
+        <div class="token-image token-placeholder document-icon">
+            <span>📄</span>
+        </div>
         {{else}}
         <div class="token-image token-placeholder">
             <span>{{slice .Token.AssetCode 0 1}}</span>
@@ -65,13 +71,13 @@
         <div class="detail-block full-width nft-block">
             <div class="detail-block-title">NFT Details</div>
             <div class="nft-content">
-                {{if .Token.NFTMetadata.ImageURL}}
+                {{if and .Token.NFTMetadata (not .Token.NFTMetadata.IsImage)}}
                 <div class="nft-media">
-                    <img src="{{.Token.NFTMetadata.ImageURL}}" class="nft-image" alt="{{.Token.NFTMetadata.Name}}">
-                </div>
-                {{else if .Token.NFTMetadata.FileURL}}
-                <div class="nft-media">
+                    {{if .Token.NFTMetadata.FileURL}}
                     <a href="{{.Token.NFTMetadata.FileURL}}" target="_blank" class="btn">View File{{if .Token.NFTMetadata.ContentType}} ({{.Token.NFTMetadata.ContentType}}){{end}}</a>
+                    {{else if .Token.NFTMetadata.ImageURL}}
+                    <a href="{{.Token.NFTMetadata.ImageURL}}" target="_blank" class="btn">View Document</a>
+                    {{end}}
                 </div>
                 {{end}}
                 <div class="nft-details">
@@ -84,7 +90,7 @@
                     {{if .Token.NFTMetadata.FullDescription}}
                     <details class="nft-full-details">
                         <summary>Full Description</summary>
-                        <div class="nft-full-desc-text">{{.Token.NFTMetadata.FullDescription}}</div>
+                        <div class="nft-full-desc-markdown">{{markdown .Token.NFTMetadata.FullDescription}}</div>
                     </details>
                     {{end}}
                 </div>
