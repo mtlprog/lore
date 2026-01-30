@@ -7,6 +7,12 @@
     <div class="account-info">
         <h1 class="account-name">{{.Account.Name}}</h1>
         <div class="account-id">{{.Account.ID}}</div>
+        <div class="external-explorers">
+            <span class="explorers-label">View in:</span>
+            <a href="https://bsn.expert/accounts/{{.Account.ID}}" target="_blank" rel="noopener" class="explorer-link">bsn.expert</a>
+            <a href="https://viewer.eurmtl.me/account/{{.Account.ID}}" target="_blank" rel="noopener" class="explorer-link">eurmtl</a>
+            <a href="https://stellar.expert/explorer/public/account/{{.Account.ID}}" target="_blank" rel="noopener" class="explorer-link">stellar.expert</a>
+        </div>
     </div>
     <div class="account-badges">
         {{if .ReputationScore}}

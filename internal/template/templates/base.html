@@ -619,6 +619,38 @@
             font-family: 'Share Tech Mono', monospace;
         }
 
+        .external-explorers {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .explorers-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        .explorer-link {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .explorer-link:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
         .account-badges {
             display: flex;
             gap: 1rem;
