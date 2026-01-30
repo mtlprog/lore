@@ -17,6 +17,10 @@ type StellarServicer interface {
 	GetAccountDetail(ctx context.Context, accountID string) (*model.AccountDetail, error)
 	GetAccountOperations(ctx context.Context, accountID, cursor string, limit int) (*model.OperationsPage, error)
 	GetTransactionDetail(ctx context.Context, txHash string) (*model.Transaction, error)
+	GetTokenDetail(ctx context.Context, code, issuer string) (*model.TokenDetail, error)
+	GetTokenOrderbook(ctx context.Context, code, issuer string, limit int) (*model.TokenOrderbook, error)
+	GetIssuerNFTMetadata(ctx context.Context, issuerID, assetCode string) (*model.NFTMetadata, error)
+	FetchStellarToml(ctx context.Context, homeDomain string) (*model.StellarTomlCurrency, string, error)
 }
 
 // AccountQuerier defines the interface for account data access.
@@ -71,4 +75,5 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /accounts/{id}", h.Account)
 	mux.HandleFunc("GET /transactions/{hash}", h.Transaction)
 	mux.HandleFunc("GET /search", h.Search)
+	mux.HandleFunc("GET /tokens/{issuer}/{code}", h.Token)
 }

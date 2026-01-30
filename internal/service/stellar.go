@@ -3,28 +3,80 @@ package service
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/mtlprog/lore/internal/model"
 	"github.com/stellar/go/clients/horizonclient"
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 )
 
+// cacheEntry holds a cached value with expiration time.
+type cacheEntry struct {
+	data      interface{}
+	expiresAt time.Time
+}
+
+// cache is a simple TTL-based in-memory cache.
+type cache struct {
+	mu    sync.RWMutex
+	items map[string]cacheEntry
+	ttl   time.Duration
+}
+
+// newCache creates a new cache with the specified TTL.
+func newCache(ttl time.Duration) *cache {
+	return &cache{
+		items: make(map[string]cacheEntry),
+		ttl:   ttl,
+	}
+}
+
+// Get retrieves a value from the cache.
+func (c *cache) Get(key string) (interface{}, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	entry, ok := c.items[key]
+	if !ok || time.Now().After(entry.expiresAt) {
+		return nil, false
+	}
+	return entry.data, true
+}
+
+// Set stores a value in the cache.
+func (c *cache) Set(key string, data interface{}) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.items[key] = cacheEntry{
+		data:      data,
+		expiresAt: time.Now().Add(c.ttl),
+	}
+}
+
 // StellarService provides access to Stellar network data.
 type StellarService struct {
-	client *horizonclient.Client
+	client    *horizonclient.Client
+	nftCache  *cache // Caches NFT metadata (1 hour TTL)
+	tomlCache *cache // Caches stellar.toml content (1 hour TTL)
 }
 
 // NewStellarService creates a new Stellar service with the given Horizon URL.
 func NewStellarService(horizonURL string) *StellarService {
 	return &StellarService{
-		client: &horizonclient.Client{HorizonURL: horizonURL},
+		client:    &horizonclient.Client{HorizonURL: horizonURL},
+		nftCache:  newCache(1 * time.Hour),
+		tomlCache: newCache(1 * time.Hour),
 	}
 }
 
@@ -495,4 +547,280 @@ func assetCodeDisplay(assetType, assetCode string) string {
 		return "XLM"
 	}
 	return assetCode
+}
+
+// GetTokenDetail returns information about a token from the Horizon /assets endpoint.
+func (s *StellarService) GetTokenDetail(ctx context.Context, code, issuer string) (*model.TokenDetail, error) {
+	req := horizonclient.AssetRequest{
+		ForAssetCode:   code,
+		ForAssetIssuer: issuer,
+		Limit:          1,
+	}
+
+	page, err := s.client.Assets(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(page.Embedded.Records) == 0 {
+		return nil, fmt.Errorf("token not found")
+	}
+
+	asset := page.Embedded.Records[0]
+
+	// Get issuer account details for name and home_domain
+	issuerAcc, err := s.client.AccountDetail(horizonclient.AccountRequest{AccountID: issuer})
+	var issuerName, homeDomain string
+	if err == nil {
+		issuerName = decodeBase64(issuerAcc.Data["Name"])
+		homeDomain = issuerAcc.HomeDomain
+	}
+	if issuerName == "" {
+		issuerName = issuer[:6] + "..." + issuer[len(issuer)-6:]
+	}
+
+	return &model.TokenDetail{
+		AssetCode:   asset.Code,
+		AssetIssuer: asset.Issuer,
+		IssuerName:  issuerName,
+		NumAccounts: int64(asset.Accounts.Authorized),
+		Amount:      asset.Balances.Authorized,
+		HomeDomain:  homeDomain,
+	}, nil
+}
+
+// GetTokenOrderbook returns the orderbook for a token against XLM.
+func (s *StellarService) GetTokenOrderbook(ctx context.Context, code, issuer string, limit int) (*model.TokenOrderbook, error) {
+	req := horizonclient.OrderBookRequest{
+		SellingAssetType:   horizonclient.AssetType4,
+		SellingAssetCode:   code,
+		SellingAssetIssuer: issuer,
+		BuyingAssetType:    horizonclient.AssetTypeNative,
+		Limit:              uint(limit),
+	}
+
+	// Adjust asset type based on code length
+	if len(code) > 4 {
+		req.SellingAssetType = horizonclient.AssetType12
+	}
+
+	orderbook, err := s.client.OrderBook(req)
+	if err != nil {
+		return nil, err
+	}
+
+	bids := make([]model.OrderbookEntry, 0, len(orderbook.Bids))
+	for _, bid := range orderbook.Bids {
+		bids = append(bids, model.OrderbookEntry{
+			Price:  bid.Price,
+			Amount: bid.Amount,
+		})
+	}
+
+	asks := make([]model.OrderbookEntry, 0, len(orderbook.Asks))
+	for _, ask := range orderbook.Asks {
+		asks = append(asks, model.OrderbookEntry{
+			Price:  ask.Price,
+			Amount: ask.Amount,
+		})
+	}
+
+	return &model.TokenOrderbook{
+		Bids: bids,
+		Asks: asks,
+	}, nil
+}
+
+// ipfsGateway is the IPFS gateway URL for fetching NFT metadata.
+const ipfsGateway = "https://ipfs.io/ipfs/"
+
+// ipfsMetadata represents the JSON structure of SEP-0039 NFT metadata.
+type ipfsMetadata struct {
+	Name            string `json:"name"`
+	Description     string `json:"description"`
+	FullDescription string `json:"fulldescription"`
+	Image           string `json:"image"`
+	File            string `json:"file"`
+	ContentType     string `json:"content_type"`
+}
+
+// GetIssuerNFTMetadata checks for ipfshash or ipfshash-{CODE} in issuer's ManageData.
+// Results are cached for 1 hour to avoid repeated IPFS requests.
+func (s *StellarService) GetIssuerNFTMetadata(ctx context.Context, issuerID, assetCode string) (*model.NFTMetadata, error) {
+	cacheKey := issuerID + "/" + assetCode
+
+	// Check cache first
+	if cached, ok := s.nftCache.Get(cacheKey); ok {
+		if cached == nil {
+			return nil, nil // Cached negative result
+		}
+		return cached.(*model.NFTMetadata), nil
+	}
+
+	acc, err := s.client.AccountDetail(horizonclient.AccountRequest{AccountID: issuerID})
+	if err != nil {
+		return nil, err
+	}
+
+	// Check for ipfshash-{CODE} first, then generic ipfshash
+	var ipfsHash string
+	if hash := decodeBase64(acc.Data["ipfshash-"+assetCode]); hash != "" {
+		ipfsHash = hash
+	} else if hash := decodeBase64(acc.Data["ipfshash"]); hash != "" {
+		ipfsHash = hash
+	}
+
+	if ipfsHash == "" {
+		s.nftCache.Set(cacheKey, nil) // Cache negative result
+		return nil, nil               // Not an NFT
+	}
+
+	// Fetch metadata from IPFS
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	resp, err := httpClient.Get(ipfsGateway + ipfsHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch IPFS metadata: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("IPFS returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB limit
+	if err != nil {
+		return nil, fmt.Errorf("failed to read IPFS response: %w", err)
+	}
+
+	var meta ipfsMetadata
+	if err := json.Unmarshal(body, &meta); err != nil {
+		return nil, fmt.Errorf("failed to parse IPFS metadata: %w", err)
+	}
+
+	// Decode base64 fulldescription if present
+	fullDesc := meta.FullDescription
+	if decoded, err := base64.StdEncoding.DecodeString(meta.FullDescription); err == nil {
+		fullDesc = string(decoded)
+	}
+
+	// Convert IPFS URLs to gateway URLs
+	imageURL := meta.Image
+	if strings.HasPrefix(imageURL, "ipfs://") {
+		imageURL = ipfsGateway + strings.TrimPrefix(imageURL, "ipfs://")
+	}
+
+	fileURL := meta.File
+	if strings.HasPrefix(fileURL, "ipfs://") {
+		fileURL = ipfsGateway + strings.TrimPrefix(fileURL, "ipfs://")
+	}
+
+	result := &model.NFTMetadata{
+		Name:            meta.Name,
+		Description:     meta.Description,
+		FullDescription: fullDesc,
+		ImageURL:        imageURL,
+		FileURL:         fileURL,
+		ContentType:     meta.ContentType,
+	}
+
+	s.nftCache.Set(cacheKey, result)
+	return result, nil
+}
+
+// stellarTomlCurrency represents a currency entry in stellar.toml for TOML parsing.
+type stellarTomlCurrency struct {
+	Code        string `toml:"code"`
+	Issuer      string `toml:"issuer"`
+	Name        string `toml:"name"`
+	Description string `toml:"desc"`
+	Image       string `toml:"image"`
+}
+
+// stellarToml represents the structure of a stellar.toml file.
+type stellarToml struct {
+	Currencies []stellarTomlCurrency `toml:"CURRENCIES"`
+}
+
+// tomlCacheEntry stores both the parsed currency and raw content.
+type tomlCacheEntry struct {
+	currency *model.StellarTomlCurrency
+	content  string
+}
+
+// FetchStellarToml fetches and parses the stellar.toml file for an issuer.
+// Results are cached for 1 hour to avoid repeated HTTP requests.
+func (s *StellarService) FetchStellarToml(ctx context.Context, homeDomain string) (*model.StellarTomlCurrency, string, error) {
+	if homeDomain == "" {
+		return nil, "", nil
+	}
+
+	// Check cache first
+	if cached, ok := s.tomlCache.Get(homeDomain); ok {
+		entry := cached.(*tomlCacheEntry)
+		return entry.currency, entry.content, nil
+	}
+
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+	url := "https://" + homeDomain + "/.well-known/stellar.toml"
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to fetch stellar.toml: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, "", fmt.Errorf("stellar.toml returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1MB limit
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read stellar.toml: %w", err)
+	}
+
+	var tomlData stellarToml
+	if _, err := toml.Decode(string(body), &tomlData); err != nil {
+		return nil, "", fmt.Errorf("failed to parse stellar.toml: %w", err)
+	}
+
+	// Return first currency (we'll match by code/issuer in the handler)
+	var currency *model.StellarTomlCurrency
+	if len(tomlData.Currencies) > 0 {
+		c := tomlData.Currencies[0]
+		currency = &model.StellarTomlCurrency{
+			Code:        c.Code,
+			Issuer:      c.Issuer,
+			Name:        c.Name,
+			Description: c.Description,
+			Image:       c.Image,
+		}
+	}
+
+	// Cache the result
+	s.tomlCache.Set(homeDomain, &tomlCacheEntry{
+		currency: currency,
+		content:  string(body),
+	})
+
+	return currency, string(body), nil
+}
+
+// FindCurrencyInToml finds a currency by code and issuer in stellar.toml content.
+func FindCurrencyInToml(tomlContent, code, issuer string) *model.StellarTomlCurrency {
+	var tomlData stellarToml
+	if _, err := toml.Decode(tomlContent, &tomlData); err != nil {
+		return nil
+	}
+
+	for _, c := range tomlData.Currencies {
+		if c.Code == code && c.Issuer == issuer {
+			return &model.StellarTomlCurrency{
+				Code:        c.Code,
+				Issuer:      c.Issuer,
+				Name:        c.Name,
+				Description: c.Description,
+				Image:       c.Image,
+			}
+		}
+	}
+	return nil
 }

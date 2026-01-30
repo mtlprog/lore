@@ -1,0 +1,163 @@
+{{template "base" .}}
+
+{{define "title"}}{{.Token.AssetCode}} // LORE{{end}}
+
+{{define "content"}}
+<div class="token-page">
+    <!-- HEADER -->
+    <div class="token-header">
+        {{if .Token.ImageURL}}
+        <img src="{{.Token.ImageURL}}" class="token-image" alt="{{.Token.AssetCode}}">
+        {{else}}
+        <div class="token-image token-placeholder">
+            <span>{{slice .Token.AssetCode 0 1}}</span>
+        </div>
+        {{end}}
+        <div class="token-info">
+            <h1 class="token-name">{{.Token.AssetCode}}{{if .Token.IsNFT}} <span class="token-badge nft">NFT</span>{{end}}</h1>
+            <div class="token-issuer">
+                Issuer: <a href="/accounts/{{.Token.AssetIssuer}}">{{.Token.IssuerName}}</a>
+                <span class="token-issuer-id">({{truncateID .Token.AssetIssuer}})</span>
+            </div>
+            {{if .Token.HomeDomain}}
+            <a href="https://{{.Token.HomeDomain}}" target="_blank" class="token-domain">{{.Token.HomeDomain}}</a>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">Trustlines</div>
+            <div class="stat-value">{{.Token.NumAccounts}}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Total Supply</div>
+            <div class="stat-value">{{.Token.Amount}}</div>
+        </div>
+        {{if .Token.BestBid}}
+        <div class="stat-card">
+            <div class="stat-label">Best Bid</div>
+            <div class="stat-value cell-xlm">{{.Token.BestBid}} <span class="unit">XLM</span></div>
+        </div>
+        {{end}}
+        {{if .Token.BestAsk}}
+        <div class="stat-card">
+            <div class="stat-label">Best Ask</div>
+            <div class="stat-value cell-xlm">{{.Token.BestAsk}} <span class="unit">XLM</span></div>
+        </div>
+        {{end}}
+    </div>
+
+    <!-- DESCRIPTION -->
+    {{if .Token.Description}}
+    <div class="detail-grid">
+        <div class="detail-block full-width">
+            <div class="detail-block-title">Description</div>
+            <div class="detail-block-content">{{.Token.Description}}</div>
+        </div>
+    </div>
+    {{end}}
+
+    <!-- NFT INFO -->
+    {{if .Token.IsNFT}}
+    <div class="detail-grid">
+        <div class="detail-block full-width nft-block">
+            <div class="detail-block-title">NFT Details</div>
+            <div class="nft-content">
+                {{if .Token.NFTMetadata.ImageURL}}
+                <div class="nft-media">
+                    <img src="{{.Token.NFTMetadata.ImageURL}}" class="nft-image" alt="{{.Token.NFTMetadata.Name}}">
+                </div>
+                {{else if .Token.NFTMetadata.FileURL}}
+                <div class="nft-media">
+                    <a href="{{.Token.NFTMetadata.FileURL}}" target="_blank" class="btn">View File{{if .Token.NFTMetadata.ContentType}} ({{.Token.NFTMetadata.ContentType}}){{end}}</a>
+                </div>
+                {{end}}
+                <div class="nft-details">
+                    {{if .Token.NFTMetadata.Name}}
+                    <div class="nft-name">{{.Token.NFTMetadata.Name}}</div>
+                    {{end}}
+                    {{if .Token.NFTMetadata.Description}}
+                    <p class="nft-description">{{.Token.NFTMetadata.Description}}</p>
+                    {{end}}
+                    {{if .Token.NFTMetadata.FullDescription}}
+                    <details class="nft-full-details">
+                        <summary>Full Description</summary>
+                        <div class="nft-full-desc-text">{{.Token.NFTMetadata.FullDescription}}</div>
+                    </details>
+                    {{end}}
+                </div>
+            </div>
+        </div>
+    </div>
+    {{end}}
+
+    <!-- ORDERBOOK -->
+    {{if .Orderbook}}
+    {{if or .Orderbook.Bids .Orderbook.Asks}}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-title">Order Book</span>
+            <span class="section-count">{{.Token.AssetCode}} / XLM</span>
+        </div>
+        <div class="orderbook-container">
+            <div class="orderbook-side bids-side">
+                <div class="orderbook-title">Bids (Buy Orders)</div>
+                <div class="orderbook-subtitle">Buyers want to pay this much XLM for 1 {{.Token.AssetCode}}</div>
+                {{if .Orderbook.Bids}}
+                <table class="orderbook-table">
+                    <thead>
+                        <tr>
+                            <th>Price (XLM)</th>
+                            <th>Amount ({{.Token.AssetCode}})</th>
+                            <th>Total (XLM)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {{range .Orderbook.Bids}}
+                    <tr class="bid-row">
+                        <td class="price-cell bid-price">{{.Price}}</td>
+                        <td class="amount-cell">{{.Amount}}</td>
+                        <td class="total-cell">{{multiplyStrings .Price .Amount}}</td>
+                    </tr>
+                    {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="orderbook-empty">No buy orders</div>
+                {{end}}
+            </div>
+            <div class="orderbook-side asks-side">
+                <div class="orderbook-title">Asks (Sell Orders)</div>
+                <div class="orderbook-subtitle">Sellers want this much XLM for 1 {{.Token.AssetCode}}</div>
+                {{if .Orderbook.Asks}}
+                <table class="orderbook-table">
+                    <thead>
+                        <tr>
+                            <th>Price (XLM)</th>
+                            <th>Amount ({{.Token.AssetCode}})</th>
+                            <th>Total (XLM)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {{range .Orderbook.Asks}}
+                    <tr class="ask-row">
+                        <td class="price-cell ask-price">{{.Price}}</td>
+                        <td class="amount-cell">{{.Amount}}</td>
+                        <td class="total-cell">{{multiplyStrings .Price .Amount}}</td>
+                    </tr>
+                    {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="orderbook-empty">No sell orders</div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    {{end}}
+    {{end}}
+
+</div>
+{{end}}

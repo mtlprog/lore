@@ -688,6 +688,7 @@
         .detail-grid {
             display: grid;
             gap: 1.5rem;
+            margin-bottom: 1.5rem;
         }
 
         @media (min-width: 768px) {
@@ -792,6 +793,16 @@
             border-bottom: none;
         }
 
+        .trustlines-table td:first-child a {
+            color: var(--warn);
+            text-decoration: none;
+        }
+
+        .trustlines-table td:first-child a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
         /* Token list toggle - hide rows after 10th by default (10 provides reasonable preview) */
         .tokens-body tr:nth-child(n+11) {
             display: none;
@@ -819,6 +830,16 @@
             color: var(--accent);
             margin-right: 0.75rem;
             font-family: 'Share Tech Mono', monospace;
+        }
+
+        .links-list a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .links-list a:hover {
+            color: var(--warn);
+            text-decoration: underline;
         }
 
         /* EMPTY STATE */
@@ -2021,6 +2042,324 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 0.5rem;
+            }
+        }
+
+        /* TOKEN PAGE */
+        .token-header {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            align-items: center;
+        }
+
+        .token-image {
+            width: 80px;
+            height: 80px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            object-fit: contain;
+            background: var(--bg-card);
+        }
+
+        .token-info {
+            flex: 1;
+        }
+
+        .token-name {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 2rem;
+            font-weight: 400;
+            color: var(--warn);
+            margin-bottom: 0.25rem;
+            letter-spacing: 0.05em;
+        }
+
+        .token-issuer {
+            font-size: 0.875rem;
+            color: var(--text-dim);
+        }
+
+        .token-issuer a {
+            color: var(--link);
+            text-decoration: none;
+        }
+
+        .token-issuer a:hover {
+            text-decoration: underline;
+        }
+
+        .token-issuer-id {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+
+        .token-domain {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--accent);
+            margin-top: 0.25rem;
+        }
+
+        .cell-issuer {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            font-family: 'Share Tech Mono', monospace;
+            margin-top: 0.125rem;
+        }
+
+        /* NFT */
+        .nft-block .detail-block-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .nft-name {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1.25rem;
+            color: var(--text);
+        }
+
+        .nft-image {
+            max-width: 300px;
+            max-height: 300px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+        }
+
+        .nft-description {
+            color: var(--text-dim);
+            font-size: 0.875rem;
+        }
+
+        .nft-full-desc {
+            white-space: pre-wrap;
+            font-size: 0.8125rem;
+            color: var(--text-dim);
+            max-height: 200px;
+            overflow: hidden;
+        }
+
+        #toggle-nft-desc:checked ~ .nft-full-desc {
+            max-height: none;
+        }
+
+        /* NFT Grid on Account Page */
+        .nfts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .nft-card {
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .nft-card:hover {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .nft-code {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--warn);
+            font-weight: 700;
+        }
+
+        .nft-issuer {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.625rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Token Badge */
+        .token-badge {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.625rem;
+            padding: 0.125rem 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            vertical-align: middle;
+        }
+
+        .token-badge.nft {
+            background: rgba(163, 113, 247, 0.15);
+            color: var(--council);
+            border: 1px solid rgba(163, 113, 247, 0.3);
+        }
+
+        /* Token Placeholder */
+        .token-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+        }
+
+        .token-placeholder span {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 2rem;
+            color: var(--warn);
+            font-weight: 700;
+        }
+
+        /* NFT Content on Token Page */
+        .nft-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .nft-media {
+            margin-bottom: 0.5rem;
+        }
+
+        .nft-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nft-full-details {
+            margin-top: 0.5rem;
+        }
+
+        .nft-full-details summary {
+            cursor: pointer;
+            color: var(--link);
+            font-size: 0.8125rem;
+        }
+
+        .nft-full-desc-text {
+            white-space: pre-wrap;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8125rem;
+            color: var(--text);
+            line-height: 1.6;
+            padding: 1rem;
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            margin-top: 0.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        /* Orderbook */
+        .orderbook-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .orderbook-side {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            padding: 1rem;
+        }
+
+        .orderbook-title {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.25rem;
+        }
+
+        .bids-side .orderbook-title { color: var(--accent); }
+        .asks-side .orderbook-title { color: var(--danger); }
+
+        .orderbook-subtitle {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .orderbook-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8125rem;
+        }
+
+        .orderbook-table th {
+            text-align: right;
+            padding: 0.5rem;
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .orderbook-table td {
+            text-align: right;
+            padding: 0.5rem;
+            font-family: 'Share Tech Mono', monospace;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .bid-price { color: var(--accent); }
+        .ask-price { color: var(--danger); }
+        .amount-cell { color: var(--num); }
+        .total-cell { color: var(--text-dim); }
+
+        .orderbook-empty {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        /* Trades */
+        .trade-amount {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--num);
+        }
+
+        .trade-asset {
+            color: var(--warn);
+            font-weight: 700;
+        }
+
+        .trade-arrow {
+            color: var(--text-muted);
+            margin: 0 0.25rem;
+        }
+
+        .trade-price {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            .token-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+
+            .token-image {
+                width: 60px;
+                height: 60px;
+            }
+
+            .token-name {
+                font-size: 1.5rem;
+            }
+
+            .orderbook-container {
+                grid-template-columns: 1fr;
             }
         }
     </style>

@@ -39,11 +39,28 @@ var funcMap = template.FuncMap{
 		return s[:n]
 	},
 	"truncateID": truncateID,
-	"slice": func(s string, start int) string {
-		if start < 0 || start >= len(s) {
+	"slice": func(s string, indices ...int) string {
+		if len(s) == 0 {
 			return ""
 		}
-		return s[start:]
+		start := 0
+		end := len(s)
+		if len(indices) >= 1 {
+			start = indices[0]
+		}
+		if len(indices) >= 2 {
+			end = indices[1]
+		}
+		if start < 0 {
+			start = 0
+		}
+		if end > len(s) {
+			end = len(s)
+		}
+		if start >= end || start >= len(s) {
+			return ""
+		}
+		return s[start:end]
 	},
 	"formatNumber": func(f float64) string {
 		rounded := int64(math.Round(f))
@@ -91,6 +108,11 @@ var funcMap = template.FuncMap{
 	"containsTag": func(tags []string, tag string) bool {
 		return lo.Contains(tags, tag)
 	},
+	"multiplyStrings": func(a, b string) string {
+		af, _ := strconv.ParseFloat(a, 64)
+		bf, _ := strconv.ParseFloat(b, 64)
+		return strconv.FormatFloat(af*bf, 'f', 7, 64)
+	},
 	"tagURL": func(currentTags []string, tag string, add bool, currentQuery string) string {
 		var newTags []string
 		if add {
@@ -136,7 +158,7 @@ func New() (*Templates, error) {
 	}
 
 	// Page templates to parse with base
-	pageNames := []string{"home.html", "account.html", "transaction.html", "search.html"}
+	pageNames := []string{"home.html", "account.html", "transaction.html", "search.html", "token.html"}
 
 	for _, name := range pageNames {
 		// Clone base template for each page

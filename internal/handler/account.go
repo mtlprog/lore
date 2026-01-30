@@ -128,6 +128,29 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Separate NFTs from regular tokens (NFTs have balance == "0.0000001")
+	var tokens, nfts []model.Trustline
+	for _, t := range account.Trustlines {
+		if t.Balance == "0.0000001" && t.AssetIssuer != "native" {
+			nfts = append(nfts, t)
+		} else {
+			tokens = append(tokens, t)
+		}
+	}
+	account.Trustlines = tokens
+	account.NFTTrustlines = nfts
+
+	// Sort trustlines: XLM first, then by balance (already sorted by balance from service)
+	sort.SliceStable(account.Trustlines, func(i, j int) bool {
+		if account.Trustlines[i].AssetIssuer == "native" {
+			return true
+		}
+		if account.Trustlines[j].AssetIssuer == "native" {
+			return false
+		}
+		return false // Keep existing order (by balance) for non-native assets
+	})
+
 	// Process relationships into categories
 	account.Categories = groupRelationships(accountID, relationships, confirmed)
 
