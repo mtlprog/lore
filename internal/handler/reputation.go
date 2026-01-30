@@ -57,7 +57,9 @@ func (h *Handler) Reputation(w http.ResponseWriter, r *http.Request) {
 	// Get account name for display
 	accountName := accountID
 	names, err := h.accounts.GetAccountNames(ctx, []string{accountID})
-	if err == nil && names[accountID] != "" {
+	if err != nil {
+		slog.Debug("failed to fetch account name, using account ID", "account_id", accountID, "error", err)
+	} else if names[accountID] != "" {
 		accountName = names[accountID]
 	}
 

@@ -13,6 +13,10 @@ packages:
         config:
           dir: "internal/handler/mocks"
           outpkg: "mocks"
+      ReputationQuerier:
+        config:
+          dir: "internal/handler/mocks"
+          outpkg: "mocks"
       TemplateRenderer:
         config:
           dir: "internal/handler/mocks"

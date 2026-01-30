@@ -96,7 +96,7 @@ func (s *Service) GetGraph(ctx context.Context, accountID string) (*model.Reputa
 		result.Level1Nodes[i] = model.ReputationNode{
 			AccountID:    node.AccountID,
 			Name:         node.Name,
-			Rating:       node.Rating,
+			Rating:       string(node.Rating),
 			Weight:       node.Weight,
 			PortfolioXLM: node.PortfolioXLM,
 			Connections:  node.Connections,
@@ -110,7 +110,7 @@ func (s *Service) GetGraph(ctx context.Context, accountID string) (*model.Reputa
 		result.Level2Nodes[i] = model.ReputationNode{
 			AccountID:    node.AccountID,
 			Name:         node.Name,
-			Rating:       node.Rating,
+			Rating:       string(node.Rating),
 			Weight:       node.Weight,
 			PortfolioXLM: node.PortfolioXLM,
 			Connections:  node.Connections,
