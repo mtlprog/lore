@@ -9,6 +9,7 @@ import (
 
 	"github.com/mtlprog/lore/internal/handler/mocks"
 	"github.com/mtlprog/lore/internal/model"
+	"github.com/mtlprog/lore/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -82,7 +83,7 @@ func TestTokenHandler(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		stellar.EXPECT().GetTokenDetail(mock.Anything, "MTLAP", validIssuer).Return(nil, errors.New("token not found"))
+		stellar.EXPECT().GetTokenDetail(mock.Anything, "MTLAP", validIssuer).Return(nil, service.ErrTokenNotFound)
 
 		h, err := New(stellar, accounts, tmpl)
 		require.NoError(t, err)

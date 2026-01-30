@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -36,7 +37,7 @@ func (h *Handler) Token(w http.ResponseWriter, r *http.Request) {
 	// Get token details
 	token, err := h.stellar.GetTokenDetail(ctx, code, issuer)
 	if err != nil {
-		if service.IsNotFound(err) || err.Error() == "token not found" {
+		if errors.Is(err, service.ErrTokenNotFound) || service.IsNotFound(err) {
 			http.Error(w, "Token not found", http.StatusNotFound)
 			return
 		}

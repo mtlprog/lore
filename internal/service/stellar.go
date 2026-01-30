@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"net/netip"
 	"regexp"
 	"sort"
 	"strconv"
@@ -21,6 +23,9 @@ import (
 	"github.com/stellar/go/protocols/horizon"
 	"github.com/stellar/go/protocols/horizon/operations"
 )
+
+// ErrTokenNotFound is returned when a token does not exist.
+var ErrTokenNotFound = errors.New("token not found")
 
 // cacheEntry holds a cached value with expiration time.
 type cacheEntry struct {
@@ -43,14 +48,24 @@ func newCache(ttl time.Duration) *cache {
 	}
 }
 
-// Get retrieves a value from the cache.
+// Get retrieves a value from the cache. Expired entries are cleaned up.
 func (c *cache) Get(key string) (interface{}, bool) {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
 	entry, ok := c.items[key]
-	if !ok || time.Now().After(entry.expiresAt) {
+	c.mu.RUnlock()
+
+	if !ok {
 		return nil, false
 	}
+
+	if time.Now().After(entry.expiresAt) {
+		// Clean up expired entry
+		c.mu.Lock()
+		delete(c.items, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+
 	return entry.data, true
 }
 
@@ -563,7 +578,7 @@ func (s *StellarService) GetTokenDetail(ctx context.Context, code, issuer string
 	}
 
 	if len(page.Embedded.Records) == 0 {
-		return nil, fmt.Errorf("token not found")
+		return nil, ErrTokenNotFound
 	}
 
 	asset := page.Embedded.Records[0]
@@ -571,7 +586,13 @@ func (s *StellarService) GetTokenDetail(ctx context.Context, code, issuer string
 	// Get issuer account details for name and home_domain
 	issuerAcc, err := s.client.AccountDetail(horizonclient.AccountRequest{AccountID: issuer})
 	var issuerName, homeDomain string
-	if err == nil {
+	if err != nil {
+		if IsNotFound(err) {
+			slog.Debug("issuer account not found", "issuer", issuer)
+		} else {
+			slog.Warn("failed to fetch issuer account details", "issuer", issuer, "error", err)
+		}
+	} else {
 		issuerName = decodeBase64(issuerAcc.Data["Name"])
 		homeDomain = issuerAcc.HomeDomain
 	}
@@ -654,7 +675,11 @@ func (s *StellarService) GetIssuerNFTMetadata(ctx context.Context, issuerID, ass
 		if cached == nil {
 			return nil, nil // Cached negative result
 		}
-		return cached.(*model.NFTMetadata), nil
+		if meta, ok := cached.(*model.NFTMetadata); ok {
+			return meta, nil
+		}
+		slog.Error("unexpected type in NFT cache", "key", cacheKey, "type", fmt.Sprintf("%T", cached))
+		// Treat as cache miss and continue with fresh fetch
 	}
 
 	acc, err := s.client.AccountDetail(horizonclient.AccountRequest{AccountID: issuerID})
@@ -673,6 +698,14 @@ func (s *StellarService) GetIssuerNFTMetadata(ctx context.Context, issuerID, ass
 	if ipfsHash == "" {
 		s.nftCache.Set(cacheKey, nil) // Cache negative result
 		return nil, nil               // Not an NFT
+	}
+
+	// Validate IPFS hash format (CIDv0: base58, CIDv1: base32/base36)
+	// IPFS CIDs only contain alphanumeric characters
+	if !regexp.MustCompile(`^[a-zA-Z0-9]+$`).MatchString(ipfsHash) {
+		slog.Warn("invalid IPFS hash format", "issuer", issuerID, "hash", ipfsHash)
+		s.nftCache.Set(cacheKey, nil)
+		return nil, nil
 	}
 
 	// Fetch metadata from IPFS
@@ -754,10 +787,19 @@ func (s *StellarService) FetchStellarToml(ctx context.Context, homeDomain string
 		return nil, "", nil
 	}
 
+	// Validate homeDomain to prevent SSRF attacks
+	if !isValidHomeDomain(homeDomain) {
+		slog.Warn("invalid home domain rejected", "domain", homeDomain)
+		return nil, "", nil
+	}
+
 	// Check cache first
 	if cached, ok := s.tomlCache.Get(homeDomain); ok {
-		entry := cached.(*tomlCacheEntry)
-		return entry.currency, entry.content, nil
+		if entry, ok := cached.(*tomlCacheEntry); ok {
+			return entry.currency, entry.content, nil
+		}
+		slog.Error("unexpected type in TOML cache", "domain", homeDomain, "type", fmt.Sprintf("%T", cached))
+		// Treat as cache miss and continue with fresh fetch
 	}
 
 	httpClient := &http.Client{Timeout: 10 * time.Second}
@@ -808,6 +850,7 @@ func (s *StellarService) FetchStellarToml(ctx context.Context, homeDomain string
 func FindCurrencyInToml(tomlContent, code, issuer string) *model.StellarTomlCurrency {
 	var tomlData stellarToml
 	if _, err := toml.Decode(tomlContent, &tomlData); err != nil {
+		slog.Error("failed to re-parse stellar.toml content", "error", err)
 		return nil
 	}
 
@@ -823,4 +866,38 @@ func FindCurrencyInToml(tomlContent, code, issuer string) *model.StellarTomlCurr
 		}
 	}
 	return nil
+}
+
+// isValidHomeDomain validates that a home domain is safe to fetch.
+// Prevents SSRF attacks by rejecting localhost, internal IPs, and malformed domains.
+func isValidHomeDomain(domain string) bool {
+	// Reject domains with path traversal or port numbers
+	if strings.Contains(domain, "/") || strings.Contains(domain, "..") || strings.Contains(domain, ":") {
+		return false
+	}
+
+	// Reject localhost and common internal hostnames
+	lower := strings.ToLower(domain)
+	if lower == "localhost" || strings.HasSuffix(lower, ".localhost") ||
+		lower == "internal" || strings.HasSuffix(lower, ".internal") ||
+		strings.HasSuffix(lower, ".local") {
+		return false
+	}
+
+	// Reject IP addresses (both IPv4 and IPv6)
+	if addr, err := netip.ParseAddr(domain); err == nil {
+		// Valid IP address - reject private/loopback ranges
+		if addr.IsLoopback() || addr.IsPrivate() || addr.IsLinkLocalUnicast() || addr.IsLinkLocalMulticast() {
+			return false
+		}
+		// Also reject any direct IP addresses for safety
+		return false
+	}
+
+	// Must contain at least one dot (valid domain)
+	if !strings.Contains(domain, ".") {
+		return false
+	}
+
+	return true
 }

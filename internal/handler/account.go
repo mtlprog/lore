@@ -129,14 +129,10 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Separate NFTs from regular tokens (NFTs have balance == "0.0000001")
-	var tokens, nfts []model.Trustline
-	for _, t := range account.Trustlines {
-		if t.Balance == "0.0000001" && t.AssetIssuer != "native" {
-			nfts = append(nfts, t)
-		} else {
-			tokens = append(tokens, t)
-		}
-	}
+	// FilterReject returns (kept, rejected) - we keep regular tokens, reject NFTs
+	tokens, nfts := lo.FilterReject(account.Trustlines, func(t model.Trustline, _ int) bool {
+		return t.AssetIssuer == "native" || t.Balance != "0.0000001"
+	})
 	account.Trustlines = tokens
 	account.NFTTrustlines = nfts
 
