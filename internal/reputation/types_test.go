@@ -8,21 +8,22 @@ func TestScoreToGrade(t *testing.T) {
 		score float64
 		want  string
 	}{
-		// Boundary tests
-		{"A grade at 4.0", 4.0, "A"},
-		{"A grade at 3.5", 3.5, "A"},
-		{"A- grade just below 3.5", 3.49, "A-"},
-		{"A- grade at 3.0", 3.0, "A-"},
-		{"B+ grade just below 3.0", 2.99, "B+"},
-		{"B+ grade at 2.5", 2.5, "B+"},
-		{"B grade just below 2.5", 2.49, "B"},
-		{"B grade at 2.0", 2.0, "B"},
-		{"C+ grade just below 2.0", 1.99, "C+"},
-		{"C+ grade at 1.5", 1.5, "C+"},
-		{"C grade just below 1.5", 1.49, "C"},
-		{"C grade at 1.0", 1.0, "C"},
-		{"D grade just below 1.0", 0.99, "D"},
-		{"D grade at 0.01", 0.01, "D"},
+		// Pure ratings should return their grade
+		{"pure A rating (4.0)", 4.0, "A"},
+		{"pure B rating (3.0)", 3.0, "B"},
+		{"pure C rating (2.0)", 2.0, "C"},
+		{"pure D rating (1.0)", 1.0, "D"},
+
+		// Boundary tests - grades align with rating values
+		{"A boundary at 3.5", 3.5, "A"},
+		{"B boundary just below 3.5", 3.49, "B"},
+		{"B boundary at 2.5", 2.5, "B"},
+		{"C boundary just below 2.5", 2.49, "C"},
+		{"C boundary at 1.5", 1.5, "C"},
+		{"D boundary just below 1.5", 1.49, "D"},
+		{"D at small positive", 0.01, "D"},
+
+		// Edge cases
 		{"N/A at zero", 0, "N/A"},
 		{"N/A at negative", -1.0, "N/A"},
 	}

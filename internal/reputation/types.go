@@ -64,22 +64,18 @@ func (s *Score) Grade() string {
 }
 
 // ScoreToGrade converts a numeric score (1-4) to a letter grade.
+// Boundaries align with rating values: A=4, B=3, C=2, D=1.
+// A pure rating of X should return grade X.
 func ScoreToGrade(score float64) string {
 	switch {
 	case score >= 3.5:
-		return "A"
-	case score >= 3.0:
-		return "A-"
+		return "A" // 3.5-4.0: pure A or A-dominant mix
 	case score >= 2.5:
-		return "B+"
-	case score >= 2.0:
-		return "B"
+		return "B" // 2.5-3.49: pure B or B-adjacent mix
 	case score >= 1.5:
-		return "C+"
-	case score >= 1.0:
-		return "C"
+		return "C" // 1.5-2.49: pure C or C-adjacent mix
 	case score > 0:
-		return "D"
+		return "D" // 0.01-1.49: pure D or D-adjacent mix
 	default:
 		return "N/A"
 	}
