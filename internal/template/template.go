@@ -108,6 +108,7 @@ var funcMap = template.FuncMap{
 	"containsTag": func(tags []string, tag string) bool {
 		return lo.Contains(tags, tag)
 	},
+	"lower": strings.ToLower,
 	"multiplyStrings": func(a, b string) string {
 		af, _ := strconv.ParseFloat(a, 64)
 		bf, _ := strconv.ParseFloat(b, 64)
