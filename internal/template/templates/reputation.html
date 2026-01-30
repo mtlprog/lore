@@ -91,7 +91,7 @@
             {{range .Graph.Level1Nodes}}
             <div class="rater-card">
                 <div class="rater-header">
-                    <a href="/accounts/{{.AccountID}}" class="rater-name">{{.Name}}</a>
+                    <a href="/accounts/{{.AccountID}}/reputation" class="rater-name">{{.Name}}</a>
                     <span class="rater-rating rating-{{lower .Rating}}">{{.Rating}}</span>
                 </div>
                 <div class="rater-details">
@@ -127,7 +127,7 @@
             {{range .Graph.Level2Nodes}}
             <div class="rater-card">
                 <div class="rater-header">
-                    <a href="/accounts/{{.AccountID}}" class="rater-name">{{.Name}}</a>
+                    <a href="/accounts/{{.AccountID}}/reputation" class="rater-name">{{.Name}}</a>
                     <span class="rater-rating rating-{{lower .Rating}}">{{.Rating}}</span>
                 </div>
                 <div class="rater-details">
