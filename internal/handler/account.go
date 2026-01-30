@@ -176,8 +176,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	if h.reputation != nil {
 		reputationScore, err = h.reputation.GetScore(ctx, accountID)
 		if err != nil {
-			slog.Debug("failed to fetch reputation score", "account_id", accountID, "error", err)
-			// Continue without reputation - non-critical feature
+			slog.Warn("failed to fetch reputation score, continuing without", "account_id", accountID, "error", err)
 		}
 	}
 

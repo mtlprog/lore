@@ -1,6 +1,7 @@
 package reputation
 
 import (
+	"log/slog"
 	"math"
 
 	"github.com/shopspring/decimal"
@@ -69,13 +70,13 @@ func (c *Calculator) calculateAccountScore(
 
 		// Count rating types
 		switch rating.Rating {
-		case "A":
+		case RatingA:
 			score.RatingCountA++
-		case "B":
+		case RatingB:
 			score.RatingCountB++
-		case "C":
+		case RatingC:
 			score.RatingCountC++
-		case "D":
+		case RatingD:
 			score.RatingCountD++
 		}
 
@@ -111,7 +112,10 @@ func (c *Calculator) calculateAccountScore(
 func (c *Calculator) calculateRaterWeight(portfolio decimal.Decimal, connections int) float64 {
 	// Portfolio weight: log10 scaling
 	// 1 XLM -> 0, 10 XLM -> 1, 100 XLM -> 2, 1000 XLM -> 3, etc.
-	portfolioFloat, _ := portfolio.Float64()
+	portfolioFloat, exact := portfolio.Float64()
+	if !exact {
+		slog.Debug("precision loss converting portfolio to float64", "portfolio", portfolio.String())
+	}
 	portfolioWeight := math.Log10(portfolioFloat + 1)
 
 	// Connection weight: sqrt scaling

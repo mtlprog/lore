@@ -3,8 +3,8 @@ package reputation
 import (
 	"context"
 	"fmt"
-
-	"github.com/samber/lo"
+	"log/slog"
+	"sort"
 )
 
 // GraphBuilder constructs 2-level reputation graphs.
@@ -61,7 +61,10 @@ func (g *GraphBuilder) BuildGraph(ctx context.Context, targetAccountID string) (
 
 	for _, rater := range directRaters {
 		weight := g.calc.CalculateRaterWeight(rater.PortfolioXLM, connections[rater.AccountID])
-		portfolioFloat, _ := rater.PortfolioXLM.Float64()
+		portfolioFloat, exact := rater.PortfolioXLM.Float64()
+		if !exact {
+			slog.Debug("precision loss converting portfolio to float64", "account_id", rater.AccountID, "portfolio", rater.PortfolioXLM.String())
+		}
 
 		level1Nodes = append(level1Nodes, GraphNode{
 			AccountID:    rater.AccountID,
@@ -97,7 +100,10 @@ func (g *GraphBuilder) BuildGraph(ctx context.Context, targetAccountID string) (
 		seen[rater.AccountID] = true
 
 		weight := g.calc.CalculateRaterWeight(rater.PortfolioXLM, connections[rater.AccountID])
-		portfolioFloat, _ := rater.PortfolioXLM.Float64()
+		portfolioFloat, exact := rater.PortfolioXLM.Float64()
+		if !exact {
+			slog.Debug("precision loss converting portfolio to float64", "account_id", rater.AccountID, "portfolio", rater.PortfolioXLM.String())
+		}
 
 		level2Nodes = append(level2Nodes, GraphNode{
 			AccountID:    rater.AccountID,
@@ -111,25 +117,16 @@ func (g *GraphBuilder) BuildGraph(ctx context.Context, targetAccountID string) (
 		})
 	}
 
-	// Sort nodes by weight (highest first) within each level
-	level1Nodes = lo.Filter(level1Nodes, func(n GraphNode, _ int) bool { return true }) // Copy
-	level2Nodes = lo.Filter(level2Nodes, func(n GraphNode, _ int) bool { return true })
-
-	// Sort by rating (A first), then by weight
+	// Sort nodes by rating (A first), then by weight (highest first)
 	sortNodes := func(nodes []GraphNode) {
-		for i := range len(nodes) {
-			for j := i + 1; j < len(nodes); j++ {
-				// Sort by rating first (A > B > C > D)
-				if ratingPriority(nodes[i].Rating) < ratingPriority(nodes[j].Rating) {
-					nodes[i], nodes[j] = nodes[j], nodes[i]
-				} else if ratingPriority(nodes[i].Rating) == ratingPriority(nodes[j].Rating) {
-					// Then by weight
-					if nodes[i].Weight < nodes[j].Weight {
-						nodes[i], nodes[j] = nodes[j], nodes[i]
-					}
-				}
+		sort.Slice(nodes, func(i, j int) bool {
+			// Sort by rating first (A > B > C > D)
+			if ratingPriority(nodes[i].Rating) != ratingPriority(nodes[j].Rating) {
+				return ratingPriority(nodes[i].Rating) > ratingPriority(nodes[j].Rating)
 			}
-		}
+			// Then by weight (highest first)
+			return nodes[i].Weight > nodes[j].Weight
+		})
 	}
 	sortNodes(level1Nodes)
 	sortNodes(level2Nodes)
@@ -144,17 +141,6 @@ func (g *GraphBuilder) BuildGraph(ctx context.Context, targetAccountID string) (
 }
 
 // ratingPriority returns the sort priority for a rating (higher = better).
-func ratingPriority(rating string) int {
-	switch rating {
-	case "A":
-		return 4
-	case "B":
-		return 3
-	case "C":
-		return 2
-	case "D":
-		return 1
-	default:
-		return 0
-	}
+func ratingPriority(rating Rating) int {
+	return int(rating.Value())
 }
