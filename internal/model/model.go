@@ -1,5 +1,7 @@
 package model
 
+import "strings"
+
 // AccountSummary represents a token holder in the list view.
 type AccountSummary struct {
 	ID      string
@@ -151,26 +153,36 @@ type NFTMetadata struct {
 }
 
 // IsImage returns true if the NFT content is an image.
-// Returns false if ContentType indicates non-image, or if FileURL is set (file takes precedence),
-// or if FullDescription suggests this is a document NFT.
+//
+// It returns true if:
+//   - ContentType explicitly starts with "image/" (e.g., "image/png"), OR
+//   - ImageURL is set, FileURL is empty, and FullDescription is 500 chars or fewer.
+//
+// It returns false if:
+//   - Receiver is nil
+//   - ContentType is set but not an image MIME type
+//   - FileURL is set (file content takes precedence over images)
+//   - FullDescription exceeds 500 characters (indicates a document NFT like contracts)
 func (n *NFTMetadata) IsImage() bool {
 	if n == nil {
 		return false
 	}
-	// If ContentType is explicitly set, check if it's an image type
+	// If ContentType is explicitly set, check if it's an image MIME type
 	if n.ContentType != "" {
-		return len(n.ContentType) >= 6 && n.ContentType[:6] == "image/"
+		return strings.HasPrefix(n.ContentType, "image/")
 	}
 	// If there's a FileURL, the main content is a file (not an image)
 	if n.FileURL != "" {
 		return false
 	}
-	// If there's substantial FullDescription content, this is likely a document NFT
-	// (contracts, agreements, etc.) even if ImageURL is set incorrectly
+	// If there's substantial FullDescription content (>500 chars), this is likely a document NFT
+	// (contracts, agreements, etc.) even if ImageURL is set incorrectly.
+	// The 500-char threshold distinguishes brief image captions from document content.
 	if len(n.FullDescription) > 500 {
 		return false
 	}
-	// Only assume image if ImageURL is set and no FileURL
+	// At this point: ContentType is empty, FileURL is empty, and FullDescription <= 500 chars.
+	// Treat as image if ImageURL is present.
 	return n.ImageURL != ""
 }
 
