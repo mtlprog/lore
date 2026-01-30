@@ -73,7 +73,7 @@
     {{range $idx, $cat := .Account.Categories}}
     <details class="category{{if $cat.IsEmpty}} empty{{end}}">
         <summary>
-            <span class="category-name" style="color: {{$cat.Color}}">{{$cat.Name}}</span>
+            <span class="category-name" data-category="{{lower $cat.Name}}">{{$cat.Name}}</span>
             <span class="category-count">({{len $cat.Relationships}})</span>
             {{if $cat.IsEmpty}}<span class="category-empty-badge">empty</span>{{end}}
         </summary>

@@ -9,7 +9,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
+        /* ============================================
+           1. CSS VARIABLES
+           ============================================ */
+
         :root {
+            /* Core colors */
             --bg: #0a0e13;
             --bg-panel: #0d1117;
             --bg-card: #161b22;
@@ -26,10 +31,24 @@
             --num: #79c0ff;
             --council: #a371f7;
             --danger: #f85149;
+
+            /* Grade colors */
+            --grade-a: #00ff88;
+            --grade-b: #f0b429;
+            --grade-c: #f09000;
+            --grade-d: #f85149;
+
+            /* Category colors */
+            --cat-family: #f85149;
+            --cat-work: #58a6ff;
+            --cat-network: #a371f7;
+            --cat-ownership: #f0b429;
+            --cat-social: #00ff88;
         }
 
         @media (prefers-color-scheme: light) {
             :root {
+                /* Core colors */
                 --bg: #f6f8fa;
                 --bg-panel: #ffffff;
                 --bg-card: #ffffff;
@@ -46,6 +65,19 @@
                 --num: #0550ae;
                 --council: #8250df;
                 --danger: #cf222e;
+
+                /* Grade colors (light theme) */
+                --grade-a: #1a7f37;
+                --grade-b: #9a6700;
+                --grade-c: #bc4c00;
+                --grade-d: #cf222e;
+
+                /* Category colors (light theme) */
+                --cat-family: #cf222e;
+                --cat-work: #0969da;
+                --cat-network: #8250df;
+                --cat-ownership: #9a6700;
+                --cat-social: #1a7f37;
             }
         }
 
@@ -72,6 +104,41 @@
             0% { background-position: 0% 0%; }
             100% { background-position: 0% 100%; }
         }
+
+        /* ============================================
+           2. UTILITIES
+           ============================================ */
+
+        /* Panel with left accent border - shared by stat-card, detail-block, trust-rating, portfolio-value, tx-meta, search-section */
+        .stat-card::before,
+        .detail-block::before,
+        .trust-rating::before,
+        .portfolio-value::before,
+        .tx-meta::before,
+        .search-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: var(--accent);
+        }
+
+        /* Panel base - shared background, border, padding, position: relative */
+        .stat-card,
+        .detail-block,
+        .trust-rating,
+        .portfolio-value,
+        .tx-meta,
+        .search-section,
+        .tags-filter-section {
+            position: relative;
+        }
+
+        /* ============================================
+           3. BASE & RESET
+           ============================================ */
 
         * {
             margin: 0;
@@ -108,6 +175,10 @@
             opacity: 0.3;
             z-index: 1;
         }
+
+        /* ============================================
+           4. LAYOUT (container, header, footer)
+           ============================================ */
 
         .container {
             max-width: 1400px;
@@ -237,6 +308,15 @@
             flex: 1;
         }
 
+        /* ============================================
+           5. COMPONENTS
+           - Stats cards
+           - Tables
+           - Badges
+           - Buttons
+           - Forms
+           ============================================ */
+
         /* STATS GRID */
         .stats-grid {
             display: grid;
@@ -249,7 +329,6 @@
             background: var(--bg-card);
             border: 1px solid var(--border);
             padding: 1.25rem;
-            position: relative;
             overflow: hidden;
             animation: slide-up 0.4s ease-out backwards;
         }
@@ -259,16 +338,7 @@
         .stat-card:nth-child(3) { animation-delay: 0.2s; }
         .stat-card:nth-child(4) { animation-delay: 0.25s; }
 
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 3px;
-            height: 100%;
-            background: var(--accent);
-        }
-
+        /* Accent colors for stat cards */
         .stat-card:nth-child(2)::before { background: var(--link); }
         .stat-card:nth-child(3)::before { background: var(--warn); }
         .stat-card:nth-child(4)::before { background: var(--council); }
@@ -498,6 +568,14 @@
             box-shadow: 0 0 20px var(--accent-glow);
         }
 
+        /* ============================================
+           6. PAGE-SPECIFIC
+           - Account page
+           - Transaction page
+           - Search page
+           - Token page
+           ============================================ */
+
         /* ACCOUNT HEADER - COMPACT */
         .account-header {
             display: flex;
@@ -557,10 +635,10 @@
             border: 2px solid var(--border);
         }
 
-        .rating-badge.grade-a { border-color: #00ff88; background: rgba(0, 255, 136, 0.12); box-shadow: 0 0 20px rgba(0, 255, 136, 0.15); }
-        .rating-badge.grade-b { border-color: #f0b429; background: rgba(240, 180, 41, 0.12); box-shadow: 0 0 20px rgba(240, 180, 41, 0.15); }
-        .rating-badge.grade-c { border-color: #f09000; background: rgba(240, 144, 0, 0.12); box-shadow: 0 0 20px rgba(240, 144, 0, 0.15); }
-        .rating-badge.grade-d { border-color: #f85149; background: rgba(248, 81, 73, 0.12); box-shadow: 0 0 20px rgba(248, 81, 73, 0.15); }
+        .rating-badge.grade-a { border-color: var(--grade-a); background: color-mix(in srgb, var(--grade-a) 12%, transparent); box-shadow: 0 0 20px color-mix(in srgb, var(--grade-a) 15%, transparent); }
+        .rating-badge.grade-b { border-color: var(--grade-b); background: color-mix(in srgb, var(--grade-b) 12%, transparent); box-shadow: 0 0 20px color-mix(in srgb, var(--grade-b) 15%, transparent); }
+        .rating-badge.grade-c { border-color: var(--grade-c); background: color-mix(in srgb, var(--grade-c) 12%, transparent); box-shadow: 0 0 20px color-mix(in srgb, var(--grade-c) 15%, transparent); }
+        .rating-badge.grade-d { border-color: var(--grade-d); background: color-mix(in srgb, var(--grade-d) 12%, transparent); box-shadow: 0 0 20px color-mix(in srgb, var(--grade-d) 15%, transparent); }
 
         .rating-grade {
             font-family: 'Share Tech Mono', monospace;
@@ -571,10 +649,10 @@
             text-align: center;
         }
 
-        .rating-badge.grade-a .rating-grade { color: #00ff88; }
-        .rating-badge.grade-b .rating-grade { color: #f0b429; }
-        .rating-badge.grade-c .rating-grade { color: #f09000; }
-        .rating-badge.grade-d .rating-grade { color: #f85149; }
+        .rating-badge.grade-a .rating-grade { color: var(--grade-a); }
+        .rating-badge.grade-b .rating-grade { color: var(--grade-b); }
+        .rating-badge.grade-c .rating-grade { color: var(--grade-c); }
+        .rating-badge.grade-d .rating-grade { color: var(--grade-d); }
 
         .rating-details {
             display: flex;
@@ -597,10 +675,10 @@
             font-size: 0.8125rem;
         }
 
-        .rating-counts .rc-a { color: #00ff88; }
-        .rating-counts .rc-b { color: #f0b429; }
-        .rating-counts .rc-c { color: #f09000; }
-        .rating-counts .rc-d { color: #f85149; }
+        .rating-counts .rc-a { color: var(--grade-a); }
+        .rating-counts .rc-b { color: var(--grade-b); }
+        .rating-counts .rc-c { color: var(--grade-c); }
+        .rating-counts .rc-d { color: var(--grade-d); }
 
         /* VALUE BADGE */
         .value-badge {
@@ -701,17 +779,6 @@
             background: var(--bg-panel);
             border: 1px solid var(--border);
             padding: 1.5rem;
-            position: relative;
-        }
-
-        .detail-block::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 3px;
-            height: 100%;
-            background: var(--accent);
         }
 
         .detail-block-title {
@@ -897,7 +964,14 @@
             color: var(--text-muted);
         }
 
-        /* RESPONSIVE */
+        /* ============================================
+           7. RESPONSIVE
+           - 1024px: tablet
+           - 768px: mobile landscape
+           - 600px: mobile portrait
+           - 480px: small mobile
+           ============================================ */
+
         @media (max-width: 1024px) {
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
@@ -978,17 +1052,6 @@
             border: 1px solid var(--border);
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            position: relative;
-        }
-
-        .trust-rating::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 3px;
-            height: 100%;
-            background: var(--accent);
         }
 
         .trust-header {
@@ -1025,10 +1088,10 @@
             transition: width 0.5s ease;
         }
 
-        .trust-bar.grade-a { background: linear-gradient(90deg, #00ff88, #2da44e); }
-        .trust-bar.grade-b { background: linear-gradient(90deg, #f0b429, #c69700); }
-        .trust-bar.grade-c { background: linear-gradient(90deg, #f09000, #c06000); }
-        .trust-bar.grade-d { background: linear-gradient(90deg, #f85149, #cf222e); }
+        .trust-bar.grade-a { background: linear-gradient(90deg, var(--grade-a), var(--accent-dim)); }
+        .trust-bar.grade-b { background: linear-gradient(90deg, var(--grade-b), color-mix(in srgb, var(--grade-b) 80%, black)); }
+        .trust-bar.grade-c { background: linear-gradient(90deg, var(--grade-c), color-mix(in srgb, var(--grade-c) 80%, black)); }
+        .trust-bar.grade-d { background: linear-gradient(90deg, var(--grade-d), var(--danger)); }
 
         .trust-grade {
             position: absolute;
@@ -1054,10 +1117,10 @@
             gap: 0.25rem;
         }
 
-        .trust-breakdown .count-a { color: #00ff88; }
-        .trust-breakdown .count-b { color: #f0b429; }
-        .trust-breakdown .count-c { color: #f09000; }
-        .trust-breakdown .count-d { color: #f85149; }
+        .trust-breakdown .count-a { color: var(--grade-a); }
+        .trust-breakdown .count-b { color: var(--grade-b); }
+        .trust-breakdown .count-c { color: var(--grade-c); }
+        .trust-breakdown .count-d { color: var(--grade-d); }
 
         /* PORTFOLIO VALUE */
         .portfolio-value {
@@ -1065,18 +1128,10 @@
             border: 1px solid var(--border);
             padding: 1.5rem;
             margin-bottom: 1.5rem;
-            position: relative;
         }
 
-        .portfolio-value::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 3px;
-            height: 100%;
-            background: var(--warn);
-        }
+        /* Portfolio uses warn color for accent */
+        .portfolio-value::before { background: var(--warn); }
 
         .portfolio-header {
             margin-bottom: 0.75rem;
@@ -1169,6 +1224,13 @@
         .category-name {
             flex: 1;
         }
+
+        /* Category name colors via data attribute */
+        .category-name[data-category="family"] { color: var(--cat-family); }
+        .category-name[data-category="work"] { color: var(--cat-work); }
+        .category-name[data-category="network"] { color: var(--cat-network); }
+        .category-name[data-category="ownership"] { color: var(--cat-ownership); }
+        .category-name[data-category="social"] { color: var(--cat-social); }
 
         .category-count {
             font-size: 0.75rem;
@@ -1328,11 +1390,11 @@
         }
 
         /* Category colors for relationship types */
-        .relationship-type.cat-family { background: rgba(248, 81, 73, 0.2); color: #f85149; }
-        .relationship-type.cat-work { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
-        .relationship-type.cat-network { background: rgba(163, 113, 247, 0.2); color: #a371f7; }
-        .relationship-type.cat-ownership { background: rgba(240, 180, 41, 0.2); color: #f0b429; }
-        .relationship-type.cat-social { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .relationship-type.cat-family { background: color-mix(in srgb, var(--cat-family) 20%, transparent); color: var(--cat-family); }
+        .relationship-type.cat-work { background: color-mix(in srgb, var(--cat-work) 20%, transparent); color: var(--cat-work); }
+        .relationship-type.cat-network { background: color-mix(in srgb, var(--cat-network) 20%, transparent); color: var(--cat-network); }
+        .relationship-type.cat-ownership { background: color-mix(in srgb, var(--cat-ownership) 20%, transparent); color: var(--cat-ownership); }
+        .relationship-type.cat-social { background: color-mix(in srgb, var(--cat-social) 20%, transparent); color: var(--cat-social); }
 
         @media (max-width: 768px) {
             .relationship-id {
@@ -1505,17 +1567,6 @@
             border: 1px solid var(--border);
             padding: 1.5rem;
             margin-bottom: 2rem;
-            position: relative;
-        }
-
-        .tx-meta::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 3px;
-            height: 100%;
-            background: var(--accent);
         }
 
         .tx-meta-row {
@@ -1635,25 +1686,9 @@
                 text-shadow: none;
             }
 
-            /* Rating badge - muted colors for light theme */
-            .rating-badge.grade-a { border-color: #1a7f37; background: rgba(26, 127, 55, 0.08); box-shadow: 0 0 15px rgba(26, 127, 55, 0.1); }
-            .rating-badge.grade-b { border-color: #9a6700; background: rgba(154, 103, 0, 0.08); box-shadow: 0 0 15px rgba(154, 103, 0, 0.1); }
-            .rating-badge.grade-c { border-color: #bc4c00; background: rgba(188, 76, 0, 0.08); box-shadow: 0 0 15px rgba(188, 76, 0, 0.1); }
-            .rating-badge.grade-d { border-color: #cf222e; background: rgba(207, 34, 46, 0.08); box-shadow: 0 0 15px rgba(207, 34, 46, 0.1); }
-
-            .rating-badge.grade-a .rating-grade { color: #1a7f37; }
-            .rating-badge.grade-b .rating-grade { color: #9a6700; }
-            .rating-badge.grade-c .rating-grade { color: #bc4c00; }
-            .rating-badge.grade-d .rating-grade { color: #cf222e; }
-
-            .rating-counts .rc-a { color: #1a7f37; }
-            .rating-counts .rc-b { color: #9a6700; }
-            .rating-counts .rc-c { color: #bc4c00; }
-            .rating-counts .rc-d { color: #cf222e; }
-
-            /* Value badge for light theme */
-            .value-badge { border-color: #9a6700; background: rgba(154, 103, 0, 0.08); box-shadow: 0 0 15px rgba(154, 103, 0, 0.1); }
-            .value-amount { color: #9a6700; }
+            /* Value badge for light theme - uses --council variable */
+            .value-badge { border-color: var(--council); background: color-mix(in srgb, var(--council) 8%, transparent); box-shadow: 0 0 15px color-mix(in srgb, var(--council) 10%, transparent); }
+            .value-amount { color: var(--council); }
         }
 
         /* TAGS */
@@ -1661,7 +1696,6 @@
             background: var(--bg-panel);
             border: 1px solid var(--border);
             padding: 1.5rem;
-            position: relative;
         }
 
         .tags-cloud {
@@ -1868,18 +1902,7 @@
             border: 1px solid var(--accent);
             padding: 1.5rem;
             margin-bottom: 2rem;
-            position: relative;
             z-index: 10;
-        }
-
-        .search-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 3px;
-            height: 100%;
-            background: var(--accent);
         }
 
         .search-terminal-label {
