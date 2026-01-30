@@ -9,7 +9,14 @@ import (
 
 	"github.com/mtlprog/lore/internal/config"
 	"github.com/mtlprog/lore/internal/repository"
+	"github.com/mtlprog/lore/internal/reputation"
 	"github.com/samber/lo"
+)
+
+// Valid sort values for search
+const (
+	sortByBalance    = "balance"
+	sortByReputation = "reputation"
 )
 
 const (
@@ -44,17 +51,21 @@ type SearchData struct {
 	Offset       int
 	NextOffset   int
 	HasMore      bool
+	SortBy       string // "balance" or "reputation"
 }
 
 // SearchAccountDisplay represents an account for the search results template.
 type SearchAccountDisplay struct {
-	AccountID     string
-	Name          string
-	MTLAPBalance  float64
-	MTLACBalance  float64
-	TotalXLMValue float64
-	IsPerson      bool
-	IsCorporate   bool
+	AccountID        string
+	Name             string
+	MTLAPBalance     float64
+	MTLACBalance     float64
+	TotalXLMValue    float64
+	IsPerson         bool
+	IsCorporate      bool
+	ReputationScore  float64 // Weighted reputation score
+	ReputationGrade  string  // "A", "A-", "B+", etc.
+	ReputationWeight float64 // Total weight of raters
 }
 
 // Search handles the search page.
@@ -76,6 +87,13 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 			slog.Debug("invalid offset parameter, defaulting to 0", "value", offsetParam)
 		}
 		offset = 0
+	}
+
+	// Parse sort parameter
+	sortParam := r.URL.Query().Get("sort")
+	sortBy := sortByBalance // default
+	if sortParam == sortByReputation {
+		sortBy = sortByReputation
 	}
 
 	// Fetch all available tags for the tag cloud
@@ -106,7 +124,11 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Fetch accounts with pagination (fetch one extra to check for more)
-		rows, err := h.accounts.SearchAccounts(ctx, query, selectedTags, config.DefaultPageLimit+1, offset)
+		repoSortBy := repository.SearchSortByBalance
+		if sortBy == sortByReputation {
+			repoSortBy = repository.SearchSortByReputation
+		}
+		rows, err := h.accounts.SearchAccounts(ctx, query, selectedTags, config.DefaultPageLimit+1, offset, repoSortBy)
 		if err != nil {
 			slog.Error("failed to search accounts", "query", query, "tags", selectedTags, "offset", offset, "error", err)
 			http.Error(w, "Failed to search accounts", http.StatusInternalServerError)
@@ -120,14 +142,21 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 
 		// Convert to display structs
 		for _, row := range rows {
+			grade := ""
+			if row.ReputationScore > 0 {
+				grade = reputation.ScoreToGrade(row.ReputationScore)
+			}
 			accounts = append(accounts, SearchAccountDisplay{
-				AccountID:     row.AccountID,
-				Name:          row.Name,
-				MTLAPBalance:  row.MTLAPBalance,
-				MTLACBalance:  row.MTLACBalance,
-				TotalXLMValue: row.TotalXLMValue,
-				IsPerson:      row.MTLAPBalance > 0 && row.MTLAPBalance <= 5,
-				IsCorporate:   row.MTLACBalance > 0 && row.MTLACBalance <= 4,
+				AccountID:        row.AccountID,
+				Name:             row.Name,
+				MTLAPBalance:     row.MTLAPBalance,
+				MTLACBalance:     row.MTLACBalance,
+				TotalXLMValue:    row.TotalXLMValue,
+				IsPerson:         row.MTLAPBalance > 0 && row.MTLAPBalance <= 5,
+				IsCorporate:      row.MTLACBalance > 0 && row.MTLACBalance <= 4,
+				ReputationScore:  row.ReputationScore,
+				ReputationGrade:  grade,
+				ReputationWeight: row.ReputationWeight,
 			})
 		}
 	}
@@ -142,6 +171,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		Offset:       offset,
 		NextOffset:   offset + config.DefaultPageLimit,
 		HasMore:      hasMore,
+		SortBy:       sortBy,
 	}
 
 	var buf bytes.Buffer

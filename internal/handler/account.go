@@ -15,9 +15,10 @@ import (
 
 // AccountData holds data for the account detail page template.
 type AccountData struct {
-	Account      *model.AccountDetail
-	Operations   *model.OperationsPage
-	AccountNames map[string]string // Map of account ID to name for linked accounts
+	Account         *model.AccountDetail
+	Operations      *model.OperationsPage
+	AccountNames    map[string]string      // Map of account ID to name for linked accounts
+	ReputationScore *model.ReputationScore // Weighted reputation score (optional)
 }
 
 // relationshipCategoryDef defines a relationship category.
@@ -170,10 +171,21 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Fetch weighted reputation score (optional feature)
+	var reputationScore *model.ReputationScore
+	if h.reputation != nil {
+		reputationScore, err = h.reputation.GetScore(ctx, accountID)
+		if err != nil {
+			slog.Debug("failed to fetch reputation score", "account_id", accountID, "error", err)
+			// Continue without reputation - non-critical feature
+		}
+	}
+
 	data := AccountData{
-		Account:      account,
-		Operations:   operations,
-		AccountNames: accountNames,
+		Account:         account,
+		Operations:      operations,
+		AccountNames:    accountNames,
+		ReputationScore: reputationScore,
 	}
 
 	var buf bytes.Buffer

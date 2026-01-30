@@ -23,7 +23,7 @@ func TestTokenHandler(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+validIssuer+"/", nil)
@@ -42,7 +42,7 @@ func TestTokenHandler(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		// Too short issuer
@@ -62,7 +62,7 @@ func TestTokenHandler(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		// S prefix is for secret keys
@@ -85,7 +85,7 @@ func TestTokenHandler(t *testing.T) {
 
 		stellar.EXPECT().GetTokenDetail(mock.Anything, "MTLAP", validIssuer).Return(nil, service.ErrTokenNotFound)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+validIssuer+"/MTLAP", nil)
@@ -106,7 +106,7 @@ func TestTokenHandler(t *testing.T) {
 
 		stellar.EXPECT().GetTokenDetail(mock.Anything, "MTLAP", validIssuer).Return(nil, errors.New("horizon error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+validIssuer+"/MTLAP", nil)
@@ -147,7 +147,7 @@ func TestTokenHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+validIssuer+"/MTLAP", nil)
@@ -188,7 +188,7 @@ func TestTokenHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+validIssuer+"/MTLAP", nil)
@@ -229,7 +229,7 @@ func TestTokenHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+validIssuer+"/NFTTEST", nil)
@@ -272,7 +272,7 @@ image = "https://mtla.me/logo.png"
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+validIssuer+"/MTLAP", nil)
@@ -305,7 +305,7 @@ image = "https://mtla.me/logo.png"
 
 		tmpl.EXPECT().Render(mock.Anything, "token.html", mock.Anything).Return(errors.New("template error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+validIssuer+"/MTLAP", nil)
@@ -337,7 +337,7 @@ image = "https://mtla.me/logo.png"
 
 		tmpl.EXPECT().Render(mock.Anything, "token.html", mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/tokens/"+mIssuer+"/TEST", nil)
@@ -361,7 +361,7 @@ func TestTokenRouteRegistration(t *testing.T) {
 
 		stellar.EXPECT().GetTokenDetail(mock.Anything, "MTLAP", validIssuer).Return(nil, errors.New("expected error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		mux := http.NewServeMux()

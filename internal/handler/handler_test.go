@@ -26,28 +26,28 @@ func TestNewHandler(t *testing.T) {
 	tmpl := mocks.NewMockTemplateRenderer(t)
 
 	t.Run("nil stellar service returns error", func(t *testing.T) {
-		h, err := New(nil, accounts, tmpl)
+		h, err := New(nil, accounts, nil, tmpl)
 		assert.Nil(t, h)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "stellar service")
 	})
 
 	t.Run("nil account repository returns error", func(t *testing.T) {
-		h, err := New(stellar, nil, tmpl)
+		h, err := New(stellar, nil, nil, tmpl)
 		assert.Nil(t, h)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "account repository")
 	})
 
 	t.Run("nil templates returns error", func(t *testing.T) {
-		h, err := New(stellar, accounts, nil)
+		h, err := New(stellar, accounts, nil, nil)
 		assert.Nil(t, h)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "templates")
 	})
 
 	t.Run("valid dependencies returns handler", func(t *testing.T) {
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 	})
@@ -81,7 +81,7 @@ func TestHomeHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -108,7 +108,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, 40).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/?persons_offset=20&corporate_offset=40", nil)
@@ -129,7 +129,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/?persons_offset=-5", nil)
@@ -150,7 +150,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/?persons_offset=abc", nil)
@@ -168,7 +168,7 @@ func TestHomeHandler(t *testing.T) {
 
 		accounts.EXPECT().GetStats(mock.Anything).Return(nil, errors.New("database error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -188,7 +188,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -209,7 +209,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -231,7 +231,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("template error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -262,7 +262,7 @@ func TestHomeHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -284,7 +284,7 @@ func TestAccountHandler(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		// Create request with empty path value
@@ -333,7 +333,7 @@ func TestAccountHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/accounts/GABC123", nil)
@@ -356,7 +356,7 @@ func TestAccountHandler(t *testing.T) {
 
 		stellar.EXPECT().GetAccountDetail(mock.Anything, "GABC123").Return(nil, errors.New("horizon error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/accounts/GABC123", nil)
@@ -383,7 +383,7 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("template error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/accounts/GABC123", nil)
@@ -406,7 +406,7 @@ func TestAccountHandler(t *testing.T) {
 		}
 		stellar.EXPECT().GetAccountDetail(mock.Anything, "GNOTFOUND").Return(nil, notFoundErr)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/accounts/GNOTFOUND", nil)
@@ -431,7 +431,7 @@ func TestRegisterRoutes(t *testing.T) {
 		// Set up expectations for home route
 		accounts.EXPECT().GetStats(mock.Anything).Return(nil, errors.New("expected error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		mux := http.NewServeMux()
@@ -453,7 +453,7 @@ func TestRegisterRoutes(t *testing.T) {
 		// Set up expectations for account route
 		stellar.EXPECT().GetAccountDetail(mock.Anything, "test").Return(nil, errors.New("expected error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		mux := http.NewServeMux()
@@ -475,7 +475,7 @@ func TestRegisterRoutes(t *testing.T) {
 		// Set up expectations for search route
 		accounts.EXPECT().GetAllTags(mock.Anything).Return(nil, errors.New("expected error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		mux := http.NewServeMux()
@@ -494,7 +494,7 @@ func TestRegisterRoutes(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		mux := http.NewServeMux()
@@ -785,7 +785,7 @@ func TestTransactionHandler(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/transactions/", nil)
@@ -803,7 +803,7 @@ func TestTransactionHandler(t *testing.T) {
 		accounts := mocks.NewMockAccountQuerier(t)
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		// Hash too short (not 64 chars)
@@ -829,7 +829,7 @@ func TestTransactionHandler(t *testing.T) {
 		}
 		stellar.EXPECT().GetTransactionDetail(mock.Anything, txHash).Return(nil, notFoundErr)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
@@ -851,7 +851,7 @@ func TestTransactionHandler(t *testing.T) {
 
 		stellar.EXPECT().GetTransactionDetail(mock.Anything, txHash).Return(nil, errors.New("horizon error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
@@ -890,7 +890,7 @@ func TestTransactionHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
@@ -922,7 +922,7 @@ func TestTransactionHandler(t *testing.T) {
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "transaction.html", mock.Anything).Return(errors.New("template error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
@@ -960,7 +960,7 @@ func TestTransactionHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/transactions/"+txHash, nil)
@@ -1089,7 +1089,7 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(2, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0, mock.Anything).Return([]repository.SearchAccountRow{
 			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0, MTLACBalance: 0, TotalXLMValue: 100},
 			{AccountID: "GDEF", Name: "Test Company", MTLAPBalance: 0, MTLACBalance: 1.0, TotalXLMValue: 5000},
 		}, nil)
@@ -1099,7 +1099,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
@@ -1134,7 +1134,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search", nil)
@@ -1163,7 +1163,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=a", nil)
@@ -1188,7 +1188,7 @@ func TestSearchHandler(t *testing.T) {
 			{TagName: "Belgrade", Count: 5},
 		}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "a", []string{"Belgrade"}).Return(1, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "a", []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+		accounts.EXPECT().SearchAccounts(mock.Anything, "a", []string{"Belgrade"}, config.DefaultPageLimit+1, 0, mock.Anything).Return([]repository.SearchAccountRow{
 			{AccountID: "GTEST1", Name: "Test Account", MTLAPBalance: 10.0},
 		}, nil)
 
@@ -1197,7 +1197,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=a&tag=Belgrade", nil)
@@ -1226,7 +1226,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		longQuery := strings.Repeat("a", 101)
@@ -1258,7 +1258,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		longQuery := strings.Repeat("a", 101)
@@ -1283,14 +1283,14 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "ab", mock.Anything).Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "ab", mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "ab", mock.Anything, config.DefaultPageLimit+1, 0, mock.Anything).Return(nil, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=ab", nil)
@@ -1313,14 +1313,14 @@ func TestSearchHandler(t *testing.T) {
 		maxQuery := strings.Repeat("a", 100)
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, maxQuery, mock.Anything).Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, maxQuery, mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, maxQuery, mock.Anything, config.DefaultPageLimit+1, 0, mock.Anything).Return(nil, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q="+maxQuery, nil)
@@ -1341,14 +1341,14 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0, mock.Anything).Return(nil, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=++test++", nil)
@@ -1367,10 +1367,10 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(50, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 20).Return(nil, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 20, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test&offset=20", nil)
@@ -1388,10 +1388,10 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(5, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test&offset=abc", nil)
@@ -1409,10 +1409,10 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(5, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return(nil, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test&offset=-5", nil)
@@ -1432,7 +1432,7 @@ func TestSearchHandler(t *testing.T) {
 			{TagName: "Belgrade", Count: 10},
 		}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "", []string{"Belgrade"}).Return(25, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, config.DefaultPageLimit+1, 20).Return([]repository.SearchAccountRow{
+		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, config.DefaultPageLimit+1, 20, mock.Anything).Return([]repository.SearchAccountRow{
 			{AccountID: "GTEST1", Name: "Test", MTLAPBalance: 10.0},
 		}, nil)
 
@@ -1441,7 +1441,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?tag=Belgrade&offset=20", nil)
@@ -1470,14 +1470,14 @@ func TestSearchHandler(t *testing.T) {
 		for i := range rows {
 			rows[i] = repository.SearchAccountRow{AccountID: "G" + string(rune('A'+i)), MTLAPBalance: 1.0}
 		}
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0).Return(rows, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, config.DefaultPageLimit+1, 0, mock.Anything).Return(rows, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
@@ -1498,7 +1498,7 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return(nil, errors.New("database error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search", nil)
@@ -1518,7 +1518,7 @@ func TestSearchHandler(t *testing.T) {
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(0, errors.New("database error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
@@ -1537,9 +1537,9 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(5, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
@@ -1558,10 +1558,10 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(errors.New("template error"))
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
@@ -1579,7 +1579,7 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", mock.Anything).Return(4, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything).Return([]repository.SearchAccountRow{
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]repository.SearchAccountRow{
 			{AccountID: "G1", MTLAPBalance: 5.0, MTLACBalance: 0},
 			{AccountID: "G2", MTLAPBalance: 5.1, MTLACBalance: 0},
 			{AccountID: "G3", MTLAPBalance: 0, MTLACBalance: 4.0},
@@ -1591,7 +1591,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test", nil)
@@ -1616,7 +1616,7 @@ func TestSearchHandler(t *testing.T) {
 			{TagName: "Belgrade", Count: 10},
 		}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "", []string{"Belgrade"}).Return(5, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, config.DefaultPageLimit+1, 0, mock.Anything).Return([]repository.SearchAccountRow{
 			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0},
 		}, nil)
 
@@ -1625,7 +1625,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?tag=Belgrade", nil)
@@ -1647,7 +1647,7 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "test", []string{"Belgrade"}).Return(2, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "test", []string{"Belgrade"}, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+		accounts.EXPECT().SearchAccounts(mock.Anything, "test", []string{"Belgrade"}, config.DefaultPageLimit+1, 0, mock.Anything).Return([]repository.SearchAccountRow{
 			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0},
 		}, nil)
 
@@ -1656,7 +1656,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?q=test&tag=Belgrade", nil)
@@ -1677,7 +1677,7 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "", []string{"Belgrade", "Programmer"}).Return(3, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade", "Programmer"}, config.DefaultPageLimit+1, 0).Return([]repository.SearchAccountRow{
+		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade", "Programmer"}, config.DefaultPageLimit+1, 0, mock.Anything).Return([]repository.SearchAccountRow{
 			{AccountID: "GABC", Name: "Test Person", MTLAPBalance: 1.0},
 		}, nil)
 
@@ -1686,7 +1686,7 @@ func TestSearchHandler(t *testing.T) {
 			renderedData = data
 		}).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?tag=Belgrade&tag=Programmer", nil)
@@ -1706,10 +1706,10 @@ func TestSearchHandler(t *testing.T) {
 
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		accounts.EXPECT().CountSearchAccounts(mock.Anything, "", []string{"Belgrade"}).Return(0, nil)
-		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().SearchAccounts(mock.Anything, "", []string{"Belgrade"}, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		req := httptest.NewRequest(http.MethodGet, "/search?tag=&tag=Belgrade", nil)
@@ -1728,7 +1728,7 @@ func TestSearchHandler(t *testing.T) {
 		accounts.EXPECT().GetAllTags(mock.Anything).Return([]repository.TagRow{}, nil)
 		tmpl.EXPECT().Render(mock.Anything, "search.html", mock.Anything).Return(nil)
 
-		h, err := New(stellar, accounts, tmpl)
+		h, err := New(stellar, accounts, nil, tmpl)
 		require.NoError(t, err)
 
 		mux := http.NewServeMux()

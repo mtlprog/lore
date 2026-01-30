@@ -425,7 +425,18 @@ func TestRender(t *testing.T) {
 				NextCursor string
 				HasMore    bool
 			}
-			AccountNames map[string]string
+			AccountNames    map[string]string
+			ReputationScore *struct {
+				WeightedScore float64
+				BaseScore     float64
+				Grade         string
+				RatingCountA  int
+				RatingCountB  int
+				RatingCountC  int
+				RatingCountD  int
+				TotalRatings  int
+				TotalWeight   float64
+			}
 		}{
 			Account: struct {
 				ID         string
@@ -495,8 +506,9 @@ func TestRender(t *testing.T) {
 				TotalXLMValue: 0,
 				IsCorporate:   false,
 			},
-			Operations:   nil,
-			AccountNames: nil,
+			Operations:      nil,
+			AccountNames:    nil,
+			ReputationScore: nil,
 		}
 
 		err := tmpl.Render(&buf, "account.html", data)

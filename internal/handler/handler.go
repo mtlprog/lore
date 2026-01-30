@@ -34,8 +34,14 @@ type AccountQuerier interface {
 	GetAccountInfo(ctx context.Context, accountID string) (*repository.AccountInfo, error)
 	GetAccountNames(ctx context.Context, accountIDs []string) (map[string]string, error)
 	GetAllTags(ctx context.Context) ([]repository.TagRow, error)
-	SearchAccounts(ctx context.Context, query string, tags []string, limit int, offset int) ([]repository.SearchAccountRow, error)
+	SearchAccounts(ctx context.Context, query string, tags []string, limit int, offset int, sortBy repository.SearchSortOrder) ([]repository.SearchAccountRow, error)
 	CountSearchAccounts(ctx context.Context, query string, tags []string) (int, error)
+}
+
+// ReputationQuerier defines the interface for reputation data access.
+type ReputationQuerier interface {
+	GetScore(ctx context.Context, accountID string) (*model.ReputationScore, error)
+	GetGraph(ctx context.Context, accountID string) (*model.ReputationGraph, error)
 }
 
 // TemplateRenderer defines the interface for template rendering.
@@ -45,14 +51,16 @@ type TemplateRenderer interface {
 
 // Handler holds dependencies for HTTP handlers.
 type Handler struct {
-	stellar  StellarServicer
-	accounts AccountQuerier
-	tmpl     TemplateRenderer
+	stellar    StellarServicer
+	accounts   AccountQuerier
+	reputation ReputationQuerier
+	tmpl       TemplateRenderer
 }
 
 // New creates a new Handler with the given dependencies.
 // Returns error if any required dependency is nil.
-func New(stellar StellarServicer, accounts AccountQuerier, tmpl TemplateRenderer) (*Handler, error) {
+// reputation can be nil (feature is optional).
+func New(stellar StellarServicer, accounts AccountQuerier, reputation ReputationQuerier, tmpl TemplateRenderer) (*Handler, error) {
 	if stellar == nil {
 		return nil, errors.New("stellar service is required")
 	}
@@ -63,9 +71,10 @@ func New(stellar StellarServicer, accounts AccountQuerier, tmpl TemplateRenderer
 		return nil, errors.New("templates are required")
 	}
 	return &Handler{
-		stellar:  stellar,
-		accounts: accounts,
-		tmpl:     tmpl,
+		stellar:    stellar,
+		accounts:   accounts,
+		reputation: reputation,
+		tmpl:       tmpl,
 	}, nil
 }
 
@@ -73,6 +82,7 @@ func New(stellar StellarServicer, accounts AccountQuerier, tmpl TemplateRenderer
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /", h.Home)
 	mux.HandleFunc("GET /accounts/{id}", h.Account)
+	mux.HandleFunc("GET /accounts/{id}/reputation", h.Reputation)
 	mux.HandleFunc("GET /transactions/{hash}", h.Transaction)
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /tokens/{issuer}/{code}", h.Token)

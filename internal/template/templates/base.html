@@ -680,6 +680,98 @@
         .rating-counts .rc-c { color: var(--grade-c); }
         .rating-counts .rc-d { color: var(--grade-d); }
 
+        /* REPUTATION BADGE - PIP-BOY STYLE */
+        .reputation-badge-link {
+            text-decoration: none;
+        }
+
+        .reputation-badge {
+            display: flex;
+            align-items: stretch;
+            background: var(--bg-panel);
+            border: 2px solid var(--border);
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .reputation-badge::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 3px;
+        }
+
+        .reputation-badge:hover {
+            transform: translateY(-2px);
+        }
+
+        .reputation-badge.grade-a { border-color: var(--grade-a); box-shadow: 0 0 20px color-mix(in srgb, var(--grade-a) 20%, transparent); }
+        .reputation-badge.grade-a::before { background: var(--grade-a); }
+        .reputation-badge.grade-b { border-color: var(--grade-b); box-shadow: 0 0 20px color-mix(in srgb, var(--grade-b) 20%, transparent); }
+        .reputation-badge.grade-b::before { background: var(--grade-b); }
+        .reputation-badge.grade-c { border-color: var(--grade-c); box-shadow: 0 0 20px color-mix(in srgb, var(--grade-c) 20%, transparent); }
+        .reputation-badge.grade-c::before { background: var(--grade-c); }
+        .reputation-badge.grade-d { border-color: var(--grade-d); box-shadow: 0 0 20px color-mix(in srgb, var(--grade-d) 20%, transparent); }
+        .reputation-badge.grade-d::before { background: var(--grade-d); }
+
+        .reputation-badge:hover {
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .rep-main {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1rem;
+            background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+            border-right: 1px solid var(--border);
+        }
+
+        .rep-grade {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .reputation-badge.grade-a .rep-grade { color: var(--grade-a); text-shadow: 0 0 10px var(--grade-a); }
+        .reputation-badge.grade-b .rep-grade { color: var(--grade-b); text-shadow: 0 0 10px var(--grade-b); }
+        .reputation-badge.grade-c .rep-grade { color: var(--grade-c); text-shadow: 0 0 10px var(--grade-c); }
+        .reputation-badge.grade-d .rep-grade { color: var(--grade-d); text-shadow: 0 0 10px var(--grade-d); }
+
+        .rep-stats {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0.5rem 0.75rem;
+            gap: 0.25rem;
+        }
+
+        .rep-stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .rep-stat-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            min-width: 45px;
+        }
+
+        .rep-stat-value {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--text);
+            font-variant-numeric: tabular-nums;
+        }
+
         /* VALUE BADGE */
         .value-badge {
             display: flex;
@@ -2006,10 +2098,58 @@
             color: var(--accent);
         }
 
+        .search-results-meta {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
         .search-results-count {
             font-family: 'Share Tech Mono', monospace;
             font-size: 0.75rem;
             color: var(--text-dim);
+        }
+
+        .search-sort-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .sort-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        .sort-option {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .sort-option:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .sort-option.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--bg);
+        }
+
+        .cell-rep {
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--council);
         }
 
         .search-prompt-section {
