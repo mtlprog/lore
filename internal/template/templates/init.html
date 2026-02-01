@@ -539,8 +539,7 @@
                        value="{{$p.Value}}"
                        placeholder="GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
                        pattern="G[A-Z2-7]{55}">
-                <input type="hidden" name="remove_idx" value="{{$i}}">
-                <button type="submit" name="action" value="remove_partof" class="btn btn-danger" formnovalidate>[x]</button>
+                <button type="submit" name="action" value="remove_partof:{{$i}}" class="btn btn-danger" formnovalidate>[x]</button>
             </div>
             {{end}}
 
@@ -663,8 +662,7 @@
                        value="{{$p.Value}}"
                        placeholder="GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
                        pattern="G[A-Z2-7]{55}">
-                <input type="hidden" name="remove_idx" value="{{$i}}">
-                <button type="submit" name="action" value="remove_mypart" class="btn btn-danger" formnovalidate>[x]</button>
+                <button type="submit" name="action" value="remove_mypart:{{$i}}" class="btn btn-danger" formnovalidate>[x]</button>
             </div>
             {{end}}
 

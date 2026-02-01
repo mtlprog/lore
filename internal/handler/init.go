@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/mtlprog/lore/internal/model"
 	"github.com/mtlprog/lore/internal/service"
@@ -66,7 +67,8 @@ func (h *Handler) InitParticipant(w http.ResponseWriter, r *http.Request) {
 	rawAcc, err := h.stellar.GetRawAccountData(ctx, accountID)
 	if err != nil {
 		slog.Error("failed to fetch raw account data", "account_id", accountID, "error", err)
-		h.renderParticipantForm(w, model.ParticipantFormData{AccountID: accountID}, "", "")
+		h.renderParticipantForm(w, model.ParticipantFormData{AccountID: accountID}, "",
+			"Could not load existing account data. Please try again or proceed with caution.")
 		return
 	}
 
@@ -102,8 +104,8 @@ func (h *Handler) InitParticipantSubmit(w http.ResponseWriter, r *http.Request) 
 	current := h.parseParticipantForm(r)
 	original := r.FormValue("original")
 
-	switch action {
-	case "add_partof":
+	switch {
+	case action == "add_partof":
 		// Add empty PartOf field
 		nextIndex := h.nextNumberedIndex(current.PartOf)
 		current.PartOf = append(current.PartOf, model.NumberedField{
@@ -112,15 +114,15 @@ func (h *Handler) InitParticipantSubmit(w http.ResponseWriter, r *http.Request) 
 		})
 		h.renderParticipantForm(w, current, original, "")
 
-	case "remove_partof":
-		// Remove PartOf field by index
-		removeIdx, _ := strconv.Atoi(r.FormValue("remove_idx"))
+	case strings.HasPrefix(action, "remove_partof:"):
+		// Remove PartOf field by index (format: remove_partof:N)
+		removeIdx, _ := strconv.Atoi(strings.TrimPrefix(action, "remove_partof:"))
 		if removeIdx >= 0 && removeIdx < len(current.PartOf) {
 			current.PartOf = append(current.PartOf[:removeIdx], current.PartOf[removeIdx+1:]...)
 		}
 		h.renderParticipantForm(w, current, original, "")
 
-	case "preview":
+	case action == "preview":
 		// Generate XDR preview
 		h.previewParticipant(w, r, original, current)
 
@@ -166,7 +168,8 @@ func (h *Handler) InitCorporate(w http.ResponseWriter, r *http.Request) {
 	rawAcc, err := h.stellar.GetRawAccountData(ctx, accountID)
 	if err != nil {
 		slog.Error("failed to fetch raw account data", "account_id", accountID, "error", err)
-		h.renderCorporateForm(w, model.CorporateFormData{AccountID: accountID}, "", "")
+		h.renderCorporateForm(w, model.CorporateFormData{AccountID: accountID}, "",
+			"Could not load existing account data. Please try again or proceed with caution.")
 		return
 	}
 
@@ -201,8 +204,8 @@ func (h *Handler) InitCorporateSubmit(w http.ResponseWriter, r *http.Request) {
 	current := h.parseCorporateForm(r)
 	original := r.FormValue("original")
 
-	switch action {
-	case "add_mypart":
+	switch {
+	case action == "add_mypart":
 		// Add empty MyPart field
 		nextIndex := h.nextNumberedIndex(current.MyPart)
 		current.MyPart = append(current.MyPart, model.NumberedField{
@@ -211,15 +214,15 @@ func (h *Handler) InitCorporateSubmit(w http.ResponseWriter, r *http.Request) {
 		})
 		h.renderCorporateForm(w, current, original, "")
 
-	case "remove_mypart":
-		// Remove MyPart field by index
-		removeIdx, _ := strconv.Atoi(r.FormValue("remove_idx"))
+	case strings.HasPrefix(action, "remove_mypart:"):
+		// Remove MyPart field by index (format: remove_mypart:N)
+		removeIdx, _ := strconv.Atoi(strings.TrimPrefix(action, "remove_mypart:"))
 		if removeIdx >= 0 && removeIdx < len(current.MyPart) {
 			current.MyPart = append(current.MyPart[:removeIdx], current.MyPart[removeIdx+1:]...)
 		}
 		h.renderCorporateForm(w, current, original, "")
 
-	case "preview":
+	case action == "preview":
 		// Generate XDR preview
 		h.previewCorporate(w, r, original, current)
 
@@ -285,7 +288,15 @@ func (h *Handler) renderCorporateForm(w http.ResponseWriter, form model.Corporat
 func (h *Handler) previewParticipant(w http.ResponseWriter, r *http.Request, originalEncoded string, current model.ParticipantFormData) {
 	original, err := service.DecodeOriginalParticipant(originalEncoded)
 	if err != nil {
-		h.renderParticipantForm(w, current, originalEncoded, "Failed to decode form state")
+		h.renderParticipantForm(w, current, originalEncoded,
+			"Session state was corrupted. Please reload the page and try again.")
+		return
+	}
+
+	// Validate account ID before making network call
+	if err := service.ValidateAccountID(current.AccountID); err != nil {
+		h.renderParticipantForm(w, current, originalEncoded,
+			"Please enter a valid Stellar account ID (starts with G, 56 characters).")
 		return
 	}
 
@@ -293,7 +304,9 @@ func (h *Handler) previewParticipant(w http.ResponseWriter, r *http.Request, ori
 	ctx := r.Context()
 	seqNum, err := h.stellar.GetAccountSequence(ctx, current.AccountID)
 	if err != nil {
-		h.renderParticipantForm(w, current, originalEncoded, "Failed to fetch account sequence number")
+		slog.Error("failed to fetch account sequence", "account_id", current.AccountID, "error", err)
+		h.renderParticipantForm(w, current, originalEncoded,
+			"Could not connect to Stellar network. Please check your account ID and try again.")
 		return
 	}
 
@@ -329,7 +342,15 @@ func (h *Handler) previewParticipant(w http.ResponseWriter, r *http.Request, ori
 func (h *Handler) previewCorporate(w http.ResponseWriter, r *http.Request, originalEncoded string, current model.CorporateFormData) {
 	original, err := service.DecodeOriginalCorporate(originalEncoded)
 	if err != nil {
-		h.renderCorporateForm(w, current, originalEncoded, "Failed to decode form state")
+		h.renderCorporateForm(w, current, originalEncoded,
+			"Session state was corrupted. Please reload the page and try again.")
+		return
+	}
+
+	// Validate account ID before making network call
+	if err := service.ValidateAccountID(current.AccountID); err != nil {
+		h.renderCorporateForm(w, current, originalEncoded,
+			"Please enter a valid Stellar account ID (starts with G, 56 characters).")
 		return
 	}
 
@@ -337,7 +358,9 @@ func (h *Handler) previewCorporate(w http.ResponseWriter, r *http.Request, origi
 	ctx := r.Context()
 	seqNum, err := h.stellar.GetAccountSequence(ctx, current.AccountID)
 	if err != nil {
-		h.renderCorporateForm(w, current, originalEncoded, "Failed to fetch account sequence number")
+		slog.Error("failed to fetch account sequence", "account_id", current.AccountID, "error", err)
+		h.renderCorporateForm(w, current, originalEncoded,
+			"Could not connect to Stellar network. Please check your account ID and try again.")
 		return
 	}
 

@@ -15,15 +15,11 @@ import (
 )
 
 // InitXDRBuilder generates Stellar XDR transactions for init forms.
-type InitXDRBuilder struct {
-	networkPassphrase string
-}
+type InitXDRBuilder struct{}
 
 // NewInitXDRBuilder creates a new XDR builder for the Stellar public network.
 func NewInitXDRBuilder() *InitXDRBuilder {
-	return &InitXDRBuilder{
-		networkPassphrase: network.PublicNetworkPassphrase,
-	}
+	return &InitXDRBuilder{}
 }
 
 // GenerateParticipantXDR compares original vs current form data and generates XDR.
@@ -230,7 +226,12 @@ func (b *InitXDRBuilder) diffNumberedFields(
 
 	// Sort operations by key for consistent output
 	sort.Slice(ops, func(i, j int) bool {
-		return ops[i].(*txnbuild.ManageData).Name < ops[j].(*txnbuild.ManageData).Name
+		opI, okI := ops[i].(*txnbuild.ManageData)
+		opJ, okJ := ops[j].(*txnbuild.ManageData)
+		if !okI || !okJ {
+			return false
+		}
+		return opI.Name < opJ.Name
 	})
 	sort.Slice(summaries, func(i, j int) bool {
 		return summaries[i].Key < summaries[j].Key
@@ -240,6 +241,7 @@ func (b *InitXDRBuilder) diffNumberedFields(
 }
 
 // diffTags compares original vs current tags and generates operations.
+// Only tags from AvailableTags are allowed.
 func (b *InitXDRBuilder) diffTags(
 	accountID string,
 	original, current []string,
@@ -247,9 +249,17 @@ func (b *InitXDRBuilder) diffTags(
 	var ops []txnbuild.Operation
 	var summaries []model.InitOpSummary
 
+	// Filter to only valid tags
+	validOriginal := lo.Filter(original, func(tag string, _ int) bool {
+		return lo.Contains(model.AvailableTags, tag)
+	})
+	validCurrent := lo.Filter(current, func(tag string, _ int) bool {
+		return lo.Contains(model.AvailableTags, tag)
+	})
+
 	// Tags to delete (in original but not in current)
-	toDelete := lo.Filter(original, func(tag string, _ int) bool {
-		return !lo.Contains(current, tag)
+	toDelete := lo.Filter(validOriginal, func(tag string, _ int) bool {
+		return !lo.Contains(validCurrent, tag)
 	})
 
 	for _, tag := range toDelete {
@@ -260,8 +270,8 @@ func (b *InitXDRBuilder) diffTags(
 	}
 
 	// Tags to add (in current but not in original)
-	toAdd := lo.Filter(current, func(tag string, _ int) bool {
-		return !lo.Contains(original, tag)
+	toAdd := lo.Filter(validCurrent, func(tag string, _ int) bool {
+		return !lo.Contains(validOriginal, tag)
 	})
 
 	for _, tag := range toAdd {
