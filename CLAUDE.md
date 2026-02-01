@@ -84,7 +84,7 @@ make db
 
 The application follows a layered architecture:
 
-- **Handler Layer** (`internal/handler/`) - HTTP request handling with Go 1.22+ routing. Routes: `GET /` (home, catch-all) and `GET /accounts/{id}` (detail). Uses `r.PathValue()` for path parameters. Note: `GET /` matches any path; to test "unregistered routes", use wrong HTTP method.
+- **Handler Layer** (`internal/handler/`) - HTTP request handling with Go 1.22+ routing. Uses `r.PathValue()` for path parameters. Routes: `GET /` (home), `GET /accounts/{id}` (detail), `GET /accounts/{id}/reputation`, `GET /transactions/{hash}`, `GET /search`, `GET /tokens/{issuer}/{code}`, `GET|POST /init/*` (forms). Note: `GET /` matches any path; to test "unregistered routes", use wrong HTTP method.
 
 - **Repository Layer** (`internal/repository/`) - Data access layer for PostgreSQL. `AccountRepository` provides methods for querying accounts, stats, persons (MTLAP holders), and corporate accounts (MTLAC holders). Uses Squirrel query builder.
 
@@ -94,7 +94,9 @@ The application follows a layered architecture:
 
 - **Sync Layer** (`internal/sync/`) - Data synchronization from Stellar Horizon API to PostgreSQL. Fetches MTLAP/MTLAC holders, parses ManageData, calculates delegations, and fetches token prices from SDEX. Uses semaphore + WaitGroup for concurrent processing with 10-worker limit.
 
-- **Template Layer** (`internal/template/`) - Embedded templates using Go's `embed` package. `base.html` provides master layout, extended by `home.html` and `account.html`. Custom functions: `add`, `addFloat` (float64 + int), `truncate`, `slice`, `formatNumber` (space-separated thousands), `votePower` (log10-based: 1-10=1, 11-100=2, 101-1000=3).
+- **Reputation Layer** (`internal/reputation/`) - Weighted reputation scoring system. `Rating` is a constrained type (A/B/C/D) with `IsValid()` and `Value()` methods. `Calculator` computes weighted scores based on rater portfolio and connections. `Graph` builds 2-level visualization of rating relationships.
+
+- **Template Layer** (`internal/template/`) - Embedded templates using Go's `embed` package. `base.html` provides master layout, extended by `home.html` and `account.html`. Custom functions: `add`, `addFloat` (float64 + int), `truncate`, `slice`, `formatNumber` (space-separated thousands), `votePower` (log10-based: 1-10=1, 11-100=2, 101-1000=3), `markdown` (renders Markdown with XSS sanitization), `searchURL` (builds /search URLs with query params).
 
 ## Key Technical Details
 
@@ -109,9 +111,11 @@ The application follows a layered architecture:
 - **Logging**: Uses `log/slog` with JSON output and source location. Log levels: `info` for lifecycle events, `error` for unexpected failures (not expected errors like 404), `debug` for troubleshooting
 - **Token Constants**: Defined in `internal/config/config.go` (MTLAP, MTLAC, issuer address)
 - **Template Inheritance**: Each page template must be cloned from base separately (see `template.go`). Using `ParseFS` with multiple templates defining the same block causes overwrites.
+- **Markdown Rendering**: Uses blackfriday for Markdown→HTML and bluemonday for XSS sanitization. Template function: `{{markdown .Field}}`. Always sanitize untrusted blockchain data.
 - **CSS Specificity in Templates**: `.detail-block-content a` sets link color globally. Override with specific selectors like `.detail-block-content .tag-chip` when styling links inside detail blocks.
 - **No-JS Design**: Avoid page-load animations (like `slide-up`) on interactive elements. Causes flashing when user clicks links that reload the page.
 - **Constructor Pattern**: Constructors return `(*T, error)` with nil validation, not `*T` that silently returns nil on error.
+- **Constrained Type Pattern**: For domain values with limited valid states (like `Rating`), use a typed string with `IsValid()` method and constants for valid values. Methods like `Value()` can provide numeric conversions.
 - **Transaction Atomicity**: Wrap DELETE + INSERT sequences in transactions to prevent partial state on failure.
 - **Database Migrations**: Add new migrations in `internal/database/migrations/` with format `NNN_description.sql`. Migrations run automatically on startup via goose.
 - **Relation Index Preservation**: Relationship indices are stored as strings, not integers, to preserve leading zeros. `PartOf002` and `PartOf2` are distinct keys in the blockchain that must remain distinct in the database. Converting to int would cause both to become `2`, violating the primary key constraint `(source_account_id, target_account_id, relation_type, relation_index)`.
@@ -123,6 +127,12 @@ The application follows a layered architecture:
   - `"ready"` → account is council-ready (can receive council delegations)
   - Account ID → delegates council votes to that account
 - **Council delegation chains**: Use `council_delegate_to` column, not `delegate_to`, for vote calculations
+
+## Stellar XDR Generation
+
+- **Init Forms** (`internal/service/init.go`) - Generate XDR by comparing original vs current form state, producing only the diff as ManageData operations
+- Use `txnbuild.ManageData` with `Value: nil` to delete a key, non-nil to set/update
+- Always validate account IDs with `keypair.ParseAddress()` before building transactions
 
 ## Montelibero Relationship Types
 
@@ -218,6 +228,7 @@ lop.Filter(slice, func(x T, _ int) bool { ... })              // Parallel filter
 - `internal/service/stellar_test.go` - utility functions (`parseNumberedDataKeys`, `decodeBase64`)
 - `internal/sync/*_test.go` - sync parsing functions (`parseAccountData`, `parseAssociationTags`, `getAssetType`)
 - `internal/handler/*_test.go` - HTTP handlers using mockery-generated mocks
+- `internal/reputation/*_test.go` - reputation calculator and types
 - Use table-driven tests with `t.Run()` for edge cases
 
 ### Mocking with mockery

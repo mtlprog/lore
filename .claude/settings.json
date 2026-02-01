@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Reminder] После внесения изменений выполните make dev-restart для перезапуска сервера и проверки изменений пользователем.'"
+          }
+        ]
+      }
+    ]
+  }
+}
