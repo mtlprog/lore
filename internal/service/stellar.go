@@ -140,6 +140,15 @@ func (s *StellarService) GetAccountsWithAsset(ctx context.Context, code, issuer,
 	}, nil
 }
 
+// GetRawAccountData fetches raw ManageData from Horizon for init form parsing.
+func (s *StellarService) GetRawAccountData(ctx context.Context, accountID string) (map[string]string, error) {
+	acc, err := s.client.AccountDetail(horizonclient.AccountRequest{AccountID: accountID})
+	if err != nil {
+		return nil, err
+	}
+	return acc.Data, nil
+}
+
 // GetAccountDetail returns detailed information about an account.
 func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string) (*model.AccountDetail, error) {
 	acc, err := s.client.AccountDetail(horizonclient.AccountRequest{AccountID: accountID})
@@ -191,6 +200,15 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 		Tags:       tags,
 		Trustlines: trustlines,
 	}, nil
+}
+
+// GetAccountSequence returns the current sequence number for an account.
+func (s *StellarService) GetAccountSequence(ctx context.Context, accountID string) (int64, error) {
+	acc, err := s.client.AccountDetail(horizonclient.AccountRequest{AccountID: accountID})
+	if err != nil {
+		return 0, err
+	}
+	return acc.Sequence, nil
 }
 
 // findAssetBalance finds the balance for a specific asset.

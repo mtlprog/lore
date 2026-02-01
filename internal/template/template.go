@@ -173,7 +173,7 @@ func New() (*Templates, error) {
 	}
 
 	// Page templates to parse with base
-	pageNames := []string{"home.html", "account.html", "transaction.html", "search.html", "token.html", "reputation.html"}
+	pageNames := []string{"home.html", "account.html", "transaction.html", "search.html", "token.html", "reputation.html", "init.html"}
 
 	for _, name := range pageNames {
 		// Clone base template for each page

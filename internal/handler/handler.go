@@ -21,6 +21,8 @@ type StellarServicer interface {
 	GetTokenOrderbook(ctx context.Context, code, issuer string, limit int) (*model.TokenOrderbook, error)
 	GetIssuerNFTMetadata(ctx context.Context, issuerID, assetCode string) (*model.NFTMetadata, error)
 	FetchStellarToml(ctx context.Context, homeDomain string) (*model.StellarTomlCurrency, string, error)
+	GetRawAccountData(ctx context.Context, accountID string) (map[string]string, error)
+	GetAccountSequence(ctx context.Context, accountID string) (int64, error)
 }
 
 // AccountQuerier defines the interface for account data access.
@@ -86,4 +88,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /transactions/{hash}", h.Transaction)
 	mux.HandleFunc("GET /search", h.Search)
 	mux.HandleFunc("GET /tokens/{issuer}/{code}", h.Token)
+
+	// Init form routes
+	mux.HandleFunc("GET /init", h.InitLanding)
+	mux.HandleFunc("GET /init/participant", h.InitParticipant)
+	mux.HandleFunc("POST /init/participant", h.InitParticipantSubmit)
+	mux.HandleFunc("GET /init/corporate", h.InitCorporate)
+	mux.HandleFunc("POST /init/corporate", h.InitCorporateSubmit)
 }

@@ -209,6 +209,63 @@ func (_c *MockStellarServicer_GetAccountOperations_Call) RunAndReturn(run func(c
 	return _c
 }
 
+// GetAccountSequence provides a mock function with given fields: ctx, accountID
+func (_m *MockStellarServicer) GetAccountSequence(ctx context.Context, accountID string) (int64, error) {
+	ret := _m.Called(ctx, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAccountSequence")
+	}
+
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (int64, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) int64); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		r0 = ret.Get(0).(int64)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStellarServicer_GetAccountSequence_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAccountSequence'
+type MockStellarServicer_GetAccountSequence_Call struct {
+	*mock.Call
+}
+
+// GetAccountSequence is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+func (_e *MockStellarServicer_Expecter) GetAccountSequence(ctx interface{}, accountID interface{}) *MockStellarServicer_GetAccountSequence_Call {
+	return &MockStellarServicer_GetAccountSequence_Call{Call: _e.mock.On("GetAccountSequence", ctx, accountID)}
+}
+
+func (_c *MockStellarServicer_GetAccountSequence_Call) Run(run func(ctx context.Context, accountID string)) *MockStellarServicer_GetAccountSequence_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStellarServicer_GetAccountSequence_Call) Return(_a0 int64, _a1 error) *MockStellarServicer_GetAccountSequence_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStellarServicer_GetAccountSequence_Call) RunAndReturn(run func(context.Context, string) (int64, error)) *MockStellarServicer_GetAccountSequence_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetIssuerNFTMetadata provides a mock function with given fields: ctx, issuerID, assetCode
 func (_m *MockStellarServicer) GetIssuerNFTMetadata(ctx context.Context, issuerID string, assetCode string) (*model.NFTMetadata, error) {
 	ret := _m.Called(ctx, issuerID, assetCode)
@@ -265,6 +322,65 @@ func (_c *MockStellarServicer_GetIssuerNFTMetadata_Call) Return(_a0 *model.NFTMe
 }
 
 func (_c *MockStellarServicer_GetIssuerNFTMetadata_Call) RunAndReturn(run func(context.Context, string, string) (*model.NFTMetadata, error)) *MockStellarServicer_GetIssuerNFTMetadata_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetRawAccountData provides a mock function with given fields: ctx, accountID
+func (_m *MockStellarServicer) GetRawAccountData(ctx context.Context, accountID string) (map[string]string, error) {
+	ret := _m.Called(ctx, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRawAccountData")
+	}
+
+	var r0 map[string]string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) (map[string]string, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) map[string]string); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStellarServicer_GetRawAccountData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRawAccountData'
+type MockStellarServicer_GetRawAccountData_Call struct {
+	*mock.Call
+}
+
+// GetRawAccountData is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+func (_e *MockStellarServicer_Expecter) GetRawAccountData(ctx interface{}, accountID interface{}) *MockStellarServicer_GetRawAccountData_Call {
+	return &MockStellarServicer_GetRawAccountData_Call{Call: _e.mock.On("GetRawAccountData", ctx, accountID)}
+}
+
+func (_c *MockStellarServicer_GetRawAccountData_Call) Run(run func(ctx context.Context, accountID string)) *MockStellarServicer_GetRawAccountData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStellarServicer_GetRawAccountData_Call) Return(_a0 map[string]string, _a1 error) *MockStellarServicer_GetRawAccountData_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStellarServicer_GetRawAccountData_Call) RunAndReturn(run func(context.Context, string) (map[string]string, error)) *MockStellarServicer_GetRawAccountData_Call {
 	_c.Call.Return(run)
 	return _c
 }
