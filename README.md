@@ -35,7 +35,7 @@ cmd/lore/           - CLI entry point (serve, sync commands)
 internal/
 ├── config/         - Configuration constants (tokens, issuer)
 ├── database/       - PostgreSQL connection + goose migrations
-├── handler/        - HTTP handlers (Home, Account, Search, Init)
+├── handler/        - HTTP handlers (Home, Account, Search, Init, Token, Transaction, Reputation)
 ├── logger/         - Structured logging (slog/JSON)
 ├── model/          - Data models
 ├── repository/     - Data access layer (Squirrel query builder)

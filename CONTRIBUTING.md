@@ -93,7 +93,7 @@ For changes to handlers or services:
 
 1. Ensure all tests pass
 2. Update documentation if needed
-3. Fill out the PR template
+3. Provide a clear description of your changes
 4. Request review from maintainers
 5. Address review feedback
 
