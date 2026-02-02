@@ -122,6 +122,8 @@ The application follows a layered architecture:
 - **Relation Index Preservation**: Relationship indices are stored as strings, not integers, to preserve leading zeros. `PartOf002` and `PartOf2` are distinct keys in the blockchain that must remain distinct in the database. Converting to int would cause both to become `2`, violating the primary key constraint `(source_account_id, target_account_id, relation_type, relation_index)`.
 - **Squirrel SQL Expressions**: Use `sq.Expr("NOW()")` for SQL functions, not string literals like `"NOW()"`. String literals are inserted as values, not executed as SQL.
 - **Graceful Degradation**: Non-critical data fetches (LP shares, operations) should log errors and continue with nil/empty data, not fail the entire page render.
+- **Template Block Override Pattern**: Use `{{block "name" .}}default{{end}}` in base.html for values that child templates can override (e.g., SEO meta tags). Child templates define `{{define "name"}}custom value{{end}}`.
+- **Static Files**: Embedded in `internal/static/` using `//go:embed`. Served via `handler.RegisterStaticRoutes()`. Add new static files to embed directive in `static.go`.
 
 ## Stellar Account Data Keys
 

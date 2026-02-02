@@ -2,6 +2,15 @@
 
 {{define "title"}}TX {{truncate .Transaction.Hash 12}}... // LORE{{end}}
 
+{{define "meta_description"}}Stellar transaction {{truncate .Transaction.Hash 16}}... - {{if .Transaction.Successful}}successful{{else}}failed{{end}}. {{.Transaction.OperationCount}} operations. Ledger {{.Transaction.Ledger}}. View transaction details on LORE.{{end}}
+
+{{define "canonical_url"}}https://lore.mtlprog.xyz/transactions/{{.Transaction.Hash}}{{end}}
+{{define "og_url"}}https://lore.mtlprog.xyz/transactions/{{.Transaction.Hash}}{{end}}
+{{define "og_title"}}Transaction {{truncate .Transaction.Hash 12}}... // LORE{{end}}
+{{define "og_description"}}Stellar transaction - {{if .Transaction.Successful}}successful{{else}}failed{{end}}. {{.Transaction.OperationCount}} operations on ledger {{.Transaction.Ledger}}.{{end}}
+{{define "twitter_title"}}Transaction {{truncate .Transaction.Hash 12}}... // LORE{{end}}
+{{define "twitter_description"}}Stellar transaction - {{if .Transaction.Successful}}successful{{else}}failed{{end}}. {{.Transaction.OperationCount}} operations on ledger {{.Transaction.Ledger}}.{{end}}
+
 {{define "content"}}
 {{$names := .AccountNames}}
 <div class="detail-header">

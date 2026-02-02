@@ -2,6 +2,15 @@
 
 {{define "title"}}{{.Account.Name}} // LORE{{end}}
 
+{{define "meta_description"}}{{.Account.Name}} - Montelibero {{if .Account.IsCorporate}}organization{{else}}participant{{end}} on Stellar blockchain. {{if .Account.About}}{{.Account.About}}{{else}}View account details, balances, reputation, and connections.{{end}}{{end}}
+
+{{define "canonical_url"}}https://lore.mtlprog.xyz/accounts/{{.Account.ID}}{{end}}
+{{define "og_url"}}https://lore.mtlprog.xyz/accounts/{{.Account.ID}}{{end}}
+{{define "og_title"}}{{.Account.Name}} // LORE{{end}}
+{{define "og_description"}}{{.Account.Name}} - Montelibero {{if .Account.IsCorporate}}organization{{else}}participant{{end}}. {{if .ReputationScore}}Reputation: {{.ReputationScore.Grade}}. {{end}}View account on Stellar blockchain.{{end}}
+{{define "twitter_title"}}{{.Account.Name}} // LORE{{end}}
+{{define "twitter_description"}}{{.Account.Name}} - Montelibero {{if .Account.IsCorporate}}organization{{else}}participant{{end}}. {{if .ReputationScore}}Reputation: {{.ReputationScore.Grade}}. {{end}}View account on Stellar blockchain.{{end}}
+
 {{define "content"}}
 <div class="account-header">
     <div class="account-info">

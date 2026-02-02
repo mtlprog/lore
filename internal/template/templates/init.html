@@ -1,6 +1,15 @@
 {{template "base" .}}
 
-{{define "title"}}LORE // Initialize Account{{end}}
+{{define "title"}}{{if eq .Page "participant"}}Initialize Participant{{else if eq .Page "corporate"}}Initialize Corporate{{else if eq .Page "preview"}}Transaction Preview{{else}}Initialize Account{{end}} // LORE{{end}}
+
+{{define "meta_description"}}Initialize your Montelibero blockchain identity. Set up your Stellar account metadata for MTLAP (participants) or MTLAC (organizations). Generate unsigned XDR transactions for your wallet.{{end}}
+
+{{define "canonical_url"}}https://lore.mtlprog.xyz/init{{end}}
+{{define "og_url"}}https://lore.mtlprog.xyz/init{{end}}
+{{define "og_title"}}Initialize Account // LORE{{end}}
+{{define "og_description"}}Set up your Montelibero blockchain identity. Add metadata to your Stellar account for the Montelibero community.{{end}}
+{{define "twitter_title"}}Initialize Account // LORE{{end}}
+{{define "twitter_description"}}Set up your Montelibero blockchain identity. Add metadata to your Stellar account for the Montelibero community.{{end}}
 
 {{define "content"}}
 <style>

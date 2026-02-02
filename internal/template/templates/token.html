@@ -1,6 +1,17 @@
 {{template "base" .}}
 
-{{define "title"}}{{.Token.AssetCode}} // LORE{{end}}
+{{define "title"}}{{.Token.AssetCode}}{{if .Token.IsNFT}} (NFT){{end}} // LORE{{end}}
+
+{{define "meta_description"}}{{.Token.AssetCode}} - {{if .Token.IsNFT}}NFT{{else}}token{{end}} on Stellar blockchain. {{if .Token.Description}}{{.Token.Description}}{{else}}{{.Token.NumAccounts}} trustlines. Issued by {{.Token.IssuerName}}.{{end}}{{end}}
+
+{{define "canonical_url"}}https://lore.mtlprog.xyz/tokens/{{.Token.AssetIssuer}}/{{.Token.AssetCode}}{{end}}
+{{define "og_url"}}https://lore.mtlprog.xyz/tokens/{{.Token.AssetIssuer}}/{{.Token.AssetCode}}{{end}}
+{{define "og_title"}}{{.Token.AssetCode}}{{if .Token.IsNFT}} (NFT){{end}} // LORE{{end}}
+{{define "og_description"}}{{.Token.AssetCode}} - {{if .Token.IsNFT}}NFT{{else}}Stellar token{{end}}. {{.Token.NumAccounts}} trustlines. {{if .Token.BestBid}}Best bid: {{.Token.BestBid}} XLM.{{end}}{{end}}
+{{define "twitter_title"}}{{.Token.AssetCode}}{{if .Token.IsNFT}} (NFT){{end}} // LORE{{end}}
+{{define "twitter_description"}}{{.Token.AssetCode}} - {{if .Token.IsNFT}}NFT{{else}}Stellar token{{end}}. {{.Token.NumAccounts}} trustlines. {{if .Token.BestBid}}Best bid: {{.Token.BestBid}} XLM.{{end}}{{end}}
+{{define "og_image"}}{{if and .Token.NFTMetadata .Token.NFTMetadata.IsImage .Token.NFTMetadata.ImageURL}}{{.Token.NFTMetadata.ImageURL}}{{else if .Token.ImageURL}}{{.Token.ImageURL}}{{else}}https://lore.mtlprog.xyz/og-image.svg{{end}}{{end}}
+{{define "twitter_image"}}{{if and .Token.NFTMetadata .Token.NFTMetadata.IsImage .Token.NFTMetadata.ImageURL}}{{.Token.NFTMetadata.ImageURL}}{{else if .Token.ImageURL}}{{.Token.ImageURL}}{{else}}https://lore.mtlprog.xyz/og-image.svg{{end}}{{end}}
 
 {{define "content"}}
 <div class="token-page">

@@ -1,6 +1,15 @@
 {{template "base" .}}
 
-{{define "title"}}Search // LORE{{end}}
+{{define "title"}}{{if .Query}}Search: {{.Query}}{{else}}Search{{end}} // LORE{{end}}
+
+{{define "meta_description"}}Search Montelibero accounts on Stellar blockchain. {{if .Query}}Results for "{{.Query}}"{{if .TotalCount}} - {{.TotalCount}} accounts found{{end}}.{{else}}Find participants and organizations by name, account ID, or tags.{{end}}{{end}}
+
+{{define "canonical_url"}}https://lore.mtlprog.xyz/search{{if .Query}}?q={{urlquery .Query}}{{end}}{{end}}
+{{define "og_url"}}https://lore.mtlprog.xyz/search{{if .Query}}?q={{urlquery .Query}}{{end}}{{end}}
+{{define "og_title"}}{{if .Query}}Search: {{.Query}}{{else}}Search{{end}} // LORE{{end}}
+{{define "og_description"}}Search Montelibero accounts. {{if .TotalCount}}{{.TotalCount}} results found.{{else}}Find participants and organizations on Stellar blockchain.{{end}}{{end}}
+{{define "twitter_title"}}{{if .Query}}Search: {{.Query}}{{else}}Search{{end}} // LORE{{end}}
+{{define "twitter_description"}}Search Montelibero accounts. {{if .TotalCount}}{{.TotalCount}} results found.{{else}}Find participants and organizations on Stellar blockchain.{{end}}{{end}}
 
 {{define "content"}}
 <!-- TAGS CLOUD -->

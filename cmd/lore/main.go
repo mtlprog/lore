@@ -17,6 +17,7 @@ import (
 	"github.com/mtlprog/lore/internal/repository"
 	"github.com/mtlprog/lore/internal/reputation"
 	"github.com/mtlprog/lore/internal/service"
+	"github.com/mtlprog/lore/internal/static"
 	"github.com/mtlprog/lore/internal/sync"
 	"github.com/mtlprog/lore/internal/template"
 	"github.com/urfave/cli/v2"
@@ -134,6 +135,7 @@ func runServe(c *cli.Context) error {
 
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
+	handler.RegisterStaticRoutes(mux, static.Handler())
 
 	server := &http.Server{
 		Addr:         ":" + port,

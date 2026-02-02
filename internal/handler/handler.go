@@ -97,3 +97,20 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /init/corporate", h.InitCorporate)
 	mux.HandleFunc("POST /init/corporate", h.InitCorporateSubmit)
 }
+
+// RegisterStaticRoutes registers routes for static files (favicon, og-image, etc.).
+// staticHandler should be created from static.Handler().
+func RegisterStaticRoutes(mux *http.ServeMux, staticHandler http.Handler) {
+	mux.Handle("GET /favicon.svg", staticHandler)
+	mux.Handle("GET /og-image.svg", staticHandler)
+	mux.Handle("GET /og-image.png", staticHandler)
+	mux.Handle("GET /favicon-32x32.png", staticHandler)
+	mux.Handle("GET /favicon-16x16.png", staticHandler)
+	mux.Handle("GET /apple-touch-icon.png", staticHandler)
+
+	// Robots.txt for SEO
+	mux.HandleFunc("GET /robots.txt", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		w.Write([]byte("User-agent: *\nAllow: /\nSitemap: https://lore.mtlprog.xyz/sitemap.xml\n"))
+	})
+}

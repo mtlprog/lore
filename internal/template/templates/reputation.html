@@ -2,6 +2,15 @@
 
 {{define "title"}}{{.AccountName}} Reputation // LORE{{end}}
 
+{{define "meta_description"}}{{.AccountName}} reputation on Montelibero network. {{if .Score}}Grade: {{.Score.Grade}}. Weighted score: {{printf "%.2f" .Score.WeightedScore}}/4.00. {{.Score.TotalRatings}} ratings from community members.{{else}}View reputation details and rating history.{{end}}{{end}}
+
+{{define "canonical_url"}}https://lore.mtlprog.xyz/accounts/{{.AccountID}}/reputation{{end}}
+{{define "og_url"}}https://lore.mtlprog.xyz/accounts/{{.AccountID}}/reputation{{end}}
+{{define "og_title"}}{{.AccountName}} Reputation // LORE{{end}}
+{{define "og_description"}}{{.AccountName}} reputation. {{if .Score}}Grade: {{.Score.Grade}}. {{.Score.TotalRatings}} ratings.{{else}}No reputation data yet.{{end}}{{end}}
+{{define "twitter_title"}}{{.AccountName}} Reputation // LORE{{end}}
+{{define "twitter_description"}}{{.AccountName}} reputation. {{if .Score}}Grade: {{.Score.Grade}}. {{.Score.TotalRatings}} ratings.{{else}}No reputation data yet.{{end}}{{end}}
+
 {{define "content"}}
 <div class="detail-header">
     <h1 class="detail-name">Reputation: {{.AccountName}}</h1>

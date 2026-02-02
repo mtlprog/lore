@@ -5,6 +5,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{block "title" .}}LORE{{end}}</title>
+    <meta name="description" content="{{block "meta_description" .}}LORE - Montelibero blockchain token explorer for MTLAP and MTLAC. Browse Stellar network accounts, view balances, reputation scores, and community connections.{{end}}">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{block "canonical_url" .}}https://lore.mtlprog.xyz{{end}}">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="LORE - Montelibero Explorer">
+    <meta property="og:title" content="{{block "og_title" .}}LORE - Montelibero Lore Explorer{{end}}">
+    <meta property="og:description" content="{{block "og_description" .}}Explore the Montelibero community on Stellar blockchain. View accounts, reputation scores, and network connections.{{end}}">
+    <meta property="og:url" content="{{block "og_url" .}}https://lore.mtlprog.xyz{{end}}">
+    <meta property="og:image" content="{{block "og_image" .}}https://lore.mtlprog.xyz/og-image.svg{{end}}">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{block "twitter_title" .}}LORE - Montelibero Lore Explorer{{end}}">
+    <meta name="twitter:description" content="{{block "twitter_description" .}}Explore the Montelibero community on Stellar blockchain. View accounts, reputation scores, and network connections.{{end}}">
+    <meta name="twitter:image" content="{{block "twitter_image" .}}https://lore.mtlprog.xyz/og-image.svg{{end}}">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+    <!-- Theme color for mobile browsers -->
+    <meta name="theme-color" content="#0a0e13" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#f6f8fa" media="(prefers-color-scheme: light)">
+
+    <!-- Additional SEO -->
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Montelibero Programmers Guild">
+    <meta name="keywords" content="Montelibero, Stellar, blockchain, MTLAP, MTLAC, crypto, token explorer, reputation">
+
+    <!-- Schema.org JSON-LD -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "LORE - Montelibero Lore Explorer",
+        "alternateName": "Liber Omnium Rationum Explorator",
+        "description": "Blockchain explorer for Montelibero community on Stellar network. Browse MTLAP and MTLAC token holders, view account details, reputation scores, and community connections.",
+        "url": "https://lore.mtlprog.xyz",
+        "applicationCategory": "Blockchain Explorer",
+        "operatingSystem": "Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "creator": {
+            "@type": "Organization",
+            "name": "Montelibero Programmers Guild",
+            "url": "https://mtlprog.xyz"
+        }
+    }
+    </script>
+    {{block "structured_data" .}}{{end}}
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
