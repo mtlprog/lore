@@ -118,6 +118,7 @@ The application follows a layered architecture:
 - **Constrained Type Pattern**: For domain values with limited valid states (like `Rating`), use a typed string with `IsValid()` method and constants for valid values. Methods like `Value()` can provide numeric conversions.
 - **Transaction Atomicity**: Wrap DELETE + INSERT sequences in transactions to prevent partial state on failure.
 - **Database Migrations**: Add new migrations in `internal/database/migrations/` with format `NNN_description.sql`. Migrations run automatically on startup via goose.
+- **No Foreign Key Constraints**: Do not use foreign key constraints in database schema. Data integrity is managed at the application level during sync operations.
 - **Relation Index Preservation**: Relationship indices are stored as strings, not integers, to preserve leading zeros. `PartOf002` and `PartOf2` are distinct keys in the blockchain that must remain distinct in the database. Converting to int would cause both to become `2`, violating the primary key constraint `(source_account_id, target_account_id, relation_type, relation_index)`.
 
 ## Stellar Account Data Keys

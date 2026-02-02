@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mtlprog/lore/internal/database"
 	"github.com/shopspring/decimal"
@@ -443,7 +444,7 @@ func (r *Repository) UpsertLPPool(ctx context.Context, pool *LPPoolData) error {
 			pool.ReserveBCode,
 			pool.ReserveBIssuer,
 			pool.ReserveBAmount,
-			"NOW()",
+			sq.Expr("NOW()"),
 		).
 		Suffix(`ON CONFLICT (pool_id) DO UPDATE SET
 			total_shares = EXCLUDED.total_shares,
