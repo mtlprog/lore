@@ -653,4 +653,93 @@ func TestRender(t *testing.T) {
 		assert.Contains(t, output, "SUCCESS")
 		assert.Contains(t, output, "12345678")
 	})
+
+	t.Run("search template renders with query and tags", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Query        string
+			QueryTooLong bool
+			Tags         []string
+			AllTags      []struct {
+				TagName string
+				Count   int
+			}
+			Accounts   []any
+			TotalCount int
+			Offset     int
+			NextOffset int
+			HasMore    bool
+			SortBy     string
+		}{
+			Query:        "test query",
+			QueryTooLong: false,
+			Tags:         []string{"Belgrade", "Programmer"},
+			AllTags: []struct {
+				TagName string
+				Count   int
+			}{
+				{TagName: "Belgrade", Count: 10},
+				{TagName: "Programmer", Count: 5},
+			},
+			Accounts:   []any{},
+			TotalCount: 15,
+			Offset:     0,
+			NextOffset: 50,
+			HasMore:    false,
+			SortBy:     "balance",
+		}
+
+		err := tmpl.Render(&buf, "search.html", data)
+		require.NoError(t, err)
+
+		output := buf.String()
+		// Verify template renders with query
+		assert.Contains(t, output, "test query")
+		// Verify meta description uses single quotes (not double quotes that would break HTML)
+		assert.Contains(t, output, `Results for 'test query'`)
+		// Verify the HTML is well-formed (meta content attribute is properly closed)
+		assert.Contains(t, output, `<meta name="description" content="Search Montelibero accounts on Stellar blockchain. Results for 'test query' - 15 accounts found.">`)
+	})
+
+	t.Run("search template renders without query (tags only)", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Query        string
+			QueryTooLong bool
+			Tags         []string
+			AllTags      []struct {
+				TagName string
+				Count   int
+			}
+			Accounts   []any
+			TotalCount int
+			Offset     int
+			NextOffset int
+			HasMore    bool
+			SortBy     string
+		}{
+			Query:        "",
+			QueryTooLong: false,
+			Tags:         []string{"Christian"},
+			AllTags: []struct {
+				TagName string
+				Count   int
+			}{
+				{TagName: "Christian", Count: 1},
+			},
+			Accounts:   []any{},
+			TotalCount: 1,
+			Offset:     0,
+			NextOffset: 50,
+			HasMore:    false,
+			SortBy:     "balance",
+		}
+
+		err := tmpl.Render(&buf, "search.html", data)
+		require.NoError(t, err)
+
+		output := buf.String()
+		// Verify default meta description is used when no query
+		assert.Contains(t, output, `Find participants and organizations by name, account ID, or tags.`)
+	})
 }

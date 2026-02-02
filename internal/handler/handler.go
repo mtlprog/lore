@@ -111,6 +111,6 @@ func RegisterStaticRoutes(mux *http.ServeMux, staticHandler http.Handler) {
 	// Robots.txt for SEO
 	mux.HandleFunc("GET /robots.txt", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte("User-agent: *\nAllow: /\nSitemap: https://lore.mtlprog.xyz/sitemap.xml\n"))
+		_, _ = w.Write([]byte("User-agent: *\nAllow: /\nSitemap: https://lore.mtlprog.xyz/sitemap.xml\n"))
 	})
 }
