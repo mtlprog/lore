@@ -2,7 +2,7 @@
 
 {{define "title"}}{{if .Query}}Search: {{.Query}}{{else}}Search{{end}} // LORE{{end}}
 
-{{define "meta_description"}}Search Montelibero accounts on Stellar blockchain. {{if .Query}}Results for "{{.Query}}"{{if .TotalCount}} - {{.TotalCount}} accounts found{{end}}.{{else}}Find participants and organizations by name, account ID, or tags.{{end}}{{end}}
+{{define "meta_description"}}Search Montelibero accounts on Stellar blockchain. {{if .Query}}Results for '{{.Query}}'{{if .TotalCount}} - {{.TotalCount}} accounts found{{end}}.{{else}}Find participants and organizations by name, account ID, or tags.{{end}}{{end}}
 
 {{define "canonical_url"}}https://lore.mtlprog.xyz/search{{if .Query}}?q={{urlquery .Query}}{{end}}{{end}}
 {{define "og_url"}}https://lore.mtlprog.xyz/search{{if .Query}}?q={{urlquery .Query}}{{end}}{{end}}
