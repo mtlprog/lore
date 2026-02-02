@@ -558,9 +558,6 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 			Having(fmt.Sprintf("COUNT(DISTINCT tags.data_key) = %d", len(tagKeys)))
 	}
 
-	// Add common filters and sorting
-	qb = qb.Where("(a.mtlap_balance > 0 OR a.mtlac_balance > 0)")
-
 	// Apply sorting
 	switch sortBy {
 	case SearchSortByReputation:
@@ -646,9 +643,6 @@ func (r *AccountRepository) CountSearchAccounts(ctx context.Context, query strin
 			GroupBy("a.account_id").
 			Having(fmt.Sprintf("COUNT(DISTINCT tags.data_key) = %d", len(tagKeys)))
 	}
-
-	// Add common filter
-	qb = qb.Where("(a.mtlap_balance > 0 OR a.mtlac_balance > 0)")
 
 	// When using GROUP BY with HAVING, wrap in subquery to get total count
 	if len(tags) > 0 {
