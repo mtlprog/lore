@@ -120,6 +120,8 @@ The application follows a layered architecture:
 - **Database Migrations**: Add new migrations in `internal/database/migrations/` with format `NNN_description.sql`. Migrations run automatically on startup via goose.
 - **No Foreign Key Constraints**: Do not use foreign key constraints in database schema. Data integrity is managed at the application level during sync operations.
 - **Relation Index Preservation**: Relationship indices are stored as strings, not integers, to preserve leading zeros. `PartOf002` and `PartOf2` are distinct keys in the blockchain that must remain distinct in the database. Converting to int would cause both to become `2`, violating the primary key constraint `(source_account_id, target_account_id, relation_type, relation_index)`.
+- **Squirrel SQL Expressions**: Use `sq.Expr("NOW()")` for SQL functions, not string literals like `"NOW()"`. String literals are inserted as values, not executed as SQL.
+- **Graceful Degradation**: Non-critical data fetches (LP shares, operations) should log errors and continue with nil/empty data, not fail the entire page render.
 
 ## Stellar Account Data Keys
 
@@ -240,3 +242,4 @@ lop.Filter(slice, func(x T, _ int) bool { ... })              // Parallel filter
 ## Git Conventions
 
 - **Commit messages**: Use [Conventional Commits](https://www.conventionalcommits.org/) format (e.g., `feat:`, `fix:`, `refactor:`, `docs:`, `chore:`)
+- **PR Merge Strategy**: Repository only allows rebase merges. Use `gh pr merge --rebase --delete-branch`
