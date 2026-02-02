@@ -4,7 +4,7 @@
 
 This document was inspired by the [SQLite Code of Ethics](https://sqlite.org/codeofethics.html). Like that project, we found that existing codes of conduct often focus on what participants cannot do, creating an adversarial atmosphere. We wanted something different — a document that describes who we aspire to be, not merely what we promise to avoid.
 
-The Rule of St. Benedict has guided communities for over 1,500 years. Chapter 4, "The Tools of Good Works," provides 72 principles for living a virtuous life. These principles emphasize personal responsibility, respect for others, humility, and service — qualities that make for good software developers and good community members.
+The Rule of St. Benedict has guided communities for over 1,500 years. Chapter 4, "The Tools of Good Works," provides 74 principles for living a virtuous life. These principles emphasize personal responsibility, respect for others, humility, and service — qualities that make for good software developers and good community members.
 
 ## Purpose
 
