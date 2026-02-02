@@ -376,6 +376,65 @@ func (_c *MockAccountQuerier_GetCorporate_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
+// GetLPShares provides a mock function with given fields: ctx, accountID
+func (_m *MockAccountQuerier) GetLPShares(ctx context.Context, accountID string) ([]repository.LPShareRow, error) {
+	ret := _m.Called(ctx, accountID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLPShares")
+	}
+
+	var r0 []repository.LPShareRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) ([]repository.LPShareRow, error)); ok {
+		return rf(ctx, accountID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string) []repository.LPShareRow); ok {
+		r0 = rf(ctx, accountID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]repository.LPShareRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = rf(ctx, accountID)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_GetLPShares_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLPShares'
+type MockAccountQuerier_GetLPShares_Call struct {
+	*mock.Call
+}
+
+// GetLPShares is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID string
+func (_e *MockAccountQuerier_Expecter) GetLPShares(ctx interface{}, accountID interface{}) *MockAccountQuerier_GetLPShares_Call {
+	return &MockAccountQuerier_GetLPShares_Call{Call: _e.mock.On("GetLPShares", ctx, accountID)}
+}
+
+func (_c *MockAccountQuerier_GetLPShares_Call) Run(run func(ctx context.Context, accountID string)) *MockAccountQuerier_GetLPShares_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetLPShares_Call) Return(_a0 []repository.LPShareRow, _a1 error) *MockAccountQuerier_GetLPShares_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetLPShares_Call) RunAndReturn(run func(context.Context, string) ([]repository.LPShareRow, error)) *MockAccountQuerier_GetLPShares_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetPersons provides a mock function with given fields: ctx, limit, offset
 func (_m *MockAccountQuerier) GetPersons(ctx context.Context, limit int, offset int) ([]repository.PersonRow, error) {
 	ret := _m.Called(ctx, limit, offset)

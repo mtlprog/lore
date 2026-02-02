@@ -167,6 +167,10 @@ func (s *StellarService) GetAccountDetail(ctx context.Context, accountID string)
 
 	trustlines := make([]model.Trustline, 0, len(acc.Balances))
 	for _, bal := range acc.Balances {
+		// Skip LP shares - they are displayed separately
+		if bal.Type == "liquidity_pool_shares" {
+			continue
+		}
 		if bal.Type == "native" {
 			trustlines = append(trustlines, model.Trustline{
 				AssetCode:   "XLM",

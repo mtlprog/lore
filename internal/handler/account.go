@@ -129,6 +129,16 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Fetch LP shares from database
+	lpRows, err := h.accounts.GetLPShares(ctx, accountID)
+	if err != nil {
+		slog.Error("failed to fetch LP shares", "account_id", accountID, "error", err)
+		lpRows = nil
+	}
+
+	// Convert LP rows to display model
+	account.LPShares = convertLPShares(lpRows)
+
 	// Separate NFTs from regular tokens (NFTs have balance == "0.0000001")
 	// FilterReject returns (kept, rejected) - we keep regular tokens, reject NFTs
 	tokens, nfts := lo.FilterReject(account.Trustlines, func(t model.Trustline, _ int) bool {
@@ -449,4 +459,47 @@ func collectAccountIDs(ops []model.Operation) []string {
 // isStellarAccountID checks if a string looks like a Stellar account ID.
 func isStellarAccountID(s string) bool {
 	return len(s) == 56 && (s[0] == 'G' || s[0] == 'M')
+}
+
+// convertLPShares converts LP share rows to display models.
+func convertLPShares(rows []repository.LPShareRow) []model.LPShareDisplay {
+	if len(rows) == 0 {
+		return nil
+	}
+
+	return lo.Map(rows, func(r repository.LPShareRow, _ int) model.LPShareDisplay {
+		// Calculate share percentage
+		sharePercent := "0%"
+		if r.TotalShares > 0 {
+			pct := (r.ShareBalance / r.TotalShares) * 100
+			if pct < 0.01 {
+				sharePercent = "<0.01%"
+			} else {
+				sharePercent = fmt.Sprintf("%.2f%%", pct)
+			}
+		}
+
+		// Calculate proportional reserves
+		shareRatio := float64(0)
+		if r.TotalShares > 0 {
+			shareRatio = r.ShareBalance / r.TotalShares
+		}
+
+		return model.LPShareDisplay{
+			PoolID:       r.PoolID,
+			ShareBalance: fmt.Sprintf("%.7f", r.ShareBalance),
+			SharePercent: sharePercent,
+			ReserveA: model.LPReserveDisplay{
+				AssetCode:   r.ReserveACode,
+				AssetIssuer: r.ReserveAIssuer,
+				Amount:      fmt.Sprintf("%.4f", r.ReserveAAmount*shareRatio),
+			},
+			ReserveB: model.LPReserveDisplay{
+				AssetCode:   r.ReserveBCode,
+				AssetIssuer: r.ReserveBIssuer,
+				Amount:      fmt.Sprintf("%.4f", r.ReserveBAmount*shareRatio),
+			},
+			XLMValue: r.XLMValue,
+		}
+	})
 }

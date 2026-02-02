@@ -39,6 +39,8 @@ var allowedTruncateTables = map[string]bool{
 	"account_balances":  true,
 	"token_prices":      true,
 	"accounts":          true,
+	"liquidity_pools":   true,
+	"account_lp_shares": true,
 }
 
 // Truncate clears all syncable tables (preserves settings tables).
@@ -49,6 +51,8 @@ func (r *Repository) Truncate(ctx context.Context) error {
 		"relationships",
 		"account_metadata",
 		"account_balances",
+		"account_lp_shares",
+		"liquidity_pools",
 		"token_prices",
 		"accounts",
 	}
@@ -310,6 +314,10 @@ func (r *Repository) UpdateXLMValues(ctx context.Context) error {
 			SELECT SUM(xlm_value)
 			FROM account_balances ab
 			WHERE ab.account_id = a.account_id
+		), 0) + COALESCE((
+			SELECT SUM(xlm_value)
+			FROM account_lp_shares als
+			WHERE als.account_id = a.account_id
 		), 0)
 	`)
 	if err != nil {
@@ -409,6 +417,122 @@ func (r *Repository) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 		return nil, fmt.Errorf("query stats: %w", err)
 	}
 	return &stats, nil
+}
+
+// UpsertLPPool inserts or updates a liquidity pool.
+func (r *Repository) UpsertLPPool(ctx context.Context, pool *LPPoolData) error {
+	query, args, err := database.QB.
+		Insert("liquidity_pools").
+		Columns(
+			"pool_id",
+			"total_shares",
+			"reserve_a_code",
+			"reserve_a_issuer",
+			"reserve_a_amount",
+			"reserve_b_code",
+			"reserve_b_issuer",
+			"reserve_b_amount",
+			"updated_at",
+		).
+		Values(
+			pool.PoolID,
+			pool.TotalShares,
+			pool.ReserveACode,
+			pool.ReserveAIssuer,
+			pool.ReserveAAmount,
+			pool.ReserveBCode,
+			pool.ReserveBIssuer,
+			pool.ReserveBAmount,
+			"NOW()",
+		).
+		Suffix(`ON CONFLICT (pool_id) DO UPDATE SET
+			total_shares = EXCLUDED.total_shares,
+			reserve_a_code = EXCLUDED.reserve_a_code,
+			reserve_a_issuer = EXCLUDED.reserve_a_issuer,
+			reserve_a_amount = EXCLUDED.reserve_a_amount,
+			reserve_b_code = EXCLUDED.reserve_b_code,
+			reserve_b_issuer = EXCLUDED.reserve_b_issuer,
+			reserve_b_amount = EXCLUDED.reserve_b_amount,
+			updated_at = NOW()`).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build upsert LP pool query: %w", err)
+	}
+
+	_, err = r.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("exec upsert LP pool: %w", err)
+	}
+
+	return nil
+}
+
+// UpsertLPShare inserts or updates an account's LP share.
+func (r *Repository) UpsertLPShare(ctx context.Context, accountID, poolID string, balance decimal.Decimal) error {
+	query, args, err := database.QB.
+		Insert("account_lp_shares").
+		Columns("account_id", "pool_id", "share_balance").
+		Values(accountID, poolID, balance).
+		Suffix(`ON CONFLICT (account_id, pool_id) DO UPDATE SET
+			share_balance = EXCLUDED.share_balance`).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build upsert LP share query: %w", err)
+	}
+
+	_, err = r.pool.Exec(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("exec upsert LP share: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteAccountLPShares deletes all LP shares for an account.
+func (r *Repository) DeleteAccountLPShares(ctx context.Context, accountID string) error {
+	_, err := r.pool.Exec(ctx, "DELETE FROM account_lp_shares WHERE account_id = $1", accountID)
+	if err != nil {
+		return fmt.Errorf("delete account LP shares: %w", err)
+	}
+	return nil
+}
+
+// UpdateLPShareValues calculates and updates XLM values for LP shares.
+func (r *Repository) UpdateLPShareValues(ctx context.Context) error {
+	// Calculate XLM value for each LP share based on:
+	// 1. Account's share of total pool shares
+	// 2. Value of reserves in XLM (using token prices)
+	_, err := r.pool.Exec(ctx, `
+		UPDATE account_lp_shares als
+		SET xlm_value = (
+			SELECT (als.share_balance / lp.total_shares) * (
+				-- Value of reserve A in XLM
+				COALESCE(
+					CASE
+						WHEN lp.reserve_a_code = 'XLM' THEN lp.reserve_a_amount
+						ELSE lp.reserve_a_amount * COALESCE(tp_a.xlm_price, 0)
+					END, 0
+				) +
+				-- Value of reserve B in XLM
+				COALESCE(
+					CASE
+						WHEN lp.reserve_b_code = 'XLM' THEN lp.reserve_b_amount
+						ELSE lp.reserve_b_amount * COALESCE(tp_b.xlm_price, 0)
+					END, 0
+				)
+			)
+			FROM liquidity_pools lp
+			LEFT JOIN token_prices tp_a ON tp_a.asset_code = lp.reserve_a_code AND tp_a.asset_issuer = lp.reserve_a_issuer
+			LEFT JOIN token_prices tp_b ON tp_b.asset_code = lp.reserve_b_code AND tp_b.asset_issuer = lp.reserve_b_issuer
+			WHERE lp.pool_id = als.pool_id
+			  AND lp.total_shares > 0
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("update LP share values: %w", err)
+	}
+
+	return nil
 }
 
 // UpsertAssociationTags inserts or updates association tags within a transaction.

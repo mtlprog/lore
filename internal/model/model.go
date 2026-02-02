@@ -18,10 +18,28 @@ type AccountDetail struct {
 	Tags          []string
 	Trustlines    []Trustline
 	NFTTrustlines []Trustline // Trustlines where balance == "0.0000001" (NFTs)
+	LPShares      []LPShareDisplay
 	Categories    []RelationshipCategory
 	TrustRating   *TrustRating // nil if no ratings
 	TotalXLMValue float64      // Portfolio value in XLM (for corporate accounts)
 	IsCorporate   bool         // true if account holds MTLAC
+}
+
+// LPShareDisplay represents a liquidity pool share for display.
+type LPShareDisplay struct {
+	PoolID       string
+	ShareBalance string          // Account's share balance
+	SharePercent string          // Percent of pool owned
+	ReserveA     LPReserveDisplay
+	ReserveB     LPReserveDisplay
+	XLMValue     float64
+}
+
+// LPReserveDisplay represents a liquidity pool reserve for display.
+type LPReserveDisplay struct {
+	AssetCode   string
+	AssetIssuer string
+	Amount      string // Proportional amount based on account's share
 }
 
 // Trustline represents a single asset trustline.

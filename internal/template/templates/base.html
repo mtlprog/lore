@@ -2633,6 +2633,84 @@
             font-size: 2.5rem !important;
         }
 
+        /* LIQUIDITY POOL SHARES */
+        .lp-block::before {
+            background: var(--warn);
+        }
+
+        .lp-shares-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .lp-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .lp-card:hover {
+            border-color: var(--warn);
+            box-shadow: 0 0 10px color-mix(in srgb, var(--warn) 20%, transparent);
+        }
+
+        .lp-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .lp-pair {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--warn);
+        }
+
+        .lp-value {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--council);
+        }
+
+        .lp-reserves {
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .lp-reserve {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .lp-amount {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--num);
+        }
+
+        .lp-asset {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+        }
+
+        .lp-footer {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
         /* Orderbook */
         .orderbook-container {
             display: grid;

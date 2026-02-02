@@ -120,3 +120,21 @@ type DelegationInfo struct {
 // DefaultFailureThreshold is the default maximum failure rate (10%)
 // before sync is considered failed.
 const DefaultFailureThreshold = 0.1
+
+// LPPoolData holds liquidity pool information.
+type LPPoolData struct {
+	PoolID         string
+	TotalShares    decimal.Decimal
+	ReserveACode   string
+	ReserveAIssuer string
+	ReserveAAmount decimal.Decimal
+	ReserveBCode   string
+	ReserveBIssuer string
+	ReserveBAmount decimal.Decimal
+}
+
+// LPShare holds an account's share in a liquidity pool.
+type LPShare struct {
+	PoolID       string
+	ShareBalance decimal.Decimal
+}

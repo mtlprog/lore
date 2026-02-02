@@ -318,6 +318,7 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetTrustRatings(mock.Anything, "GABC123").Return(&repository.TrustRating{}, nil)
 		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
 		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
+		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, nil)
 
 		// Expect operations fetch
 		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(&model.OperationsPage{
@@ -379,6 +380,7 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetTrustRatings(mock.Anything, "GABC123").Return(&repository.TrustRating{}, nil)
 		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
 		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
+		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, nil)
 		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(nil, nil)
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("template error"))

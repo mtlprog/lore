@@ -38,6 +38,7 @@ type AccountQuerier interface {
 	GetAllTags(ctx context.Context) ([]repository.TagRow, error)
 	SearchAccounts(ctx context.Context, query string, tags []string, limit int, offset int, sortBy repository.SearchSortOrder) ([]repository.SearchAccountRow, error)
 	CountSearchAccounts(ctx context.Context, query string, tags []string) (int, error)
+	GetLPShares(ctx context.Context, accountID string) ([]repository.LPShareRow, error)
 }
 
 // ReputationQuerier defines the interface for reputation data access.

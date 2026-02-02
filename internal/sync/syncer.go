@@ -112,7 +112,12 @@ func (s *Syncer) Run(ctx context.Context, full bool) (*SyncResult, error) {
 	}
 	result.FailedPrices = failedPrices
 
-	// Step 4: Update XLM values based on prices
+	// Step 4: Update XLM values based on prices (including LP shares)
+	s.logger.Info("updating LP share values")
+	if err := s.repo.UpdateLPShareValues(ctx); err != nil {
+		return result, fmt.Errorf("update LP share values: %w", err)
+	}
+
 	s.logger.Info("updating XLM values")
 	if err := s.repo.UpdateXLMValues(ctx); err != nil {
 		return result, fmt.Errorf("update XLM values: %w", err)

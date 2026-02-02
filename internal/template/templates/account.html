@@ -132,6 +132,33 @@
     </div>
     {{end}}
 
+    {{if .Account.LPShares}}
+    <div class="detail-block full-width lp-block">
+        <div class="detail-block-title">Liquidity Pools ({{len .Account.LPShares}})</div>
+        <div class="lp-shares-grid">
+            {{range .Account.LPShares}}
+            <div class="lp-card">
+                <div class="lp-header">
+                    <span class="lp-pair">{{.ReserveA.AssetCode}}/{{.ReserveB.AssetCode}}</span>
+                    <span class="lp-value">{{formatNumber .XLMValue}} XLM</span>
+                </div>
+                <div class="lp-reserves">
+                    <div class="lp-reserve">
+                        <span class="lp-amount">{{.ReserveA.Amount}}</span>
+                        <span class="lp-asset">{{.ReserveA.AssetCode}}</span>
+                    </div>
+                    <div class="lp-reserve">
+                        <span class="lp-amount">{{.ReserveB.Amount}}</span>
+                        <span class="lp-asset">{{.ReserveB.AssetCode}}</span>
+                    </div>
+                </div>
+                <div class="lp-footer">{{.SharePercent}} of pool</div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+
     <div class="detail-block full-width">
         <div class="detail-block-title">Tokens ({{len .Account.Trustlines}})</div>
         {{if .Account.Trustlines}}
