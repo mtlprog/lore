@@ -387,6 +387,22 @@ func TestRender(t *testing.T) {
 					Balance     string
 					Limit       string
 				}
+				LPShares []struct {
+					PoolID       string
+					ShareBalance string
+					SharePercent string
+					ReserveA     struct {
+						AssetCode   string
+						AssetIssuer string
+						Amount      string
+					}
+					ReserveB struct {
+						AssetCode   string
+						AssetIssuer string
+						Amount      string
+					}
+					XLMValue float64
+				}
 				Categories []struct {
 					Name          string
 					Color         string
@@ -456,6 +472,22 @@ func TestRender(t *testing.T) {
 					Balance     string
 					Limit       string
 				}
+				LPShares []struct {
+					PoolID       string
+					ShareBalance string
+					SharePercent string
+					ReserveA     struct {
+						AssetCode   string
+						AssetIssuer string
+						Amount      string
+					}
+					ReserveB struct {
+						AssetCode   string
+						AssetIssuer string
+						Amount      string
+					}
+					XLMValue float64
+				}
 				Categories []struct {
 					Name          string
 					Color         string
@@ -501,6 +533,7 @@ func TestRender(t *testing.T) {
 					},
 				},
 				NFTTrustlines: nil,
+				LPShares:      nil,
 				Categories:    nil,
 				TrustRating:   nil,
 				TotalXLMValue: 0,

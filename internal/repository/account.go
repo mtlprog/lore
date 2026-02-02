@@ -313,6 +313,73 @@ type AccountInfo struct {
 	MTLACBalance  float64
 }
 
+// LPShareRow represents a liquidity pool share from the database.
+type LPShareRow struct {
+	PoolID         string
+	ShareBalance   float64
+	TotalShares    float64
+	ReserveACode   string
+	ReserveAIssuer string
+	ReserveAAmount float64
+	ReserveBCode   string
+	ReserveBIssuer string
+	ReserveBAmount float64
+	XLMValue       float64
+}
+
+// GetLPShares returns liquidity pool shares for an account.
+func (r *AccountRepository) GetLPShares(ctx context.Context, accountID string) ([]LPShareRow, error) {
+	query := `
+		SELECT
+			als.pool_id,
+			als.share_balance,
+			lp.total_shares,
+			lp.reserve_a_code,
+			lp.reserve_a_issuer,
+			lp.reserve_a_amount,
+			lp.reserve_b_code,
+			lp.reserve_b_issuer,
+			lp.reserve_b_amount,
+			COALESCE(als.xlm_value, 0) AS xlm_value
+		FROM account_lp_shares als
+		JOIN liquidity_pools lp ON als.pool_id = lp.pool_id
+		WHERE als.account_id = $1
+		ORDER BY COALESCE(als.xlm_value, 0) DESC
+	`
+
+	rows, err := r.pool.Query(ctx, query, accountID)
+	if err != nil {
+		return nil, fmt.Errorf("query LP shares: %w", err)
+	}
+	defer rows.Close()
+
+	var shares []LPShareRow
+	for rows.Next() {
+		var s LPShareRow
+		if err := rows.Scan(
+			&s.PoolID,
+			&s.ShareBalance,
+			&s.TotalShares,
+			&s.ReserveACode,
+			&s.ReserveAIssuer,
+			&s.ReserveAAmount,
+			&s.ReserveBCode,
+			&s.ReserveBIssuer,
+			&s.ReserveBAmount,
+			&s.XLMValue,
+		); err != nil {
+			return nil, fmt.Errorf("scan LP share: %w", err)
+		}
+		shares = append(shares, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate LP shares: %w", err)
+	}
+
+	return shares, nil
+}
+
 // GetAccountInfo returns account information from the database.
 func (r *AccountRepository) GetAccountInfo(ctx context.Context, accountID string) (*AccountInfo, error) {
 	query, args, err := database.QB.

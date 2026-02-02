@@ -148,6 +148,11 @@ func (s *Syncer) syncSingleAccount(ctx context.Context, accountID string) error 
 		return fmt.Errorf("upsert relationships: %w", err)
 	}
 
+	// Sync LP shares (separate from regular balances)
+	if err := s.syncLPShares(ctx, accountID, &acc); err != nil {
+		return fmt.Errorf("sync LP shares: %w", err)
+	}
+
 	return nil
 }
 
@@ -158,20 +163,24 @@ func parseAccountData(acc *horizon.Account) *AccountData {
 		CouncilReady: false,
 	}
 
-	// Parse balances using lo.Map
-	data.Balances = lo.Map(acc.Balances, func(bal horizon.Balance, _ int) Balance {
+	// Parse balances using lo.Map, skipping LP shares (handled separately)
+	data.Balances = lo.FilterMap(acc.Balances, func(bal horizon.Balance, _ int) (Balance, bool) {
+		// Skip LP shares - they are handled by syncLPShares
+		if bal.Type == "liquidity_pool_shares" {
+			return Balance{}, false
+		}
 		if bal.Type == "native" {
 			return Balance{
 				AssetCode:   "XLM",
 				AssetIssuer: "",
 				Balance:     decimal.RequireFromString(bal.Balance),
-			}
+			}, true
 		}
 		return Balance{
 			AssetCode:   bal.Code,
 			AssetIssuer: bal.Issuer,
 			Balance:     decimal.RequireFromString(bal.Balance),
-		}
+		}, true
 	})
 
 	// Parse ManageData
