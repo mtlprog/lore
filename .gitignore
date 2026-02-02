@@ -16,3 +16,6 @@ coverage.out
 
 # Playwright MCP
 .playwright-mcp/
+
+# Alternative code of conduct (project uses CODE_OF_ETHICS.md)
+CODE_OF_CONDUCT.md
