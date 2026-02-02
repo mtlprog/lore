@@ -420,6 +420,139 @@ func TestAccountHandler(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.Code)
 		assert.Contains(t, w.Body.String(), "Account not found")
 	})
+
+	t.Run("account with LP shares renders correctly", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		stellar.EXPECT().GetAccountDetail(mock.Anything, "GABC123").Return(&model.AccountDetail{
+			ID:         "GABC123",
+			Name:       "LP Holder",
+			Trustlines: []model.Trustline{},
+		}, nil)
+
+		accounts.EXPECT().GetRelationships(mock.Anything, "GABC123").Return(nil, nil)
+		accounts.EXPECT().GetTrustRatings(mock.Anything, "GABC123").Return(&repository.TrustRating{}, nil)
+		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
+		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
+
+		// Return actual LP shares data
+		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return([]repository.LPShareRow{
+			{
+				PoolID:         "abc123poolid",
+				ShareBalance:   100.0,
+				TotalShares:    1000.0,
+				ReserveACode:   "MTL",
+				ReserveAIssuer: "GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V",
+				ReserveAAmount: 10000.0,
+				ReserveBCode:   "XLM",
+				ReserveBIssuer: "",
+				ReserveBAmount: 50000.0,
+				XLMValue:       5000.0,
+			},
+			{
+				PoolID:         "def456poolid",
+				ShareBalance:   50.0,
+				TotalShares:    500.0,
+				ReserveACode:   "EURMTL",
+				ReserveAIssuer: "GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V",
+				ReserveAAmount: 20000.0,
+				ReserveBCode:   "USDC",
+				ReserveBIssuer: "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+				ReserveBAmount: 20000.0,
+				XLMValue:       2000.0,
+			},
+		}, nil)
+
+		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(&model.OperationsPage{
+			Operations: []model.Operation{},
+			HasMore:    false,
+		}, nil)
+		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(map[string]string{}, nil).Maybe()
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "account.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, nil, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/accounts/GABC123", nil)
+		req.SetPathValue("id", "GABC123")
+		w := httptest.NewRecorder()
+
+		h.Account(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		accountData, ok := renderedData.(AccountData)
+		require.True(t, ok)
+
+		// Verify LP shares are converted and passed to template
+		require.Len(t, accountData.Account.LPShares, 2)
+
+		// Verify first LP share
+		lp1 := accountData.Account.LPShares[0]
+		assert.Equal(t, "abc123poolid", lp1.PoolID)
+		assert.Equal(t, "10.00%", lp1.SharePercent)
+		assert.Equal(t, "MTL", lp1.ReserveA.AssetCode)
+		assert.Equal(t, "XLM", lp1.ReserveB.AssetCode)
+		assert.Equal(t, 5000.0, lp1.XLMValue)
+
+		// Verify second LP share
+		lp2 := accountData.Account.LPShares[1]
+		assert.Equal(t, "def456poolid", lp2.PoolID)
+		assert.Equal(t, "10.00%", lp2.SharePercent)
+		assert.Equal(t, "EURMTL", lp2.ReserveA.AssetCode)
+		assert.Equal(t, "USDC", lp2.ReserveB.AssetCode)
+	})
+
+	t.Run("LP shares fetch error continues without shares", func(t *testing.T) {
+		stellar := mocks.NewMockStellarServicer(t)
+		accounts := mocks.NewMockAccountQuerier(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		stellar.EXPECT().GetAccountDetail(mock.Anything, "GABC123").Return(&model.AccountDetail{
+			ID:         "GABC123",
+			Trustlines: []model.Trustline{},
+		}, nil)
+
+		accounts.EXPECT().GetRelationships(mock.Anything, "GABC123").Return(nil, nil)
+		accounts.EXPECT().GetTrustRatings(mock.Anything, "GABC123").Return(&repository.TrustRating{}, nil)
+		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
+		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
+
+		// LP shares fetch fails
+		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, errors.New("database error"))
+
+		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(nil, nil)
+		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+
+		var renderedData any
+		tmpl.EXPECT().Render(mock.Anything, "account.html", mock.Anything).Run(func(w io.Writer, name string, data any) {
+			renderedData = data
+		}).Return(nil)
+
+		h, err := New(stellar, accounts, nil, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/accounts/GABC123", nil)
+		req.SetPathValue("id", "GABC123")
+		w := httptest.NewRecorder()
+
+		h.Account(w, req)
+
+		// Page should still render successfully (graceful degradation)
+		assert.Equal(t, http.StatusOK, w.Code)
+
+		accountData, ok := renderedData.(AccountData)
+		require.True(t, ok)
+
+		// LP shares should be nil/empty when fetch fails
+		assert.Nil(t, accountData.Account.LPShares)
+	})
 }
 
 // RegisterRoutes test

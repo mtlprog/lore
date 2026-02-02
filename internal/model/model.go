@@ -28,8 +28,8 @@ type AccountDetail struct {
 // LPShareDisplay represents a liquidity pool share for display.
 type LPShareDisplay struct {
 	PoolID       string
-	ShareBalance string          // Account's share balance
-	SharePercent string          // Percent of pool owned
+	ShareBalance string // Account's share balance
+	SharePercent string // Percent of pool owned
 	ReserveA     LPReserveDisplay
 	ReserveB     LPReserveDisplay
 	XLMValue     float64

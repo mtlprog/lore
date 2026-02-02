@@ -130,6 +130,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Fetch LP shares from database
+	// Continue without LP shares on error - don't fail the whole page for non-critical data
 	lpRows, err := h.accounts.GetLPShares(ctx, accountID)
 	if err != nil {
 		slog.Error("failed to fetch LP shares", "account_id", accountID, "error", err)
