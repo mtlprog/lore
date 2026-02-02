@@ -14,10 +14,12 @@ Lore is a specialized explorer for the [MTL Association](https://mtla.me/) ecosy
 - Browse all MTLAP and MTLAC token holders
 - View detailed account information (name, about, websites, trustlines)
 - Council voting status and delegation tracking
+- Reputation scoring with weighted calculations
 - Portfolio valuation in XLM
+- Relationship graph visualization
 - Dark/light theme with responsive design
 
-### Blockchain Social Network (BSN)
+### Blockchain Social Network
 
 The MTL ecosystem implements a social network layer on Stellar using ManageData operations:
 
@@ -31,66 +33,80 @@ The MTL ecosystem implements a social network layer on Stellar using ManageData 
 ```
 cmd/lore/           - CLI entry point (serve, sync commands)
 internal/
-├── config/         - Configuration constants
-├── database/       - PostgreSQL connection + migrations
-├── handler/        - HTTP handlers (Home, Account)
-├── logger/         - Structured logging (slog)
+├── config/         - Configuration constants (tokens, issuer)
+├── database/       - PostgreSQL connection + goose migrations
+├── handler/        - HTTP handlers (Home, Account, Search, Init)
+├── logger/         - Structured logging (slog/JSON)
 ├── model/          - Data models
 ├── repository/     - Data access layer (Squirrel query builder)
-├── service/        - Stellar Horizon API client
-├── sync/           - Data synchronization orchestration
-└── template/       - HTML templates (embedded)
+├── reputation/     - Weighted reputation scoring system
+├── service/        - Stellar Horizon API client + XDR generation
+├── sync/           - Data synchronization from Horizon to PostgreSQL
+└── template/       - Embedded HTML templates
 ```
 
 ## Prerequisites
 
 - Go 1.24+
 - PostgreSQL 16+
-- Docker (optional, for local PostgreSQL)
+- Docker & Docker Compose (recommended)
 
-## Quick Start
+## Development
 
-### 1. Start PostgreSQL
+### Docker Development (Recommended)
+
+Use Docker Compose for local development with fast iteration:
 
 ```bash
-# Using Docker
-docker run -d \
-  --name lore-db \
-  -e POSTGRES_PASSWORD=lore \
-  -e POSTGRES_DB=lore \
-  -p 5432:5432 \
-  postgres:16
+# Quick start: build, start services, sync data
+make dev
+
+# After making code changes, rebuild and restart:
+make dev-restart
+
+# View logs
+make dev-logs
+
+# Stop everything
+make dev-down
+
+# Reset database and re-sync
+make db-reset && make dev
 ```
 
-### 2. Build
+**Important**: Docker containers run Linux. The Makefile handles cross-compilation automatically. Never run `go build` manually before `make dev-restart` — always use Makefile targets.
+
+### Local Development (without Docker for app)
 
 ```bash
+# Start only PostgreSQL
+make db
+
+# Build
 go build -o lore ./cmd/lore
-```
 
-### 3. Sync Data
+# Sync data from Stellar
+./lore --database-url "postgres://lore:lore@localhost:5432/lore?sslmode=disable" sync
 
-```bash
-# Initial sync (fetches all MTLAP/MTLAC holders from Stellar)
-./lore sync --database-url "postgres://postgres:lore@localhost:5432/lore?sslmode=disable"
-
-# Full resync (truncates tables first)
-./lore sync --database-url "..." --full
-```
-
-### 4. Start Server
-
-```bash
-./lore serve --database-url "postgres://postgres:lore@localhost:5432/lore?sslmode=disable"
-
-# Custom port
-./lore serve --database-url "..." --port 3000
-
-# Debug logging
-./lore serve --database-url "..." --log-level debug
+# Start server
+./lore --database-url "postgres://lore:lore@localhost:5432/lore?sslmode=disable" serve
 ```
 
 Open http://localhost:8080
+
+### Commands
+
+```bash
+# Run tests
+go test ./...
+
+# Format and lint
+go fmt ./...
+go vet ./...
+
+# Generate mocks
+mockery
+```
 
 ## Configuration
 
@@ -101,33 +117,9 @@ Open http://localhost:8080
 | `--horizon-url` | `HORIZON_URL` | `https://horizon.stellar.org` | Stellar Horizon API URL |
 | `--log-level` | `LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
 
-## Development
+## Contributing
 
-### Run Tests
-
-```bash
-go test ./...
-```
-
-### Generate Mocks
-
-```bash
-go generate ./...
-# or
-mockery
-```
-
-### Format Code
-
-```bash
-go fmt ./...
-go vet ./...
-```
-
-## Data Sources
-
-- **Stellar Horizon API** - Account data, balances, ManageData
-- **SDEX** - Token prices for portfolio valuation
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to contribute to this project.
 
 ## License
 

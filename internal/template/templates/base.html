@@ -1067,14 +1067,14 @@
         }
 
         .footer-left {
-            font-size: 0.6875rem;
-            color: var(--text-muted);
+            font-size: 0.75rem;
+            color: var(--text-dim);
             text-transform: uppercase;
             letter-spacing: 0.1em;
         }
 
         .footer-left a {
-            color: var(--text-dim);
+            color: var(--text);
             text-decoration: none;
         }
 
@@ -1082,10 +1082,91 @@
             color: var(--accent);
         }
 
+        .footer-center {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            letter-spacing: 0.05em;
+        }
+
+        .footer-center a {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: text-shadow 0.2s ease;
+        }
+
+        .footer-center a:hover {
+            text-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .footer-center .emoji {
+            display: inline-block;
+            margin-left: 0.25em;
+            animation: pulse-subtle 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.1); }
+        }
+
+        /* Sacred colors: Marian Blue, White (purity), Vermilion Red */
+        :root {
+            --sacred-blue: #60a5fa;
+            --sacred-blue-glow: rgba(96, 165, 250, 0.7);
+            --sacred-white: #f0f9ff;
+            --sacred-white-glow: rgba(240, 249, 255, 0.9);
+            --sacred-red: #fb7185;
+            --sacred-red-glow: rgba(251, 113, 133, 0.7);
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root {
+                --sacred-blue: #1d4ed8;
+                --sacred-blue-glow: rgba(29, 78, 216, 0.5);
+                --sacred-white: #7c3aed;
+                --sacred-white-glow: rgba(124, 58, 237, 0.5);
+                --sacred-red: #dc2626;
+                --sacred-red-glow: rgba(220, 38, 38, 0.5);
+            }
+        }
+
+        .lore-word {
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .lore-word span {
+            display: inline-block;
+            color: var(--sacred-blue);
+            text-shadow: 0 0 12px var(--sacred-blue-glow);
+            animation: sacred-glow 12s ease-in-out infinite;
+        }
+
+        .lore-word span:nth-child(1) { animation-delay: 0s; }
+        .lore-word span:nth-child(2) { animation-delay: 3s; }
+        .lore-word span:nth-child(3) { animation-delay: 6s; }
+        .lore-word span:nth-child(4) { animation-delay: 9s; }
+
+        @keyframes sacred-glow {
+            0%, 100% {
+                color: var(--sacred-blue);
+                text-shadow: 0 0 12px var(--sacred-blue-glow);
+            }
+            33% {
+                color: var(--sacred-white);
+                text-shadow: 0 0 15px var(--sacred-white-glow);
+            }
+            66% {
+                color: var(--sacred-red);
+                text-shadow: 0 0 12px var(--sacred-red-glow);
+            }
+        }
+
         .footer-right {
             font-family: 'Share Tech Mono', monospace;
-            font-size: 0.625rem;
-            color: var(--text-muted);
+            font-size: 0.6875rem;
+            color: var(--text-dim);
         }
 
         /* ============================================
@@ -2688,6 +2769,9 @@
         <footer>
             <div class="footer-left">
                 © <a href="https://mtlprog.xyz" target="_blank" rel="noopener">Montelibero Programmers Guild</a>
+            </div>
+            <div class="footer-center">
+                Commit to the <span class="lore-word"><span>L</span><span>O</span><span>R</span><span>E</span></span> on <a href="https://github.com/mtlprog/lore" target="_blank" rel="noopener">GitHub</a> <span class="emoji">🙏</span>
             </div>
             <div class="footer-right">Montelibero Lore Explorer</div>
         </footer>
