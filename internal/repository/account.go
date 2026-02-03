@@ -561,17 +561,21 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 	// Apply sorting
 	switch sortBy {
 	case SearchSortByReputation:
-		// Sort by grade bucket first (A=1, A-=2, B+=3, etc), then by weight within grade
-		qb = qb.OrderBy(`CASE
-			WHEN COALESCE(rs.weighted_score, 0) >= 3.5 THEN 1
-			WHEN COALESCE(rs.weighted_score, 0) >= 3.0 THEN 2
-			WHEN COALESCE(rs.weighted_score, 0) >= 2.5 THEN 3
-			WHEN COALESCE(rs.weighted_score, 0) >= 2.0 THEN 4
-			WHEN COALESCE(rs.weighted_score, 0) >= 1.5 THEN 5
-			WHEN COALESCE(rs.weighted_score, 0) >= 1.0 THEN 6
-			WHEN COALESCE(rs.weighted_score, 0) > 0 THEN 7
-			ELSE 8
-		END ASC`, "COALESCE(rs.total_weight, 0) DESC")
+		// Sort by membership level first (MTLAP/MTLAC balance), then by grade bucket, then by weight
+		qb = qb.OrderBy(
+			"GREATEST(a.mtlap_balance, a.mtlac_balance) DESC",
+			`CASE
+				WHEN COALESCE(rs.weighted_score, 0) >= 3.5 THEN 1
+				WHEN COALESCE(rs.weighted_score, 0) >= 3.0 THEN 2
+				WHEN COALESCE(rs.weighted_score, 0) >= 2.5 THEN 3
+				WHEN COALESCE(rs.weighted_score, 0) >= 2.0 THEN 4
+				WHEN COALESCE(rs.weighted_score, 0) >= 1.5 THEN 5
+				WHEN COALESCE(rs.weighted_score, 0) >= 1.0 THEN 6
+				WHEN COALESCE(rs.weighted_score, 0) > 0 THEN 7
+				ELSE 8
+			END ASC`,
+			"COALESCE(rs.total_weight, 0) DESC",
+		)
 	default: // SearchSortByBalance
 		qb = qb.OrderBy("GREATEST(a.mtlap_balance, a.mtlac_balance) DESC", "a.total_xlm_value DESC")
 	}
