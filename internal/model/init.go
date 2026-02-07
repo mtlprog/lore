@@ -10,7 +10,7 @@ const (
 
 // AvailableTags lists all tags available for selection in init forms.
 var AvailableTags = []string{
-	"Accelerationist", "Anarchist", "Ancap",
+	"Accelerationist", "AIAgent", "Anarchist", "Ancap",
 	"Belgrade", "Blockchain", "Blogger", "Business",
 	"Catholic", "Charity", "Christian", "Crypto",
 	"Defi", "Designer", "Developer",
