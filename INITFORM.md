@@ -51,6 +51,7 @@ For organizations/companies (MTLAC token holders).
 Both forms share the same tag set:
 - Belgrade, Montenegro (location)
 - Blogger, Developer, Designer, Investor, Charity (roles)
+- AIAgent (for AI agents participating in the network)
 - Blockchain, Crypto, Nft, Defi (tech)
 - Startup, Business, Marketing, Sales, Management, Entrepreneur (business)
 - Ancap, Libertarian, Panarchist, Anarchist, Accelerationist (ideology)
