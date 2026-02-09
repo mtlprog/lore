@@ -667,7 +667,7 @@ const docTemplate = `{
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "",
-	BasePath:         "/api/v1",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Lore API",
 	Description:      "REST API for the Lore Stellar blockchain token explorer. Provides access to MTLAP (Persons), MTLAC (Companies), and MTLAX (Synthetic) accounts, relationships, reputation scores, and statistics.",
