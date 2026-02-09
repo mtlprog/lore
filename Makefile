@@ -1,4 +1,4 @@
-.PHONY: build build-linux dev dev-restart dev-logs dev-down db db-reset run sync test fmt vet lint clean mocks
+.PHONY: build build-linux dev dev-restart dev-logs dev-down db db-reset run sync test fmt vet lint clean mocks swagger
 
 # Build for local macOS
 build:
@@ -75,3 +75,7 @@ clean:
 # Regenerate mocks
 mocks:
 	mockery
+
+# Regenerate Swagger docs
+swagger:
+	swag init -g cmd/lore/main.go -o internal/api/docs

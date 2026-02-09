@@ -734,3 +734,111 @@ func (r *AccountRepository) CountSearchAccounts(ctx context.Context, query strin
 
 	return count, nil
 }
+
+// CountPersons returns the total number of MTLAP holders.
+func (r *AccountRepository) CountPersons(ctx context.Context) (int, error) {
+	query, args, err := database.QB.
+		Select("COUNT(*)").
+		From("accounts").
+		Where("mtlap_balance > 0 AND mtlap_balance <= 5").
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("build count persons query: %w", err)
+	}
+
+	var count int
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("query count persons: %w", err)
+	}
+	return count, nil
+}
+
+// CountCorporate returns the total number of MTLAC holders.
+func (r *AccountRepository) CountCorporate(ctx context.Context) (int, error) {
+	query, args, err := database.QB.
+		Select("COUNT(*)").
+		From("accounts").
+		Where("mtlac_balance > 0 AND mtlac_balance <= 4").
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("build count corporate query: %w", err)
+	}
+
+	var count int
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("query count corporate: %w", err)
+	}
+	return count, nil
+}
+
+// CountSynthetic returns the total number of MTLAX trustline holders.
+func (r *AccountRepository) CountSynthetic(ctx context.Context) (int, error) {
+	query, args, err := database.QB.
+		Select("COUNT(*)").
+		From("accounts").
+		Where("mtlax_balance IS NOT NULL").
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("build count synthetic query: %w", err)
+	}
+
+	var count int
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("query count synthetic: %w", err)
+	}
+	return count, nil
+}
+
+// AccountMetadata holds account metadata fields for API responses.
+type AccountMetadata struct {
+	Name     string
+	About    string
+	Websites []string
+	Tags     []string
+}
+
+// GetAccountMetadata returns metadata (name, about, websites, tags) for an account.
+func (r *AccountRepository) GetAccountMetadata(ctx context.Context, accountID string) (*AccountMetadata, error) {
+	query, args, err := database.QB.
+		Select("data_key", "data_index", "data_value").
+		From("account_metadata").
+		Where("account_id = ?", accountID).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build account metadata query: %w", err)
+	}
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query account metadata: %w", err)
+	}
+	defer rows.Close()
+
+	meta := &AccountMetadata{}
+	for rows.Next() {
+		var key, index, value string
+		if err := rows.Scan(&key, &index, &value); err != nil {
+			return nil, fmt.Errorf("scan account metadata: %w", err)
+		}
+
+		switch {
+		case key == "Name" && index == "":
+			meta.Name = value
+		case key == "About" && index == "":
+			meta.About = value
+		case strings.HasPrefix(key, "Website"):
+			meta.Websites = append(meta.Websites, value)
+		case strings.HasPrefix(key, "Tag"):
+			tagName := strings.TrimPrefix(key, "Tag")
+			if tagName != "" {
+				meta.Tags = append(meta.Tags, tagName)
+			}
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate account metadata: %w", err)
+	}
+
+	return meta, nil
+}

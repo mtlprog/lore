@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mtlprog/lore/internal/bsn"
 	"github.com/mtlprog/lore/internal/config"
 	"github.com/mtlprog/lore/internal/handler/mocks"
 	"github.com/mtlprog/lore/internal/model"
@@ -686,7 +687,7 @@ func TestGroupRelationships(t *testing.T) {
 	const accountID = "GTEST1234567890123456789012345678901234567890123456"
 
 	t.Run("empty rows returns empty categories", func(t *testing.T) {
-		categories := groupRelationships(accountID, nil, nil)
+		categories := bsn.GroupRelationships(accountID, nil, nil)
 
 		assert.Len(t, categories, 5) // All category definitions
 		for _, cat := range categories {
@@ -715,7 +716,7 @@ func TestGroupRelationships(t *testing.T) {
 			},
 		}
 
-		categories := groupRelationships(accountID, rows, nil)
+		categories := bsn.GroupRelationships(accountID, rows, nil)
 
 		// Find NETWORK category
 		var networkCat *model.RelationshipCategory
@@ -745,7 +746,7 @@ func TestGroupRelationships(t *testing.T) {
 			},
 		}
 
-		categories := groupRelationships(accountID, rows, nil)
+		categories := bsn.GroupRelationships(accountID, rows, nil)
 
 		// Find SOCIAL category
 		var socialCat *model.RelationshipCategory
@@ -783,7 +784,7 @@ func TestGroupRelationships(t *testing.T) {
 			},
 		}
 
-		categories := groupRelationships(accountID, rows, nil)
+		categories := bsn.GroupRelationships(accountID, rows, nil)
 
 		// Find SOCIAL category
 		var socialCat *model.RelationshipCategory
@@ -822,7 +823,7 @@ func TestGroupRelationships(t *testing.T) {
 			},
 		}
 
-		categories := groupRelationships(accountID, rows, nil)
+		categories := bsn.GroupRelationships(accountID, rows, nil)
 
 		// Find NETWORK category (Partnership is in NETWORK)
 		var networkCat *model.RelationshipCategory
@@ -851,7 +852,7 @@ func TestGroupRelationships(t *testing.T) {
 			},
 		}
 
-		categories := groupRelationships(accountID, rows, nil)
+		categories := bsn.GroupRelationships(accountID, rows, nil)
 
 		// All categories should be empty
 		for _, cat := range categories {
@@ -887,7 +888,7 @@ func TestGroupRelationships(t *testing.T) {
 			},
 		}
 
-		categories := groupRelationships(accountID, rows, nil)
+		categories := bsn.GroupRelationships(accountID, rows, nil)
 
 		// Check FAMILY category
 		var familyCat, workCat, ownershipCat *model.RelationshipCategory
@@ -941,7 +942,7 @@ func TestCalculateTrustGrade(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calculateTrustGrade(tt.score)
+			result := bsn.CalculateTrustGrade(tt.score)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
