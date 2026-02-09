@@ -101,6 +101,8 @@ func TestHomeHandler(t *testing.T) {
 		assert.Len(t, homeData.Persons, 1)
 		assert.Len(t, homeData.Corporate, 1)
 		assert.Len(t, homeData.Synthetic, 1)
+		assert.Equal(t, "A", homeData.Synthetic[0].ReputationGrade)
+		assert.Equal(t, 10.0, homeData.Synthetic[0].ReputationWeight)
 	})
 
 	t.Run("pagination parameters parsed correctly", func(t *testing.T) {

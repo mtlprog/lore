@@ -8,14 +8,23 @@ import (
 
 	"github.com/mtlprog/lore/internal/config"
 	"github.com/mtlprog/lore/internal/repository"
+	"github.com/mtlprog/lore/internal/reputation"
 )
+
+// SyntheticDisplay represents a synthetic account for the home page template.
+type SyntheticDisplay struct {
+	AccountID        string
+	Name             string
+	ReputationGrade  string
+	ReputationWeight float64
+}
 
 // HomeData holds data for the home page template.
 type HomeData struct {
 	Stats               *repository.Stats
 	Persons             []repository.PersonRow
 	Corporate           []repository.CorporateRow
-	Synthetic           []repository.SyntheticRow
+	Synthetic           []SyntheticDisplay
 	PersonsOffset       int
 	CorporateOffset     int
 	SyntheticOffset     int
@@ -98,11 +107,25 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		synthetic = synthetic[:config.DefaultPageLimit]
 	}
 
+	syntheticDisplay := make([]SyntheticDisplay, len(synthetic))
+	for i, s := range synthetic {
+		grade := ""
+		if s.ReputationScore > 0 {
+			grade = reputation.ScoreToGrade(s.ReputationScore)
+		}
+		syntheticDisplay[i] = SyntheticDisplay{
+			AccountID:        s.AccountID,
+			Name:             s.Name,
+			ReputationGrade:  grade,
+			ReputationWeight: s.ReputationWeight,
+		}
+	}
+
 	data := HomeData{
 		Stats:               stats,
 		Persons:             persons,
 		Corporate:           corporate,
-		Synthetic:           synthetic,
+		Synthetic:           syntheticDisplay,
 		PersonsOffset:       personsOffset,
 		CorporateOffset:     corporateOffset,
 		SyntheticOffset:     syntheticOffset,
