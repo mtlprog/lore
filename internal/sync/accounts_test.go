@@ -450,6 +450,42 @@ func TestFindBalance(t *testing.T) {
 	}
 }
 
+func TestGetMTLAXBalance(t *testing.T) {
+	t.Run("no MTLAX trustline returns nil", func(t *testing.T) {
+		data := &AccountData{
+			Balances: []Balance{
+				{AssetCode: "XLM", AssetIssuer: "", Balance: decimal.RequireFromString("100.0000000")},
+				{AssetCode: "MTLAP", AssetIssuer: "GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA", Balance: decimal.RequireFromString("1.0000000")},
+			},
+		}
+		result := getMTLAXBalance(data)
+		assert.Nil(t, result)
+	})
+
+	t.Run("zero MTLAX balance returns pointer to zero", func(t *testing.T) {
+		data := &AccountData{
+			Balances: []Balance{
+				{AssetCode: "MTLAX", AssetIssuer: "GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA", Balance: decimal.Zero},
+			},
+		}
+		result := getMTLAXBalance(data)
+		assert.NotNil(t, result)
+		assert.True(t, decimal.Zero.Equal(*result))
+	})
+
+	t.Run("non-zero MTLAX balance returns pointer to balance", func(t *testing.T) {
+		expected := decimal.RequireFromString("42.5000000")
+		data := &AccountData{
+			Balances: []Balance{
+				{AssetCode: "MTLAX", AssetIssuer: "GCNVDZIHGX473FEI7IXCUAEXUJ4BGCKEMHF36VYP5EMS7PX2QBLAMTLA", Balance: expected},
+			},
+		}
+		result := getMTLAXBalance(data)
+		assert.NotNil(t, result)
+		assert.True(t, expected.Equal(*result))
+	})
+}
+
 func TestFindBalanceEmptySlice(t *testing.T) {
 	result := findBalance([]Balance{}, "XLM", "")
 	assert.True(t, decimal.Zero.Equal(result))

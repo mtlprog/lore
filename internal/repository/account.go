@@ -57,6 +57,7 @@ type CorporateRow struct {
 type SyntheticRow struct {
 	AccountID        string
 	Name             string
+	MTLAXBalance     float64
 	ReputationScore  float64
 	ReputationWeight float64
 }
@@ -181,6 +182,7 @@ func (r *AccountRepository) GetSynthetic(ctx context.Context, limit int, offset 
 		Select(
 			"a.account_id",
 			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 6), '...', RIGHT(a.account_id, 6))) AS name",
+			"COALESCE(a.mtlax_balance, 0) AS mtlax_balance",
 			"COALESCE(rs.weighted_score, 0) AS reputation_score",
 			"COALESCE(rs.total_weight, 0) AS reputation_weight",
 		).
@@ -205,7 +207,7 @@ func (r *AccountRepository) GetSynthetic(ctx context.Context, limit int, offset 
 	var synthetic []SyntheticRow
 	for rows.Next() {
 		var s SyntheticRow
-		if err := rows.Scan(&s.AccountID, &s.Name, &s.ReputationScore, &s.ReputationWeight); err != nil {
+		if err := rows.Scan(&s.AccountID, &s.Name, &s.MTLAXBalance, &s.ReputationScore, &s.ReputationWeight); err != nil {
 			return nil, fmt.Errorf("scan synthetic: %w", err)
 		}
 		synthetic = append(synthetic, s)
@@ -540,6 +542,7 @@ type SearchAccountRow struct {
 	Name             string
 	MTLAPBalance     float64
 	MTLACBalance     float64
+	MTLAXBalance     float64
 	TotalXLMValue    float64
 	ReputationScore  float64 // Weighted reputation score (0 if no ratings)
 	ReputationWeight float64 // Total weight of raters
@@ -579,6 +582,7 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 6), '...', RIGHT(a.account_id, 6))) AS name",
 			"a.mtlap_balance",
 			"a.mtlac_balance",
+			"COALESCE(a.mtlax_balance, 0) AS mtlax_balance",
 			"a.total_xlm_value",
 			"COALESCE(rs.weighted_score, 0) AS reputation_score",
 			"COALESCE(rs.total_weight, 0) AS reputation_weight",
@@ -649,7 +653,7 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 	var accounts []SearchAccountRow
 	for rows.Next() {
 		var acc SearchAccountRow
-		if err := rows.Scan(&acc.AccountID, &acc.Name, &acc.MTLAPBalance, &acc.MTLACBalance, &acc.TotalXLMValue, &acc.ReputationScore, &acc.ReputationWeight); err != nil {
+		if err := rows.Scan(&acc.AccountID, &acc.Name, &acc.MTLAPBalance, &acc.MTLACBalance, &acc.MTLAXBalance, &acc.TotalXLMValue, &acc.ReputationScore, &acc.ReputationWeight); err != nil {
 			return nil, fmt.Errorf("scan search account: %w", err)
 		}
 		accounts = append(accounts, acc)

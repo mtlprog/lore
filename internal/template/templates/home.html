@@ -83,7 +83,7 @@
     </div>
     {{if .HasMorePersons}}
     <div class="pagination">
-        <a href="?persons_offset={{.NextPersonsOffset}}{{if .CorporateOffset}}&corporate_offset={{.CorporateOffset}}{{end}}#persons-section" class="btn">Load More &gt;</a>
+        <a href="?persons_offset={{.NextPersonsOffset}}{{if .SyntheticOffset}}&synthetic_offset={{.SyntheticOffset}}{{end}}{{if .CorporateOffset}}&corporate_offset={{.CorporateOffset}}{{end}}#persons-section" class="btn">Load More &gt;</a>
     </div>
     {{end}}
     {{else}}
@@ -169,7 +169,7 @@
     </div>
     {{if .HasMoreCorporate}}
     <div class="pagination">
-        <a href="?{{if .PersonsOffset}}persons_offset={{.PersonsOffset}}&{{end}}corporate_offset={{.NextCorporateOffset}}#corporate-section" class="btn">Load More &gt;</a>
+        <a href="?{{if .PersonsOffset}}persons_offset={{.PersonsOffset}}&{{end}}{{if .SyntheticOffset}}synthetic_offset={{.SyntheticOffset}}&{{end}}corporate_offset={{.NextCorporateOffset}}#corporate-section" class="btn">Load More &gt;</a>
     </div>
     {{end}}
     {{else}}

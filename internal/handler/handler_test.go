@@ -78,7 +78,7 @@ func TestHomeHandler(t *testing.T) {
 		}, nil)
 
 		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return([]repository.SyntheticRow{
-			{AccountID: "GHIJ", Name: "Test Synthetic", ReputationScore: 3.5, ReputationWeight: 10.0},
+			{AccountID: "GHIJ", Name: "Test Synthetic", MTLAXBalance: 1.0, ReputationScore: 3.5, ReputationWeight: 10.0},
 		}, nil)
 
 		var renderedData any
@@ -109,10 +109,10 @@ func TestHomeHandler(t *testing.T) {
 		tmpl := mocks.NewMockTemplateRenderer(t)
 
 		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
-		// Expect offset 20 for persons and 40 for corporate
+		// Expect offset 20 for persons, 40 for corporate, 0 for synthetic
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, 20).Return(nil, nil)
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, 40).Return(nil, nil)
-		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, 0).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, nil, tmpl)
@@ -133,8 +133,8 @@ func TestHomeHandler(t *testing.T) {
 
 		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, 0).Return(nil, nil)
-		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
-		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, 0).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, 0).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, nil, tmpl)
@@ -155,8 +155,8 @@ func TestHomeHandler(t *testing.T) {
 
 		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, 0).Return(nil, nil)
-		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
-		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, 0).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, 0).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, nil, tmpl)
@@ -228,6 +228,28 @@ func TestHomeHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 		assert.Contains(t, w.Body.String(), "Failed to fetch corporate")
+	})
+
+	t.Run("synthetic error returns 500", func(t *testing.T) {
+		accounts := mocks.NewMockAccountQuerier(t)
+		stellar := mocks.NewMockStellarServicer(t)
+		tmpl := mocks.NewMockTemplateRenderer(t)
+
+		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
+		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, errors.New("database error"))
+
+		h, err := New(stellar, accounts, nil, tmpl)
+		require.NoError(t, err)
+
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		w := httptest.NewRecorder()
+
+		h.Home(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "Failed to fetch synthetic")
 	})
 
 	t.Run("template render error returns 500", func(t *testing.T) {
