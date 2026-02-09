@@ -100,7 +100,7 @@ func (s *Syncer) Run(ctx context.Context, full bool) (*SyncResult, error) {
 	s.logger.Info("fetched MTLAX holders", "count", len(mtlaxHolders))
 
 	// Merge into unique list using lo.Uniq
-	accountIDs := lo.Uniq(append(append(mtlapHolders, mtlacHolders...), mtlaxHolders...))
+	accountIDs := lo.Uniq(lo.Flatten([][]string{mtlapHolders, mtlacHolders, mtlaxHolders}))
 	s.logger.Info("unique accounts to sync", "count", len(accountIDs))
 
 	// Step 2: Fetch and store details for each account

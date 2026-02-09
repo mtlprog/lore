@@ -417,7 +417,7 @@
         /* STATS GRID */
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 1rem;
             margin-bottom: 3rem;
         }
@@ -434,11 +434,13 @@
         .stat-card:nth-child(2) { animation-delay: 0.15s; }
         .stat-card:nth-child(3) { animation-delay: 0.2s; }
         .stat-card:nth-child(4) { animation-delay: 0.25s; }
+        .stat-card:nth-child(5) { animation-delay: 0.3s; }
 
-        /* Accent colors for stat cards */
-        .stat-card:nth-child(2)::before { background: var(--link); }
-        .stat-card:nth-child(3)::before { background: var(--warn); }
-        .stat-card:nth-child(4)::before { background: var(--council); }
+        /* Accent colors for stat cards: Persons=green, Synthetic=blue, Corporate=gold, Portfolio=purple */
+        .stat-card:nth-child(2)::before { background: var(--accent); }
+        .stat-card:nth-child(3)::before { background: var(--link); }
+        .stat-card:nth-child(4)::before { background: var(--warn); }
+        .stat-card:nth-child(5)::before { background: var(--council); }
 
         .stat-label {
             font-size: 0.625rem;
@@ -492,6 +494,10 @@
             text-transform: uppercase;
             letter-spacing: 0.1em;
             font-weight: 700;
+        }
+
+        .section-badge.mtlax {
+            background: var(--link);
         }
 
         .section-badge.mtlac {
@@ -1235,7 +1241,7 @@
 
         @media (max-width: 1024px) {
             .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(3, 1fr);
             }
         }
 
@@ -2129,6 +2135,12 @@
             background: rgba(0, 255, 136, 0.1);
         }
 
+        .type-badge.mtlax {
+            color: var(--link);
+            border: 1px solid var(--link);
+            background: rgba(88, 166, 255, 0.1);
+        }
+
         .type-badge.type-corporate {
             color: var(--warn);
             border: 1px solid var(--warn);
@@ -2149,6 +2161,11 @@
             .type-badge.type-person {
                 color: var(--accent);
                 border-color: var(--accent);
+            }
+
+            .type-badge.mtlax {
+                color: var(--link);
+                border-color: var(--link);
             }
 
             .type-badge.type-corporate {
@@ -2319,6 +2336,11 @@
             text-align: right;
             font-family: 'Share Tech Mono', monospace;
             color: var(--council);
+        }
+
+        .cell-rep .rep-weight {
+            color: var(--text-dim);
+            font-size: 0.8125rem;
         }
 
         .search-prompt-section {
