@@ -612,6 +612,66 @@ func (_c *MockAccountQuerier_GetStats_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
+// GetSynthetic provides a mock function with given fields: ctx, limit, offset
+func (_m *MockAccountQuerier) GetSynthetic(ctx context.Context, limit int, offset int) ([]repository.SyntheticRow, error) {
+	ret := _m.Called(ctx, limit, offset)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSynthetic")
+	}
+
+	var r0 []repository.SyntheticRow
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]repository.SyntheticRow, error)); ok {
+		return rf(ctx, limit, offset)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) []repository.SyntheticRow); ok {
+		r0 = rf(ctx, limit, offset)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]repository.SyntheticRow)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int, int) error); ok {
+		r1 = rf(ctx, limit, offset)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockAccountQuerier_GetSynthetic_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSynthetic'
+type MockAccountQuerier_GetSynthetic_Call struct {
+	*mock.Call
+}
+
+// GetSynthetic is a helper method to define mock.On call
+//   - ctx context.Context
+//   - limit int
+//   - offset int
+func (_e *MockAccountQuerier_Expecter) GetSynthetic(ctx interface{}, limit interface{}, offset interface{}) *MockAccountQuerier_GetSynthetic_Call {
+	return &MockAccountQuerier_GetSynthetic_Call{Call: _e.mock.On("GetSynthetic", ctx, limit, offset)}
+}
+
+func (_c *MockAccountQuerier_GetSynthetic_Call) Run(run func(ctx context.Context, limit int, offset int)) *MockAccountQuerier_GetSynthetic_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int), args[2].(int))
+	})
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetSynthetic_Call) Return(_a0 []repository.SyntheticRow, _a1 error) *MockAccountQuerier_GetSynthetic_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockAccountQuerier_GetSynthetic_Call) RunAndReturn(run func(context.Context, int, int) ([]repository.SyntheticRow, error)) *MockAccountQuerier_GetSynthetic_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetTrustRatings provides a mock function with given fields: ctx, accountID
 func (_m *MockAccountQuerier) GetTrustRatings(ctx context.Context, accountID string) (*repository.TrustRating, error) {
 	ret := _m.Called(ctx, accountID)

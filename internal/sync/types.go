@@ -78,6 +78,7 @@ type SyncStats struct {
 	TotalAccounts  int
 	TotalPersons   int
 	TotalCompanies int
+	TotalSynthetic int
 	TotalXLMValue  decimal.Decimal
 }
 

@@ -19,6 +19,9 @@ const (
 	// TokenMTLAC is the asset code for Companies.
 	TokenMTLAC = "MTLAC"
 
+	// TokenMTLAX is the asset code for Synthetic.
+	TokenMTLAX = "MTLAX"
+
 	// DefaultPageLimit is the default number of accounts per page.
 	DefaultPageLimit = 20
 )

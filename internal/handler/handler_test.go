@@ -65,6 +65,7 @@ func TestHomeHandler(t *testing.T) {
 			TotalAccounts:  100,
 			TotalPersons:   50,
 			TotalCompanies: 25,
+			TotalSynthetic: 10,
 			TotalXLMValue:  1000000.0,
 		}, nil)
 
@@ -74,6 +75,10 @@ func TestHomeHandler(t *testing.T) {
 
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return([]repository.CorporateRow{
 			{AccountID: "GDEF", Name: "Test Company", MTLACBalance: 50.0, TotalXLMValue: 5000.0},
+		}, nil)
+
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return([]repository.SyntheticRow{
+			{AccountID: "GHIJ", Name: "Test Synthetic", ReputationScore: 3.5, ReputationWeight: 10.0},
 		}, nil)
 
 		var renderedData any
@@ -95,6 +100,7 @@ func TestHomeHandler(t *testing.T) {
 		assert.Equal(t, 100, homeData.Stats.TotalAccounts)
 		assert.Len(t, homeData.Persons, 1)
 		assert.Len(t, homeData.Corporate, 1)
+		assert.Len(t, homeData.Synthetic, 1)
 	})
 
 	t.Run("pagination parameters parsed correctly", func(t *testing.T) {
@@ -106,6 +112,7 @@ func TestHomeHandler(t *testing.T) {
 		// Expect offset 20 for persons and 40 for corporate
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, 20).Return(nil, nil)
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, 40).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, nil, tmpl)
@@ -127,6 +134,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, 0).Return(nil, nil)
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, nil, tmpl)
@@ -148,6 +156,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, 0).Return(nil, nil)
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		h, err := New(stellar, accounts, nil, tmpl)
@@ -229,6 +238,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("template error"))
 
 		h, err := New(stellar, accounts, nil, tmpl)
@@ -256,6 +266,7 @@ func TestHomeHandler(t *testing.T) {
 		accounts.EXPECT().GetStats(mock.Anything).Return(&repository.Stats{}, nil)
 		accounts.EXPECT().GetPersons(mock.Anything, mock.Anything, mock.Anything).Return(persons, nil)
 		accounts.EXPECT().GetCorporate(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
+		accounts.EXPECT().GetSynthetic(mock.Anything, mock.Anything, mock.Anything).Return(nil, nil)
 
 		var renderedData any
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Run(func(w io.Writer, name string, data any) {

@@ -2,7 +2,7 @@
 
 {{define "title"}}LORE // Montelibero Lore Explorer{{end}}
 
-{{define "meta_description"}}LORE - Montelibero blockchain explorer. Browse {{.Stats.TotalPersons}} persons and {{.Stats.TotalCompanies}} organizations on Stellar network. View MTLAP/MTLAC holders, balances, and community connections.{{end}}
+{{define "meta_description"}}LORE - Montelibero blockchain explorer. Browse {{.Stats.TotalPersons}} persons, {{.Stats.TotalSynthetic}} synthetic, and {{.Stats.TotalCompanies}} organizations on Stellar network. View MTLAP/MTLAX/MTLAC holders, balances, and community connections.{{end}}
 
 {{define "canonical_url"}}https://lore.mtlprog.xyz{{end}}
 {{define "og_url"}}https://lore.mtlprog.xyz{{end}}
@@ -17,6 +17,10 @@
     <div class="stat-card">
         <div class="stat-label">Persons (MTLAP)</div>
         <div class="stat-value">{{.Stats.TotalPersons}}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Synthetic (MTLAX)</div>
+        <div class="stat-value">{{.Stats.TotalSynthetic}}</div>
     </div>
     <div class="stat-card">
         <div class="stat-label">Corporate (MTLAC)</div>
@@ -84,6 +88,48 @@
     {{end}}
     {{else}}
     <div class="empty">No persons found</div>
+    {{end}}
+</section>
+
+<!-- SYNTHETIC SECTION -->
+<section class="section" id="synthetic-section">
+    <div class="section-header">
+        <h2 class="section-title">Synthetic</h2>
+        <span class="section-badge mtlax">MTLAX</span>
+        <span class="section-count">{{.Stats.TotalSynthetic}} registered</span>
+    </div>
+    {{if .Synthetic}}
+    <div class="table-wrapper">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Account</th>
+                    <th class="right">REP</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{range $i, $s := .Synthetic}}
+                <tr class="row-link" onclick="window.location='/accounts/{{$s.AccountID}}'">
+                    <td class="cell-rank">{{add (add $i $.SyntheticOffset) 1}}</td>
+                    <td class="cell-name">
+                        <a href="/accounts/{{$s.AccountID}}">{{$s.Name}}</a>
+                    </td>
+                    <td class="cell-id">{{truncate $s.AccountID 6}}...{{slice $s.AccountID 50}}</td>
+                    <td class="cell-num">{{if gt $s.ReputationWeight 0.0}}{{printf "%.2f" $s.ReputationScore}}{{else}}-{{end}}</td>
+                </tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+    {{if .HasMoreSynthetic}}
+    <div class="pagination">
+        <a href="?{{if .PersonsOffset}}persons_offset={{.PersonsOffset}}&{{end}}synthetic_offset={{.NextSyntheticOffset}}{{if .CorporateOffset}}&corporate_offset={{.CorporateOffset}}{{end}}#synthetic-section" class="btn">Load More &gt;</a>
+    </div>
+    {{end}}
+    {{else}}
+    <div class="empty">No synthetic accounts found</div>
     {{end}}
 </section>
 
