@@ -331,18 +331,18 @@ func TestRender(t *testing.T) {
 				TotalSynthetic int
 				TotalXLMValue  float64
 			}
-			Persons              []any
-			Corporate            []any
-			Synthetic            []any
-			PersonsOffset        int
-			CorporateOffset      int
-			SyntheticOffset      int
-			NextPersonsOffset    int
-			NextCorporateOffset  int
-			NextSyntheticOffset  int
-			HasMorePersons       bool
-			HasMoreCorporate     bool
-			HasMoreSynthetic     bool
+			Persons             []any
+			Corporate           []any
+			Synthetic           []any
+			PersonsOffset       int
+			CorporateOffset     int
+			SyntheticOffset     int
+			NextPersonsOffset   int
+			NextCorporateOffset int
+			NextSyntheticOffset int
+			HasMorePersons      bool
+			HasMoreCorporate    bool
+			HasMoreSynthetic    bool
 		}{
 			Stats: struct {
 				TotalAccounts  int
