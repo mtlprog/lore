@@ -17,8 +17,9 @@ import (
 //	@Param			id	path		string	true	"Stellar account ID"
 //	@Success		200	{object}	ReputationGraphResponse
 //	@Failure		400	{object}	ErrorResponse
-//	@Failure		503	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
+//	@Failure		503	{object}	ErrorResponse
 //	@Router			/api/v1/accounts/{id}/reputation [get]
 func (h *Handler) GetReputation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
@@ -26,6 +27,11 @@ func (h *Handler) GetReputation(w http.ResponseWriter, r *http.Request) {
 
 	if accountID == "" {
 		writeError(w, http.StatusBadRequest, "account ID is required")
+		return
+	}
+
+	if !isValidStellarID(accountID) {
+		writeError(w, http.StatusBadRequest, "invalid Stellar account ID format")
 		return
 	}
 

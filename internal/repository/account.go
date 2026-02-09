@@ -789,6 +789,134 @@ func (r *AccountRepository) CountSynthetic(ctx context.Context) (int, error) {
 	return count, nil
 }
 
+// AccountExists checks whether an account exists in the database.
+func (r *AccountRepository) AccountExists(ctx context.Context, accountID string) (bool, error) {
+	query, args, err := database.QB.
+		Select("1").
+		From("accounts").
+		Where("account_id = ?", accountID).
+		ToSql()
+	if err != nil {
+		return false, fmt.Errorf("build account exists query: %w", err)
+	}
+
+	var dummy int
+	err = r.pool.QueryRow(ctx, query, args...).Scan(&dummy)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("query account exists: %w", err)
+	}
+	return true, nil
+}
+
+// BalanceRow represents a single asset balance for an account.
+type BalanceRow struct {
+	AssetCode   string
+	AssetIssuer string
+	Balance     float64
+}
+
+// GetAccountBalances returns all asset balances for an account from the account_balances table.
+func (r *AccountRepository) GetAccountBalances(ctx context.Context, accountID string) ([]BalanceRow, error) {
+	query, args, err := database.QB.
+		Select("asset_code", "asset_issuer", "balance").
+		From("account_balances").
+		Where("account_id = ?", accountID).
+		OrderBy("balance DESC").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build account balances query: %w", err)
+	}
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query account balances: %w", err)
+	}
+	defer rows.Close()
+
+	var balances []BalanceRow
+	for rows.Next() {
+		var b BalanceRow
+		if err := rows.Scan(&b.AssetCode, &b.AssetIssuer, &b.Balance); err != nil {
+			return nil, fmt.Errorf("scan account balance: %w", err)
+		}
+		balances = append(balances, b)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate account balances: %w", err)
+	}
+
+	return balances, nil
+}
+
+// AllAccountRow represents an account in the unified all-accounts listing.
+type AllAccountRow struct {
+	AccountID       string
+	Name            string
+	MTLAPBalance    float64
+	MTLACBalance    float64
+	MTLAXBalance    float64
+	TotalXLMValue   float64
+	ReputationScore float64
+	IsCouncilReady  bool
+	ReceivedVotes   int
+}
+
+// GetAllAccounts returns a paginated list of all accounts ordered by total XLM value.
+func (r *AccountRepository) GetAllAccounts(ctx context.Context, limit, offset int) ([]AllAccountRow, error) {
+	query, args, err := database.QB.
+		Select(
+			"a.account_id",
+			"COALESCE(am.data_value, '')",
+			"COALESCE(a.mtlap_balance, 0)",
+			"COALESCE(a.mtlac_balance, 0)",
+			"COALESCE(a.mtlax_balance, 0)",
+			"COALESCE(a.total_xlm_value, 0)",
+			"COALESCE(rc.weighted_score, 0)",
+			"COALESCE(a.is_council_ready, false)",
+			"COALESCE(a.received_votes, 0)",
+		).
+		From("accounts a").
+		LeftJoin("account_metadata am ON a.account_id = am.account_id AND am.data_key = 'Name' AND am.data_index = ''").
+		LeftJoin("reputation_scores rc ON a.account_id = rc.account_id").
+		OrderBy("a.total_xlm_value DESC").
+		Limit(uint64(limit)).
+		Offset(uint64(offset)).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build all accounts query: %w", err)
+	}
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query all accounts: %w", err)
+	}
+	defer rows.Close()
+
+	var accounts []AllAccountRow
+	for rows.Next() {
+		var a AllAccountRow
+		if err := rows.Scan(
+			&a.AccountID, &a.Name,
+			&a.MTLAPBalance, &a.MTLACBalance, &a.MTLAXBalance,
+			&a.TotalXLMValue, &a.ReputationScore,
+			&a.IsCouncilReady, &a.ReceivedVotes,
+		); err != nil {
+			return nil, fmt.Errorf("scan all account row: %w", err)
+		}
+		accounts = append(accounts, a)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate all accounts: %w", err)
+	}
+
+	return accounts, nil
+}
+
 // AccountMetadata holds account metadata fields for API responses.
 type AccountMetadata struct {
 	Name     string

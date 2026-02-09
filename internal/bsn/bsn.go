@@ -16,8 +16,7 @@ type CategoryDef struct {
 	Types []string
 }
 
-// CategoryDefinitions holds all category definitions in display order.
-var CategoryDefinitions = []CategoryDef{
+var categoryDefinitions = []CategoryDef{
 	{
 		Name:  "FAMILY",
 		Color: "#f85149",
@@ -45,9 +44,7 @@ var CategoryDefinitions = []CategoryDef{
 	},
 }
 
-// ComplementaryPairs maps relationship types to their complementary type.
-// When both sides of a pair exist, the relationship is "confirmed".
-var ComplementaryPairs = map[string]string{
+var complementaryPairs = map[string]string{
 	"MyPart":            "PartOf",
 	"PartOf":            "MyPart",
 	"Guardian":          "Ward",
@@ -62,9 +59,7 @@ var ComplementaryPairs = map[string]string{
 	"Employee":          "Employer",
 }
 
-// SymmetricTypes are relationship types where both parties must declare for display.
-// One-way declarations are hidden.
-var SymmetricTypes = map[string]bool{
+var symmetricTypes = map[string]bool{
 	"FactionMember": true,
 	"Partnership":   true,
 	"Collaboration": true,
@@ -95,7 +90,7 @@ func GroupRelationships(accountID string, rows []repository.RelationshipRow, con
 
 	// Build type-to-category lookup
 	typeToCat := make(map[string]int)
-	for i, cat := range CategoryDefinitions {
+	for i, cat := range categoryDefinitions {
 		for _, t := range cat.Types {
 			typeToCat[t] = i
 		}
@@ -105,7 +100,7 @@ func GroupRelationships(accountID string, rows []repository.RelationshipRow, con
 	processed := make(map[string]bool)
 
 	// Group relationships by category
-	categoryRels := make([][]model.Relationship, len(CategoryDefinitions))
+	categoryRels := make([][]model.Relationship, len(categoryDefinitions))
 	for i := range categoryRels {
 		categoryRels[i] = []model.Relationship{}
 	}
@@ -119,7 +114,7 @@ func GroupRelationships(accountID string, rows []repository.RelationshipRow, con
 		}
 
 		// Check if this is a complementary pair
-		if complement, ok := ComplementaryPairs[row.RelationType]; ok {
+		if complement, ok := complementaryPairs[row.RelationType]; ok {
 			typeA, typeB := row.RelationType, complement
 			if typeB < typeA {
 				typeA, typeB = typeB, typeA
@@ -179,7 +174,7 @@ func GroupRelationships(accountID string, rows []repository.RelationshipRow, con
 		_, hasIncoming := incomingMap[mutualKey]
 		isMutual := hasOutgoing && hasIncoming
 
-		if SymmetricTypes[row.RelationType] && !isMutual {
+		if symmetricTypes[row.RelationType] && !isMutual {
 			continue
 		}
 
@@ -225,7 +220,7 @@ func GroupRelationships(accountID string, rows []repository.RelationshipRow, con
 	}
 
 	// Build final categories
-	categories := lo.Map(CategoryDefinitions, func(def CategoryDef, i int) model.RelationshipCategory {
+	categories := lo.Map(categoryDefinitions, func(def CategoryDef, i int) model.RelationshipCategory {
 		return model.RelationshipCategory{
 			Name:          def.Name,
 			Color:         def.Color,
