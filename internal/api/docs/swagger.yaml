@@ -1,0 +1,424 @@
+basePath: /api/v1
+definitions:
+  api.AccountDetailResponse:
+    properties:
+      about:
+        type: string
+      categories:
+        items:
+          $ref: '#/definitions/api.RelationshipCategoryResponse'
+        type: array
+      id:
+        type: string
+      is_corporate:
+        type: boolean
+      lp_shares:
+        items:
+          $ref: '#/definitions/api.LPShareResponse'
+        type: array
+      name:
+        type: string
+      reputation:
+        $ref: '#/definitions/api.ReputationResponse'
+      tags:
+        items:
+          type: string
+        type: array
+      total_xlm_value:
+        type: number
+      trust_rating:
+        $ref: '#/definitions/api.TrustRatingResponse'
+      trustlines:
+        items:
+          $ref: '#/definitions/api.TrustlineResponse'
+        type: array
+      websites:
+        items:
+          type: string
+        type: array
+    type: object
+  api.ErrorResponse:
+    properties:
+      code:
+        type: integer
+      error:
+        type: string
+    type: object
+  api.LPShareResponse:
+    properties:
+      pool_id:
+        type: string
+      reserve_a:
+        $ref: '#/definitions/api.ReserveResponse'
+      reserve_b:
+        $ref: '#/definitions/api.ReserveResponse'
+      share_balance:
+        type: string
+      share_percent:
+        type: string
+      xlm_value:
+        type: number
+    type: object
+  api.PaginatedResponse:
+    properties:
+      data: {}
+      pagination:
+        $ref: '#/definitions/api.Pagination'
+    type: object
+  api.Pagination:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  api.RelationshipCategoryResponse:
+    properties:
+      color:
+        type: string
+      name:
+        type: string
+      relationships:
+        items:
+          $ref: '#/definitions/api.RelationshipResponse'
+        type: array
+    type: object
+  api.RelationshipResponse:
+    properties:
+      direction:
+        type: string
+      is_confirmed:
+        type: boolean
+      is_mutual:
+        type: boolean
+      target_id:
+        type: string
+      target_name:
+        type: string
+      type:
+        type: string
+    type: object
+  api.ReputationGraphResponse:
+    properties:
+      level1_nodes:
+        items:
+          $ref: '#/definitions/api.ReputationNodeResponse'
+        type: array
+      level2_nodes:
+        items:
+          $ref: '#/definitions/api.ReputationNodeResponse'
+        type: array
+      score:
+        $ref: '#/definitions/api.ReputationResponse'
+      target_account_id:
+        type: string
+      target_name:
+        type: string
+    type: object
+  api.ReputationNodeResponse:
+    properties:
+      account_id:
+        type: string
+      connections:
+        type: integer
+      distance:
+        type: integer
+      name:
+        type: string
+      own_score:
+        type: number
+      portfolio_xlm:
+        type: number
+      rating:
+        type: string
+      weight:
+        type: number
+    type: object
+  api.ReputationResponse:
+    properties:
+      base_score:
+        type: number
+      grade:
+        type: string
+      rating_count_a:
+        type: integer
+      rating_count_b:
+        type: integer
+      rating_count_c:
+        type: integer
+      rating_count_d:
+        type: integer
+      total_ratings:
+        type: integer
+      total_weight:
+        type: number
+      weighted_score:
+        type: number
+    type: object
+  api.ReserveResponse:
+    properties:
+      amount:
+        type: string
+      asset_code:
+        type: string
+      asset_issuer:
+        type: string
+    type: object
+  api.StatsResponse:
+    properties:
+      total_accounts:
+        type: integer
+      total_companies:
+        type: integer
+      total_persons:
+        type: integer
+      total_synthetic:
+        type: integer
+      total_xlm_value:
+        type: number
+    type: object
+  api.TrustRatingResponse:
+    properties:
+      count_a:
+        type: integer
+      count_b:
+        type: integer
+      count_c:
+        type: integer
+      count_d:
+        type: integer
+      grade:
+        type: string
+      score:
+        type: number
+      total:
+        type: integer
+    type: object
+  api.TrustlineResponse:
+    properties:
+      asset_code:
+        type: string
+      asset_issuer:
+        type: string
+      balance:
+        type: string
+      limit:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: REST API for the Lore Stellar blockchain token explorer. Provides access
+    to MTLAP (Persons), MTLAC (Companies), and MTLAX (Synthetic) accounts, relationships,
+    reputation scores, and statistics.
+  title: Lore API
+  version: "1.0"
+paths:
+  /api/v1/accounts:
+    get:
+      description: Returns a paginated list of accounts, optionally filtered by type
+      parameters:
+      - description: Account type filter
+        enum:
+        - person
+        - corporate
+        - synthetic
+        in: query
+        name: type
+        type: string
+      - default: 20
+        description: Number of results
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.PaginatedResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: List accounts
+      tags:
+      - accounts
+  /api/v1/accounts/{id}:
+    get:
+      description: Returns full account detail including metadata, trustlines, LP
+        shares, trust ratings, and reputation
+      parameters:
+      - description: Stellar account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.AccountDetailResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get account detail
+      tags:
+      - accounts
+  /api/v1/accounts/{id}/relationships:
+    get:
+      description: Returns relationships grouped by category (family, work, network,
+        ownership, social)
+      parameters:
+      - description: Stellar account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Filter by relationship type (e.g. Spouse, Employer)
+        in: query
+        name: type
+        type: string
+      - description: Filter to only confirmed relationships
+        in: query
+        name: confirmed
+        type: boolean
+      - description: Filter to only mutual relationships
+        in: query
+        name: mutual
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.RelationshipCategoryResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get account relationships
+      tags:
+      - relationships
+  /api/v1/accounts/{id}/reputation:
+    get:
+      description: Returns the reputation graph including direct raters and raters
+        of raters
+      parameters:
+      - description: Stellar account ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.ReputationGraphResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get reputation graph
+      tags:
+      - reputation
+  /api/v1/search:
+    get:
+      description: Search accounts by name or account ID, optionally filtered by tags
+      parameters:
+      - description: Search query (min 2 chars)
+        in: query
+        name: q
+        type: string
+      - description: Comma-separated tag names
+        in: query
+        name: tags
+        type: string
+      - default: balance
+        description: Sort order
+        enum:
+        - balance
+        - reputation
+        in: query
+        name: sort
+        type: string
+      - default: 20
+        description: Number of results
+        in: query
+        maximum: 100
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset for pagination
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.PaginatedResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Search accounts
+      tags:
+      - search
+  /api/v1/stats:
+    get:
+      description: Returns aggregate statistics for accounts, persons, companies,
+        and synthetic tokens
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.StatsResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Get aggregate statistics
+      tags:
+      - stats
+swagger: "2.0"

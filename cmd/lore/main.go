@@ -1,3 +1,8 @@
+// @title			Lore API
+// @version		1.0
+// @description	REST API for the Lore Stellar blockchain token explorer. Provides access to MTLAP (Persons), MTLAC (Companies), and MTLAX (Synthetic) accounts, relationships, reputation scores, and statistics.
+// @BasePath		/api/v1
+
 package main
 
 import (
@@ -10,6 +15,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/mtlprog/lore/internal/api"
+	_ "github.com/mtlprog/lore/internal/api/docs"
 	"github.com/mtlprog/lore/internal/config"
 	"github.com/mtlprog/lore/internal/database"
 	"github.com/mtlprog/lore/internal/handler"
@@ -20,6 +27,7 @@ import (
 	"github.com/mtlprog/lore/internal/static"
 	"github.com/mtlprog/lore/internal/sync"
 	"github.com/mtlprog/lore/internal/template"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 	"github.com/urfave/cli/v2"
 )
 
@@ -133,8 +141,18 @@ func runServe(c *cli.Context) error {
 		return fmt.Errorf("failed to create handler: %w", err)
 	}
 
+	// Create API handler
+	apiHandler, err := api.New(accounts, repService)
+	if err != nil {
+		return fmt.Errorf("failed to create API handler: %w", err)
+	}
+
 	mux := http.NewServeMux()
 	h.RegisterRoutes(mux)
+	apiHandler.RegisterRoutes(mux)
+	mux.Handle("GET /swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
 	handler.RegisterStaticRoutes(mux, static.Handler())
 
 	server := &http.Server{

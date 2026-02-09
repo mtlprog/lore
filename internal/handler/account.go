@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/mtlprog/lore/internal/bsn"
 	"github.com/mtlprog/lore/internal/model"
 	"github.com/mtlprog/lore/internal/repository"
 	"github.com/mtlprog/lore/internal/service"
@@ -19,42 +20,6 @@ type AccountData struct {
 	Operations      *model.OperationsPage
 	AccountNames    map[string]string      // Map of account ID to name for linked accounts
 	ReputationScore *model.ReputationScore // Weighted reputation score (optional)
-}
-
-// relationshipCategoryDef defines a relationship category.
-type relationshipCategoryDef struct {
-	Name  string
-	Color string
-	Types []string
-}
-
-// categoryDefinitions holds all category definitions in display order.
-var categoryDefinitions = []relationshipCategoryDef{
-	{
-		Name:  "FAMILY",
-		Color: "#f85149",
-		Types: []string{"OneFamily", "Spouse", "Guardian", "Ward", "Sympathy", "Love", "Divorce"},
-	},
-	{
-		Name:  "WORK",
-		Color: "#58a6ff",
-		Types: []string{"Employer", "Employee", "Contractor", "Client"},
-	},
-	{
-		Name:  "NETWORK",
-		Color: "#a371f7",
-		Types: []string{"Partnership", "Collaboration", "MyPart", "PartOf", "RecommendToMTLA"},
-	},
-	{
-		Name:  "OWNERSHIP",
-		Color: "#f0b429",
-		Types: []string{"OwnershipFull", "OwnershipMajority", "OwnershipMinority", "Owner", "OwnerMajority", "OwnerMinority"},
-	},
-	{
-		Name:  "SOCIAL",
-		Color: "#00ff88",
-		Types: []string{"WelcomeGuest", "FactionMember"},
-	},
 }
 
 // Account handles the account detail page.
@@ -160,7 +125,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	})
 
 	// Process relationships into categories
-	account.Categories = groupRelationships(accountID, relationships, confirmed)
+	account.Categories = bsn.GroupRelationships(accountID, relationships, confirmed)
 
 	// Set XLM valuation for corporate accounts
 	if accountInfo != nil && accountInfo.MTLACBalance > 0 {
@@ -177,7 +142,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 			CountD:  trustRating.CountD,
 			Total:   trustRating.Total,
 			Score:   trustRating.Score,
-			Grade:   calculateTrustGrade(trustRating.Score),
+			Grade:   bsn.CalculateTrustGrade(trustRating.Score),
 			Percent: int((trustRating.Score / 4.0) * 100),
 		}
 	}
@@ -208,228 +173,6 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	if _, err := buf.WriteTo(w); err != nil {
 		slog.Debug("failed to write response", "account_id", accountID, "error", err)
-	}
-}
-
-// complementaryPairs maps relationship types to their complementary type.
-// When both sides of a pair exist, the relationship is "confirmed".
-var complementaryPairs = map[string]string{
-	"MyPart":            "PartOf",
-	"PartOf":            "MyPart",
-	"Guardian":          "Ward",
-	"Ward":              "Guardian",
-	"OwnershipFull":     "Owner",
-	"Owner":             "OwnershipFull",
-	"OwnershipMajority": "OwnerMajority",
-	"OwnerMajority":     "OwnershipMajority",
-	"OwnershipMinority": "OwnerMinority",
-	"OwnerMinority":     "OwnershipMinority",
-	"Employer":          "Employee",
-	"Employee":          "Employer",
-}
-
-// symmetricTypes are relationship types where both parties must declare for display.
-// One-way declarations are hidden.
-var symmetricTypes = map[string]bool{
-	"FactionMember": true,
-	"Partnership":   true,
-	"Collaboration": true,
-	"Spouse":        true,
-	"OneFamily":     true,
-}
-
-// groupRelationships organizes relationships into display categories.
-// It merges complementary pairs and deduplicates mutual symmetric relationships.
-// For symmetric types (FactionMember, Partnership, etc.), one-way relationships are hidden.
-func groupRelationships(accountID string, rows []repository.RelationshipRow, confirmed map[string]bool) []model.RelationshipCategory {
-	// Build maps for relationship lookup
-	// Key: "otherAccountID:type", value: row
-	outgoingMap := make(map[string]repository.RelationshipRow)
-	incomingMap := make(map[string]repository.RelationshipRow)
-
-	for _, row := range rows {
-		var otherID string
-		if row.Direction == "outgoing" {
-			otherID = row.TargetAccountID
-			key := fmt.Sprintf("%s:%s", otherID, row.RelationType)
-			outgoingMap[key] = row
-		} else {
-			otherID = row.SourceAccountID
-			key := fmt.Sprintf("%s:%s", otherID, row.RelationType)
-			incomingMap[key] = row
-		}
-	}
-
-	// Build type-to-category lookup
-	typeToCat := make(map[string]int)
-	for i, cat := range categoryDefinitions {
-		for _, t := range cat.Types {
-			typeToCat[t] = i
-		}
-	}
-
-	// Track which relationships we've already processed (to avoid duplicates)
-	processed := make(map[string]bool)
-
-	// Group relationships by category
-	categoryRels := make([][]model.Relationship, len(categoryDefinitions))
-	for i := range categoryRels {
-		categoryRels[i] = []model.Relationship{}
-	}
-
-	for _, row := range rows {
-		// Determine the "other" account
-		var otherID string
-		if row.Direction == "outgoing" {
-			otherID = row.TargetAccountID
-		} else {
-			otherID = row.SourceAccountID
-		}
-
-		// Check if this is a complementary pair
-		if complement, ok := complementaryPairs[row.RelationType]; ok {
-			// Create a canonical key for this pair using sorted type names
-			typeA, typeB := row.RelationType, complement
-			if typeB < typeA {
-				typeA, typeB = typeB, typeA
-			}
-			pairKey := fmt.Sprintf("%s:%s:%s:complementary", otherID, typeA, typeB)
-			if processed[pairKey] {
-				continue // Already processed this pair
-			}
-
-			// Check if complementary relationship exists (current type + complement)
-			currentKey := fmt.Sprintf("%s:%s", otherID, row.RelationType)
-			complementKey := fmt.Sprintf("%s:%s", otherID, complement)
-
-			hasCurrent := false
-			hasComplement := false
-
-			if _, exists := outgoingMap[currentKey]; exists {
-				hasCurrent = true
-			}
-			if _, exists := incomingMap[currentKey]; exists {
-				hasCurrent = true
-			}
-			if _, exists := outgoingMap[complementKey]; exists {
-				hasComplement = true
-			}
-			if _, exists := incomingMap[complementKey]; exists {
-				hasComplement = true
-			}
-
-			catIdx, ok := typeToCat[row.RelationType]
-			if !ok {
-				continue
-			}
-
-			// Determine confirmation status
-			isConfirmed := hasCurrent && hasComplement
-
-			rel := model.Relationship{
-				Type:        row.RelationType,
-				TargetID:    otherID,
-				TargetName:  row.TargetName,
-				Direction:   row.Direction,
-				IsMutual:    false,
-				IsConfirmed: isConfirmed,
-			}
-
-			categoryRels[catIdx] = append(categoryRels[catIdx], rel)
-			processed[pairKey] = true
-			continue
-		}
-
-		catIdx, ok := typeToCat[row.RelationType]
-		if !ok {
-			continue
-		}
-
-		// Check if mutual (same type exists in both directions)
-		mutualKey := fmt.Sprintf("%s:%s", otherID, row.RelationType)
-		_, hasOutgoing := outgoingMap[mutualKey]
-		_, hasIncoming := incomingMap[mutualKey]
-		isMutual := hasOutgoing && hasIncoming
-
-		// For symmetric types, skip if not mutual (hide one-way declarations)
-		if symmetricTypes[row.RelationType] && !isMutual {
-			continue
-		}
-
-		// If mutual, only process once (from outgoing direction)
-		if isMutual {
-			dedupeKey := fmt.Sprintf("%s:%s:mutual", otherID, row.RelationType)
-			if processed[dedupeKey] {
-				continue
-			}
-			processed[dedupeKey] = true
-		}
-
-		// Check if confirmed (from confirmed_relationships view)
-		isConfirmed := false
-		if row.Direction == "outgoing" {
-			key := fmt.Sprintf("%s:%s:%s", accountID, row.TargetAccountID, row.RelationType)
-			isConfirmed = confirmed[key]
-		} else {
-			key := fmt.Sprintf("%s:%s:%s", row.SourceAccountID, accountID, row.RelationType)
-			isConfirmed = confirmed[key]
-		}
-
-		rel := model.Relationship{
-			Type:        row.RelationType,
-			TargetID:    otherID,
-			TargetName:  row.TargetName,
-			Direction:   row.Direction,
-			IsMutual:    isMutual,
-			IsConfirmed: isConfirmed,
-		}
-
-		categoryRels[catIdx] = append(categoryRels[catIdx], rel)
-	}
-
-	// Sort relationships: confirmed/mutual first, then unconfirmed.
-	// Prioritizes verified relationships (where both parties declared) for user trust.
-	for i := range categoryRels {
-		sort.SliceStable(categoryRels[i], func(a, b int) bool {
-			aConfirmed := categoryRels[i][a].IsConfirmed || categoryRels[i][a].IsMutual
-			bConfirmed := categoryRels[i][b].IsConfirmed || categoryRels[i][b].IsMutual
-			if aConfirmed != bConfirmed {
-				return aConfirmed
-			}
-			return false // stable sort: preserve insertion order within groups
-		})
-	}
-
-	// Build final categories
-	categories := lo.Map(categoryDefinitions, func(def relationshipCategoryDef, i int) model.RelationshipCategory {
-		return model.RelationshipCategory{
-			Name:          def.Name,
-			Color:         def.Color,
-			Relationships: categoryRels[i],
-			IsEmpty:       len(categoryRels[i]) == 0,
-		}
-	})
-
-	return categories
-}
-
-// calculateTrustGrade converts a numeric score (1-4) to a letter grade.
-func calculateTrustGrade(score float64) string {
-	switch {
-	case score >= 3.5:
-		return "A"
-	case score >= 3.0:
-		return "A-"
-	case score >= 2.5:
-		return "B+"
-	case score >= 2.0:
-		return "B"
-	case score >= 1.5:
-		return "C+"
-	case score >= 1.0:
-		return "C"
-	default:
-		return "D"
 	}
 }
 
