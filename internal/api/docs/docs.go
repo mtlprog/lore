@@ -300,6 +300,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/api.PaginatedResponse"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {

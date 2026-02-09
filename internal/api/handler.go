@@ -59,10 +59,33 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 }
 
 func isValidStellarID(id string) bool {
-	if len(id) != 56 {
-		return false
+	return len(id) == 56 && id[0] == 'G'
+}
+
+// validateAccountID validates the account ID path parameter and writes an error response if invalid.
+// Returns the account ID and true if valid, or empty string and false if invalid (error already written).
+func validateAccountID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	accountID := r.PathValue("id")
+	if accountID == "" {
+		writeError(w, http.StatusBadRequest, "account ID is required")
+		return "", false
 	}
-	return id[0] == 'G'
+	if !isValidStellarID(accountID) {
+		writeError(w, http.StatusBadRequest, "invalid Stellar account ID format")
+		return "", false
+	}
+	return accountID, true
+}
+
+// inferAccountType determines account type from token balances.
+func inferAccountType(mtlapBalance, mtlacBalance, mtlaxBalance float64) string {
+	if mtlacBalance > 0 && mtlacBalance <= 4 {
+		return "corporate"
+	}
+	if mtlaxBalance > 0 && mtlapBalance == 0 {
+		return "synthetic"
+	}
+	return "person"
 }
 
 func parseIntParam(r *http.Request, name string, defaultVal, maxVal int) int {

@@ -23,15 +23,19 @@ import (
 //	@Router			/api/v1/accounts/{id}/reputation [get]
 func (h *Handler) GetReputation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	accountID := r.PathValue("id")
-
-	if accountID == "" {
-		writeError(w, http.StatusBadRequest, "account ID is required")
+	accountID, ok := validateAccountID(w, r)
+	if !ok {
 		return
 	}
 
-	if !isValidStellarID(accountID) {
-		writeError(w, http.StatusBadRequest, "invalid Stellar account ID format")
+	exists, err := h.accounts.AccountExists(ctx, accountID)
+	if err != nil {
+		slog.Error("api: failed to check account existence", "account_id", accountID, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to check account")
+		return
+	}
+	if !exists {
+		writeError(w, http.StatusNotFound, "account not found")
 		return
 	}
 

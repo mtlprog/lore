@@ -22,6 +22,7 @@ import (
 //	@Param			limit	query		int		false	"Number of results"	default(20)	maximum(100)
 //	@Param			offset	query		int		false	"Offset for pagination"	default(0)
 //	@Success		200		{object}	PaginatedResponse
+//	@Failure		400		{object}	ErrorResponse
 //	@Failure		500		{object}	ErrorResponse
 //	@Router			/api/v1/search [get]
 func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
@@ -32,14 +33,12 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	offset := parseIntParam(r, "offset", 0, 0)
 
 	// Parse tags from comma-separated string
-	tagsParam := r.URL.Query().Get("tags")
 	var tags []string
-	if tagsParam != "" {
-		tags = lo.Filter(
-			strings.Split(tagsParam, ","),
-			func(t string, _ int) bool { return strings.TrimSpace(t) != "" },
-		)
-		tags = lo.Map(tags, func(t string, _ int) string { return strings.TrimSpace(t) })
+	if tagsParam := r.URL.Query().Get("tags"); tagsParam != "" {
+		tags = lo.FilterMap(strings.Split(tagsParam, ","), func(t string, _ int) (string, bool) {
+			trimmed := strings.TrimSpace(t)
+			return trimmed, trimmed != ""
+		})
 	}
 
 	// Parse sort
@@ -47,6 +46,20 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	repoSort := repository.SearchSortByBalance
 	if sortParam == "reputation" {
 		repoSort = repository.SearchSortByReputation
+	}
+
+	// Validate query length
+	if len(query) > 100 {
+		writeError(w, http.StatusBadRequest, "search query too long (max 100 characters)")
+		return
+	}
+
+	// Validate tag lengths
+	tags = lo.Filter(tags, func(t string, _ int) bool { return len(t) <= 100 })
+
+	// Discard too-short queries (still allow tag-only search)
+	if len(query) < 2 {
+		query = ""
 	}
 
 	// If no query and no tags, return empty result
@@ -82,17 +95,10 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 			grade = reputation.ScoreToGrade(row.ReputationScore)
 		}
 
-		accountType := "person"
-		if row.MTLACBalance > 0 && row.MTLACBalance <= 4 {
-			accountType = "corporate"
-		} else if row.MTLAPBalance == 0 && row.MTLACBalance == 0 && row.MTLAXBalance > 0 {
-			accountType = "synthetic"
-		}
-
 		return AccountListItem{
 			ID:              row.AccountID,
 			Name:            row.Name,
-			Type:            accountType,
+			Type:            inferAccountType(row.MTLAPBalance, row.MTLACBalance, row.MTLAXBalance),
 			MTLAPBalance:    row.MTLAPBalance,
 			MTLACBalance:    row.MTLACBalance,
 			MTLAXBalance:    row.MTLAXBalance,

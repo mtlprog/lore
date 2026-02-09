@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/mtlprog/lore/internal/bsn"
-	"github.com/mtlprog/lore/internal/model"
 	"github.com/samber/lo"
 )
 
@@ -26,15 +25,19 @@ import (
 //	@Router			/api/v1/accounts/{id}/relationships [get]
 func (h *Handler) GetRelationships(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	accountID := r.PathValue("id")
-
-	if accountID == "" {
-		writeError(w, http.StatusBadRequest, "account ID is required")
+	accountID, ok := validateAccountID(w, r)
+	if !ok {
 		return
 	}
 
-	if !isValidStellarID(accountID) {
-		writeError(w, http.StatusBadRequest, "invalid Stellar account ID format")
+	exists, err := h.accounts.AccountExists(ctx, accountID)
+	if err != nil {
+		slog.Error("api: failed to check account existence", "account_id", accountID, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to check account")
+		return
+	}
+	if !exists {
+		writeError(w, http.StatusNotFound, "account not found")
 		return
 	}
 
@@ -56,42 +59,26 @@ func (h *Handler) GetRelationships(w http.ResponseWriter, r *http.Request) {
 	}
 
 	categories := bsn.GroupRelationships(accountID, relationships, confirmed)
+	resp := convertCategories(categories)
 
-	resp := lo.Map(categories, func(cat model.RelationshipCategory, _ int) RelationshipCategoryResponse {
-		rels := lo.Map(cat.Relationships, func(rel model.Relationship, _ int) RelationshipResponse {
-			return RelationshipResponse{
-				Type:        rel.Type,
-				TargetID:    rel.TargetID,
-				TargetName:  rel.TargetName,
-				Direction:   rel.Direction,
-				IsMutual:    rel.IsMutual,
-				IsConfirmed: rel.IsConfirmed,
-			}
-		})
-
-		// Apply filters
-		if filterType != "" {
-			rels = lo.Filter(rels, func(r RelationshipResponse, _ int) bool {
-				return r.Type == filterType
+	// Apply optional filters to each category's relationships
+	hasFilters := filterType != "" || filterConfirmed || filterMutual
+	if hasFilters {
+		for i := range resp {
+			resp[i].Relationships = lo.Filter(resp[i].Relationships, func(rel RelationshipResponse, _ int) bool {
+				if filterType != "" && rel.Type != filterType {
+					return false
+				}
+				if filterConfirmed && !rel.IsConfirmed {
+					return false
+				}
+				if filterMutual && !rel.IsMutual {
+					return false
+				}
+				return true
 			})
 		}
-		if filterConfirmed {
-			rels = lo.Filter(rels, func(r RelationshipResponse, _ int) bool {
-				return r.IsConfirmed
-			})
-		}
-		if filterMutual {
-			rels = lo.Filter(rels, func(r RelationshipResponse, _ int) bool {
-				return r.IsMutual
-			})
-		}
-
-		return RelationshipCategoryResponse{
-			Name:          cat.Name,
-			Color:         cat.Color,
-			Relationships: rels,
-		}
-	})
+	}
 
 	writeJSON(w, http.StatusOK, resp)
 }
