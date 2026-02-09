@@ -108,6 +108,7 @@ func RegisterStaticRoutes(mux *http.ServeMux, staticHandler http.Handler) {
 	mux.Handle("GET /favicon-32x32.png", staticHandler)
 	mux.Handle("GET /favicon-16x16.png", staticHandler)
 	mux.Handle("GET /apple-touch-icon.png", staticHandler)
+	mux.Handle("GET /skill.md", staticHandler)
 
 	// Robots.txt for SEO
 	mux.HandleFunc("GET /robots.txt", func(w http.ResponseWriter, r *http.Request) {
