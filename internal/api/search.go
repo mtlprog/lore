@@ -85,7 +85,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		accountType := "person"
 		if row.MTLACBalance > 0 && row.MTLACBalance <= 4 {
 			accountType = "corporate"
-		} else if row.MTLAXBalance > 0 && row.MTLAPBalance == 0 {
+		} else if row.MTLAPBalance == 0 && row.MTLACBalance == 0 && row.MTLAXBalance > 0 {
 			accountType = "synthetic"
 		}
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -37,10 +38,16 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, data any) {
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(data); err != nil {
+		slog.Error("failed to encode JSON response", "error", err)
+		http.Error(w, `{"error":"internal server error","code":500}`, http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.NewEncoder(w).Encode(data); err != nil {
-		slog.Debug("failed to write JSON response", "error", err)
+	if _, err := buf.WriteTo(w); err != nil {
+		slog.Error("failed to write JSON response", "error", err)
 	}
 }
 
@@ -49,6 +56,13 @@ func writeError(w http.ResponseWriter, status int, msg string) {
 		Error: msg,
 		Code:  status,
 	})
+}
+
+func isValidStellarID(id string) bool {
+	if len(id) != 56 {
+		return false
+	}
+	return id[0] == 'G'
 }
 
 func parseIntParam(r *http.Request, name string, defaultVal, maxVal int) int {

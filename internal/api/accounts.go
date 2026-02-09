@@ -157,57 +157,40 @@ func (h *Handler) listAll(ctx context.Context, limit, offset int) ([]AccountList
 	}
 	total := stats.TotalAccounts
 
-	var all []AccountListItem
-
-	persons, err := h.accounts.GetPersons(ctx, limit, offset)
+	rows, err := h.accounts.GetAllAccounts(ctx, limit, offset)
 	if err != nil {
-		return nil, 0, fmt.Errorf("get persons: %w", err)
-	}
-	for _, p := range persons {
-		all = append(all, AccountListItem{
-			ID:             p.AccountID,
-			Name:           p.Name,
-			Type:           "person",
-			MTLAPBalance:   p.MTLAPBalance,
-			IsCouncilReady: p.IsCouncilReady,
-			ReceivedVotes:  p.ReceivedVotes,
-		})
+		return nil, 0, fmt.Errorf("get all accounts: %w", err)
 	}
 
-	corporate, err := h.accounts.GetCorporate(ctx, limit, offset)
-	if err != nil {
-		return nil, 0, fmt.Errorf("get corporate: %w", err)
-	}
-	for _, c := range corporate {
-		all = append(all, AccountListItem{
-			ID:            c.AccountID,
-			Name:          c.Name,
-			Type:          "corporate",
-			MTLACBalance:  c.MTLACBalance,
-			TotalXLMValue: c.TotalXLMValue,
-		})
-	}
-
-	synthetic, err := h.accounts.GetSynthetic(ctx, limit, offset)
-	if err != nil {
-		return nil, 0, fmt.Errorf("get synthetic: %w", err)
-	}
-	for _, s := range synthetic {
-		grade := ""
-		if s.ReputationScore > 0 {
-			grade = reputation.ScoreToGrade(s.ReputationScore)
+	items := lo.Map(rows, func(a repository.AllAccountRow, _ int) AccountListItem {
+		accountType := "person"
+		if a.MTLACBalance > 0 && a.MTLACBalance <= 4 {
+			accountType = "corporate"
+		} else if a.MTLAXBalance > 0 && a.MTLAPBalance == 0 {
+			accountType = "synthetic"
 		}
-		all = append(all, AccountListItem{
-			ID:              s.AccountID,
-			Name:            s.Name,
-			Type:            "synthetic",
-			MTLAXBalance:    s.MTLAXBalance,
-			ReputationScore: s.ReputationScore,
-			ReputationGrade: grade,
-		})
-	}
 
-	return all, total, nil
+		grade := ""
+		if a.ReputationScore > 0 {
+			grade = reputation.ScoreToGrade(a.ReputationScore)
+		}
+
+		return AccountListItem{
+			ID:              a.AccountID,
+			Name:            a.Name,
+			Type:            accountType,
+			MTLAPBalance:    a.MTLAPBalance,
+			MTLACBalance:    a.MTLACBalance,
+			MTLAXBalance:    a.MTLAXBalance,
+			TotalXLMValue:   a.TotalXLMValue,
+			ReputationScore: a.ReputationScore,
+			ReputationGrade: grade,
+			IsCouncilReady:  a.IsCouncilReady,
+			ReceivedVotes:   a.ReceivedVotes,
+		}
+	})
+
+	return items, total, nil
 }
 
 // GetAccount handles GET /api/v1/accounts/{id}.
@@ -219,6 +202,7 @@ func (h *Handler) listAll(ctx context.Context, limit, offset int) ([]AccountList
 //	@Param			id	path		string	true	"Stellar account ID"
 //	@Success		200	{object}	AccountDetailResponse
 //	@Failure		400	{object}	ErrorResponse
+//	@Failure		404	{object}	ErrorResponse
 //	@Failure		500	{object}	ErrorResponse
 //	@Router			/api/v1/accounts/{id} [get]
 func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
@@ -227,6 +211,23 @@ func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 
 	if accountID == "" {
 		writeError(w, http.StatusBadRequest, "account ID is required")
+		return
+	}
+
+	if !isValidStellarID(accountID) {
+		writeError(w, http.StatusBadRequest, "invalid Stellar account ID format")
+		return
+	}
+
+	// Check if account exists
+	exists, err := h.accounts.AccountExists(ctx, accountID)
+	if err != nil {
+		slog.Error("api: failed to check account existence", "account_id", accountID, "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to fetch account")
+		return
+	}
+	if !exists {
+		writeError(w, http.StatusNotFound, "account not found")
 		return
 	}
 
@@ -259,6 +260,20 @@ func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 		Tags:          meta.Tags,
 		IsCorporate:   accountInfo.MTLACBalance > 0,
 		TotalXLMValue: accountInfo.TotalXLMValue,
+	}
+
+	// Fetch trustlines (account balances)
+	balances, err := h.accounts.GetAccountBalances(ctx, accountID)
+	if err != nil {
+		slog.Error("api: failed to fetch account balances", "account_id", accountID, "error", err)
+	} else if len(balances) > 0 {
+		resp.Trustlines = lo.Map(balances, func(b repository.BalanceRow, _ int) TrustlineResponse {
+			return TrustlineResponse{
+				AssetCode:   b.AssetCode,
+				AssetIssuer: b.AssetIssuer,
+				Balance:     fmt.Sprintf("%.7f", b.Balance),
+			}
+		})
 	}
 
 	// Fetch trust ratings

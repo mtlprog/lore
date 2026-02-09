@@ -21,6 +21,7 @@ import (
 //	@Param			mutual		query		bool	false	"Filter to only mutual relationships"
 //	@Success		200			{array}		RelationshipCategoryResponse
 //	@Failure		400			{object}	ErrorResponse
+//	@Failure		404			{object}	ErrorResponse
 //	@Failure		500			{object}	ErrorResponse
 //	@Router			/api/v1/accounts/{id}/relationships [get]
 func (h *Handler) GetRelationships(w http.ResponseWriter, r *http.Request) {
@@ -29,6 +30,11 @@ func (h *Handler) GetRelationships(w http.ResponseWriter, r *http.Request) {
 
 	if accountID == "" {
 		writeError(w, http.StatusBadRequest, "account ID is required")
+		return
+	}
+
+	if !isValidStellarID(accountID) {
+		writeError(w, http.StatusBadRequest, "invalid Stellar account ID format")
 		return
 	}
 
