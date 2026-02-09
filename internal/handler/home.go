@@ -12,19 +12,19 @@ import (
 
 // HomeData holds data for the home page template.
 type HomeData struct {
-	Stats                *repository.Stats
-	Persons              []repository.PersonRow
-	Corporate            []repository.CorporateRow
-	Synthetic            []repository.SyntheticRow
-	PersonsOffset        int
-	CorporateOffset      int
-	SyntheticOffset      int
-	NextPersonsOffset    int
-	NextCorporateOffset  int
-	NextSyntheticOffset  int
-	HasMorePersons       bool
-	HasMoreCorporate     bool
-	HasMoreSynthetic     bool
+	Stats               *repository.Stats
+	Persons             []repository.PersonRow
+	Corporate           []repository.CorporateRow
+	Synthetic           []repository.SyntheticRow
+	PersonsOffset       int
+	CorporateOffset     int
+	SyntheticOffset     int
+	NextPersonsOffset   int
+	NextCorporateOffset int
+	NextSyntheticOffset int
+	HasMorePersons      bool
+	HasMoreCorporate    bool
+	HasMoreSynthetic    bool
 }
 
 // Home handles the main page showing Persons and Companies.
