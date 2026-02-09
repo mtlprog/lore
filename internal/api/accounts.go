@@ -163,13 +163,6 @@ func (h *Handler) listAll(ctx context.Context, limit, offset int) ([]AccountList
 	}
 
 	items := lo.Map(rows, func(a repository.AllAccountRow, _ int) AccountListItem {
-		accountType := "person"
-		if a.MTLACBalance > 0 && a.MTLACBalance <= 4 {
-			accountType = "corporate"
-		} else if a.MTLAXBalance > 0 && a.MTLAPBalance == 0 {
-			accountType = "synthetic"
-		}
-
 		grade := ""
 		if a.ReputationScore > 0 {
 			grade = reputation.ScoreToGrade(a.ReputationScore)
@@ -178,7 +171,7 @@ func (h *Handler) listAll(ctx context.Context, limit, offset int) ([]AccountList
 		return AccountListItem{
 			ID:              a.AccountID,
 			Name:            a.Name,
-			Type:            accountType,
+			Type:            inferAccountType(a.MTLAPBalance, a.MTLACBalance, a.MTLAXBalance),
 			MTLAPBalance:    a.MTLAPBalance,
 			MTLACBalance:    a.MTLACBalance,
 			MTLAXBalance:    a.MTLAXBalance,
@@ -207,15 +200,8 @@ func (h *Handler) listAll(ctx context.Context, limit, offset int) ([]AccountList
 //	@Router			/api/v1/accounts/{id} [get]
 func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	accountID := r.PathValue("id")
-
-	if accountID == "" {
-		writeError(w, http.StatusBadRequest, "account ID is required")
-		return
-	}
-
-	if !isValidStellarID(accountID) {
-		writeError(w, http.StatusBadRequest, "invalid Stellar account ID format")
+	accountID, ok := validateAccountID(w, r)
+	if !ok {
 		return
 	}
 
@@ -356,32 +342,33 @@ func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 
 	if len(relationships) > 0 {
 		categories := bsn.GroupRelationships(accountID, relationships, confirmed)
-		resp.Categories = lo.Map(categories, func(cat model.RelationshipCategory, _ int) RelationshipCategoryResponse {
-			if cat.IsEmpty {
-				return RelationshipCategoryResponse{
-					Name:          cat.Name,
-					Color:         cat.Color,
-					Relationships: []RelationshipResponse{},
-				}
-			}
-			return RelationshipCategoryResponse{
-				Name:  cat.Name,
-				Color: cat.Color,
-				Relationships: lo.Map(cat.Relationships, func(rel model.Relationship, _ int) RelationshipResponse {
-					return RelationshipResponse{
-						Type:        rel.Type,
-						TargetID:    rel.TargetID,
-						TargetName:  rel.TargetName,
-						Direction:   rel.Direction,
-						IsMutual:    rel.IsMutual,
-						IsConfirmed: rel.IsConfirmed,
-					}
-				}),
-			}
-		})
+		resp.Categories = convertCategories(categories)
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func convertCategories(categories []model.RelationshipCategory) []RelationshipCategoryResponse {
+	return lo.Map(categories, func(cat model.RelationshipCategory, _ int) RelationshipCategoryResponse {
+		return RelationshipCategoryResponse{
+			Name:  cat.Name,
+			Color: cat.Color,
+			Relationships: lo.Map(cat.Relationships, func(rel model.Relationship, _ int) RelationshipResponse {
+				return convertRelationship(rel)
+			}),
+		}
+	})
+}
+
+func convertRelationship(rel model.Relationship) RelationshipResponse {
+	return RelationshipResponse{
+		Type:        rel.Type,
+		TargetID:    rel.TargetID,
+		TargetName:  rel.TargetName,
+		Direction:   rel.Direction,
+		IsMutual:    rel.IsMutual,
+		IsConfirmed: rel.IsConfirmed,
+	}
 }
 
 func convertReputationScore(score *model.ReputationScore) *ReputationResponse {
