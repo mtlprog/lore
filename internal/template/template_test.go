@@ -328,32 +328,41 @@ func TestRender(t *testing.T) {
 				TotalAccounts  int
 				TotalPersons   int
 				TotalCompanies int
+				TotalSynthetic int
 				TotalXLMValue  float64
 			}
-			Persons             []any
-			Corporate           []any
-			PersonsOffset       int
-			CorporateOffset     int
-			NextPersonsOffset   int
-			NextCorporateOffset int
-			HasMorePersons      bool
-			HasMoreCorporate    bool
+			Persons              []any
+			Corporate            []any
+			Synthetic            []any
+			PersonsOffset        int
+			CorporateOffset      int
+			SyntheticOffset      int
+			NextPersonsOffset    int
+			NextCorporateOffset  int
+			NextSyntheticOffset  int
+			HasMorePersons       bool
+			HasMoreCorporate     bool
+			HasMoreSynthetic     bool
 		}{
 			Stats: struct {
 				TotalAccounts  int
 				TotalPersons   int
 				TotalCompanies int
+				TotalSynthetic int
 				TotalXLMValue  float64
 			}{
 				TotalAccounts:  100,
 				TotalPersons:   50,
 				TotalCompanies: 25,
+				TotalSynthetic: 10,
 				TotalXLMValue:  1000000.0,
 			},
 			Persons:          []any{},
 			Corporate:        []any{},
+			Synthetic:        []any{},
 			HasMorePersons:   false,
 			HasMoreCorporate: false,
+			HasMoreSynthetic: false,
 		}
 
 		err := tmpl.Render(&buf, "home.html", data)
@@ -364,6 +373,7 @@ func TestRender(t *testing.T) {
 		assert.Contains(t, output, "100") // TotalAccounts
 		assert.Contains(t, output, "50")  // TotalPersons
 		assert.Contains(t, output, "25")  // TotalCompanies
+		assert.Contains(t, output, "Synthetic")
 	})
 
 	t.Run("account template renders successfully", func(t *testing.T) {

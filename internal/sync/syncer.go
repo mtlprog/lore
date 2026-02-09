@@ -92,8 +92,15 @@ func (s *Syncer) Run(ctx context.Context, full bool) (*SyncResult, error) {
 	}
 	s.logger.Info("fetched MTLAC holders", "count", len(mtlacHolders))
 
+	s.logger.Info("fetching MTLAX holders")
+	mtlaxHolders, err := s.fetchAllAssetHolders(ctx, config.TokenMTLAX, config.TokenIssuer)
+	if err != nil {
+		return nil, fmt.Errorf("fetch MTLAX holders: %w", err)
+	}
+	s.logger.Info("fetched MTLAX holders", "count", len(mtlaxHolders))
+
 	// Merge into unique list using lo.Uniq
-	accountIDs := lo.Uniq(append(mtlapHolders, mtlacHolders...))
+	accountIDs := lo.Uniq(append(append(mtlapHolders, mtlacHolders...), mtlaxHolders...))
 	s.logger.Info("unique accounts to sync", "count", len(accountIDs))
 
 	// Step 2: Fetch and store details for each account
@@ -152,6 +159,7 @@ func (s *Syncer) Run(ctx context.Context, full bool) (*SyncResult, error) {
 	s.logger.Info("sync completed",
 		"accounts", stats.TotalAccounts,
 		"persons", stats.TotalPersons,
+		"synthetic", stats.TotalSynthetic,
 		"companies", stats.TotalCompanies,
 		"total_xlm_value", stats.TotalXLMValue,
 	)

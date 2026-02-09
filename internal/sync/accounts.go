@@ -413,3 +413,15 @@ func getMTLACBalance(data *AccountData) decimal.Decimal {
 func getNativeBalance(data *AccountData) decimal.Decimal {
 	return findBalance(data.Balances, "XLM", "")
 }
+
+// getMTLAXBalance returns a pointer to the MTLAX balance if the trustline exists, or nil if not.
+// This distinguishes "no trustline" (nil) from "has trustline with 0 balance" (*decimal.Zero).
+func getMTLAXBalance(data *AccountData) *decimal.Decimal {
+	bal, found := lo.Find(data.Balances, func(b Balance) bool {
+		return b.AssetCode == config.TokenMTLAX && b.AssetIssuer == config.TokenIssuer
+	})
+	if !found {
+		return nil
+	}
+	return &bal.Balance
+}

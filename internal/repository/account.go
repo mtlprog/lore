@@ -32,6 +32,7 @@ type Stats struct {
 	TotalAccounts  int
 	TotalPersons   int
 	TotalCompanies int
+	TotalSynthetic int
 	TotalXLMValue  float64
 }
 
@@ -52,6 +53,14 @@ type CorporateRow struct {
 	TotalXLMValue float64
 }
 
+// SyntheticRow represents a synthetic account (MTLAX trustline holder) from the database.
+type SyntheticRow struct {
+	AccountID        string
+	Name             string
+	ReputationScore  float64
+	ReputationWeight float64
+}
+
 // GetStats returns aggregate statistics.
 func (r *AccountRepository) GetStats(ctx context.Context) (*Stats, error) {
 	query, args, err := database.QB.
@@ -59,6 +68,7 @@ func (r *AccountRepository) GetStats(ctx context.Context) (*Stats, error) {
 			"COUNT(*) AS total_accounts",
 			"COUNT(*) FILTER (WHERE mtlap_balance > 0 AND mtlap_balance <= 5) AS total_persons",
 			"COUNT(*) FILTER (WHERE mtlac_balance > 0 AND mtlac_balance <= 4) AS total_companies",
+			"COUNT(*) FILTER (WHERE mtlax_balance IS NOT NULL) AS total_synthetic",
 			"COALESCE(SUM(total_xlm_value), 0) AS total_xlm_value",
 		).
 		From("accounts").
@@ -72,6 +82,7 @@ func (r *AccountRepository) GetStats(ctx context.Context) (*Stats, error) {
 		&stats.TotalAccounts,
 		&stats.TotalPersons,
 		&stats.TotalCompanies,
+		&stats.TotalSynthetic,
 		&stats.TotalXLMValue,
 	)
 	if err != nil {
@@ -162,6 +173,48 @@ func (r *AccountRepository) GetCorporate(ctx context.Context, limit int, offset 
 		return nil, fmt.Errorf("iterate corporate rows: %w", err)
 	}
 	return corporate, nil
+}
+
+// GetSynthetic returns MTLAX trustline holders sorted by reputation score.
+func (r *AccountRepository) GetSynthetic(ctx context.Context, limit int, offset int) ([]SyntheticRow, error) {
+	query, args, err := database.QB.
+		Select(
+			"a.account_id",
+			"COALESCE(m.data_value, CONCAT(LEFT(a.account_id, 6), '...', RIGHT(a.account_id, 6))) AS name",
+			"COALESCE(rs.weighted_score, 0) AS reputation_score",
+			"COALESCE(rs.total_weight, 0) AS reputation_weight",
+		).
+		From("accounts a").
+		LeftJoin("account_metadata m ON a.account_id = m.account_id AND m.data_key = 'Name' AND m.data_index = ''").
+		LeftJoin("reputation_scores rs ON a.account_id = rs.account_id").
+		Where("a.mtlax_balance IS NOT NULL").
+		OrderBy("COALESCE(rs.weighted_score, 0) DESC", "COALESCE(rs.total_weight, 0) DESC").
+		Limit(uint64(limit)).
+		Offset(uint64(offset)).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build synthetic query: %w", err)
+	}
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query synthetic: %w", err)
+	}
+	defer rows.Close()
+
+	var synthetic []SyntheticRow
+	for rows.Next() {
+		var s SyntheticRow
+		if err := rows.Scan(&s.AccountID, &s.Name, &s.ReputationScore, &s.ReputationWeight); err != nil {
+			return nil, fmt.Errorf("scan synthetic: %w", err)
+		}
+		synthetic = append(synthetic, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate synthetic rows: %w", err)
+	}
+	return synthetic, nil
 }
 
 // RelationshipRow represents a relationship from the database.
@@ -563,7 +616,7 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 	case SearchSortByReputation:
 		// Sort by membership level first (MTLAP/MTLAC balance), then by grade bucket, then by weight
 		qb = qb.OrderBy(
-			"GREATEST(a.mtlap_balance, a.mtlac_balance) DESC",
+			"GREATEST(a.mtlap_balance, a.mtlac_balance, COALESCE(a.mtlax_balance, 0)) DESC",
 			`CASE
 				WHEN COALESCE(rs.weighted_score, 0) >= 3.5 THEN 1
 				WHEN COALESCE(rs.weighted_score, 0) >= 3.0 THEN 2
@@ -577,7 +630,7 @@ func (r *AccountRepository) SearchAccounts(ctx context.Context, query string, ta
 			"COALESCE(rs.total_weight, 0) DESC",
 		)
 	default: // SearchSortByBalance
-		qb = qb.OrderBy("GREATEST(a.mtlap_balance, a.mtlac_balance) DESC", "a.total_xlm_value DESC")
+		qb = qb.OrderBy("GREATEST(a.mtlap_balance, a.mtlac_balance, COALESCE(a.mtlax_balance, 0)) DESC", "a.total_xlm_value DESC")
 	}
 
 	qb = qb.Limit(uint64(limit)).Offset(uint64(offset))

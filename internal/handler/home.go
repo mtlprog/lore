@@ -12,15 +12,19 @@ import (
 
 // HomeData holds data for the home page template.
 type HomeData struct {
-	Stats               *repository.Stats
-	Persons             []repository.PersonRow
-	Corporate           []repository.CorporateRow
-	PersonsOffset       int
-	CorporateOffset     int
-	NextPersonsOffset   int
-	NextCorporateOffset int
-	HasMorePersons      bool
-	HasMoreCorporate    bool
+	Stats                *repository.Stats
+	Persons              []repository.PersonRow
+	Corporate            []repository.CorporateRow
+	Synthetic            []repository.SyntheticRow
+	PersonsOffset        int
+	CorporateOffset      int
+	SyntheticOffset      int
+	NextPersonsOffset    int
+	NextCorporateOffset  int
+	NextSyntheticOffset  int
+	HasMorePersons       bool
+	HasMoreCorporate     bool
+	HasMoreSynthetic     bool
 }
 
 // Home handles the main page showing Persons and Companies.
@@ -42,6 +46,14 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 			slog.Debug("invalid corporate_offset parameter, defaulting to 0", "value", corporateOffsetParam)
 		}
 		corporateOffset = 0
+	}
+	syntheticOffsetParam := r.URL.Query().Get("synthetic_offset")
+	syntheticOffset, err := strconv.Atoi(syntheticOffsetParam)
+	if err != nil || syntheticOffset < 0 {
+		if syntheticOffsetParam != "" {
+			slog.Debug("invalid synthetic_offset parameter, defaulting to 0", "value", syntheticOffsetParam)
+		}
+		syntheticOffset = 0
 	}
 
 	stats, err := h.accounts.GetStats(ctx)
@@ -65,8 +77,16 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	synthetic, err := h.accounts.GetSynthetic(ctx, config.DefaultPageLimit+1, syntheticOffset)
+	if err != nil {
+		slog.Error("failed to fetch synthetic", "offset", syntheticOffset, "error", err)
+		http.Error(w, "Failed to fetch synthetic accounts", http.StatusInternalServerError)
+		return
+	}
+
 	hasMorePersons := len(persons) > config.DefaultPageLimit
 	hasMoreCorporate := len(corporate) > config.DefaultPageLimit
+	hasMoreSynthetic := len(synthetic) > config.DefaultPageLimit
 
 	if hasMorePersons {
 		persons = persons[:config.DefaultPageLimit]
@@ -74,17 +94,24 @@ func (h *Handler) Home(w http.ResponseWriter, r *http.Request) {
 	if hasMoreCorporate {
 		corporate = corporate[:config.DefaultPageLimit]
 	}
+	if hasMoreSynthetic {
+		synthetic = synthetic[:config.DefaultPageLimit]
+	}
 
 	data := HomeData{
 		Stats:               stats,
 		Persons:             persons,
 		Corporate:           corporate,
+		Synthetic:           synthetic,
 		PersonsOffset:       personsOffset,
 		CorporateOffset:     corporateOffset,
+		SyntheticOffset:     syntheticOffset,
 		NextPersonsOffset:   personsOffset + config.DefaultPageLimit,
 		NextCorporateOffset: corporateOffset + config.DefaultPageLimit,
+		NextSyntheticOffset: syntheticOffset + config.DefaultPageLimit,
 		HasMorePersons:      hasMorePersons,
 		HasMoreCorporate:    hasMoreCorporate,
+		HasMoreSynthetic:    hasMoreSynthetic,
 	}
 
 	var buf bytes.Buffer

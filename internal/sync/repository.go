@@ -75,6 +75,7 @@ func (r *Repository) Truncate(ctx context.Context) error {
 func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error {
 	mtlapBalance := getMTLAPBalance(data)
 	mtlacBalance := getMTLACBalance(data)
+	mtlaxBalance := getMTLAXBalance(data)
 	nativeBalance := getNativeBalance(data)
 
 	query, args, err := database.QB.
@@ -84,6 +85,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 			"name",
 			"mtlap_balance",
 			"mtlac_balance",
+			"mtlax_balance",
 			"native_balance",
 			"delegate_to",
 			"council_delegate_to",
@@ -95,6 +97,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 			data.Name,
 			mtlapBalance,
 			mtlacBalance,
+			mtlaxBalance,
 			nativeBalance,
 			data.DelegateTo,
 			data.CouncilDelegateTo,
@@ -105,6 +108,7 @@ func (r *Repository) UpsertAccount(ctx context.Context, data *AccountData) error
 			name = EXCLUDED.name,
 			mtlap_balance = EXCLUDED.mtlap_balance,
 			mtlac_balance = EXCLUDED.mtlac_balance,
+			mtlax_balance = EXCLUDED.mtlax_balance,
 			native_balance = EXCLUDED.native_balance,
 			delegate_to = EXCLUDED.delegate_to,
 			council_delegate_to = EXCLUDED.council_delegate_to,
@@ -411,9 +415,10 @@ func (r *Repository) GetSyncStats(ctx context.Context) (*SyncStats, error) {
 			COUNT(*) AS total_accounts,
 			COUNT(*) FILTER (WHERE mtlap_balance > 0) AS total_persons,
 			COUNT(*) FILTER (WHERE mtlac_balance > 0) AS total_companies,
+			COUNT(*) FILTER (WHERE mtlax_balance IS NOT NULL) AS total_synthetic,
 			COALESCE(SUM(total_xlm_value), 0) AS total_xlm_value
 		FROM accounts
-	`).Scan(&stats.TotalAccounts, &stats.TotalPersons, &stats.TotalCompanies, &stats.TotalXLMValue)
+	`).Scan(&stats.TotalAccounts, &stats.TotalPersons, &stats.TotalCompanies, &stats.TotalSynthetic, &stats.TotalXLMValue)
 	if err != nil {
 		return nil, fmt.Errorf("query stats: %w", err)
 	}
