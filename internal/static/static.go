@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-//go:embed favicon.svg og-image.svg
+//go:embed favicon.svg og-image.svg skill.md
 var files embed.FS
 
 // Handler returns an http.Handler that serves static files.
