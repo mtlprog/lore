@@ -60,9 +60,11 @@ type SearchAccountDisplay struct {
 	Name             string
 	MTLAPBalance     float64
 	MTLACBalance     float64
+	MTLAXBalance     float64
 	TotalXLMValue    float64
 	IsPerson         bool
 	IsCorporate      bool
+	IsSynthetic      bool
 	ReputationScore  float64 // Weighted reputation score
 	ReputationGrade  string  // "A", "A-", "B+", etc.
 	ReputationWeight float64 // Total weight of raters
@@ -151,9 +153,11 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 				Name:             row.Name,
 				MTLAPBalance:     row.MTLAPBalance,
 				MTLACBalance:     row.MTLACBalance,
+				MTLAXBalance:     row.MTLAXBalance,
 				TotalXLMValue:    row.TotalXLMValue,
 				IsPerson:         row.MTLAPBalance > 0 && row.MTLAPBalance <= 5,
 				IsCorporate:      row.MTLACBalance > 0 && row.MTLACBalance <= 4,
+				IsSynthetic:      row.MTLAXBalance > 0,
 				ReputationScore:  row.ReputationScore,
 				ReputationGrade:  grade,
 				ReputationWeight: row.ReputationWeight,
