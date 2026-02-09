@@ -1,7 +1,7 @@
 // @title			Lore API
 // @version		1.0
 // @description	REST API for the Lore Stellar blockchain token explorer. Provides access to MTLAP (Persons), MTLAC (Companies), and MTLAX (Synthetic) accounts, relationships, reputation scores, and statistics.
-// @BasePath		/api/v1
+// @BasePath		/
 
 package main
 
