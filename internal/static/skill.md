@@ -168,14 +168,7 @@ Relationships connect accounts on-chain. The value is always the **target accoun
 
 ### Rate someone (reputation)
 
-Members rate each other A/B/C/D. Each rating is a **legally-binding declaration** with economic responsibility:
-
-| Rating | Value | Meaning |
-|--------|-------|---------|
-| **A** | 4.0 | Unconditional trust — you vouch for this account as if guaranteeing 1000+ EURMTL in court |
-| **B** | 3.0 | Personal trust — you would share debt obligations with them up to 1000 EURMTL |
-| **C** | 2.0 | Weak claim — you have a debt claim against them up to 1000 EURMTL |
-| **D** | 1.0 | Severe default — they broke debt obligations of 1000+ EURMTL |
+Rate A/B/C/D (A=highest trust, D=default). See "Reputation System" section below for full semantics.
 
 ```bash
 # Give account GTARGET... an A rating
@@ -237,33 +230,16 @@ stellar tx new manage-data \
 
 ## Reputation System
 
-Members rate each other A/B/C/D. Each rating is a **legally-binding declaration** with economic responsibility:
+A/B/C/D ratings are **legally-binding declarations** with economic responsibility:
 
-| Rating | MTLA Meaning | Numeric Value (Lore) |
-|--------|--------------|----------------------|
-| **A** | Unconditional trust — you vouch for this account as if guaranteeing 1000+ EURMTL in court | 4.0 |
-| **B** | Personal trust — you would share debt obligations with them up to 1000 EURMTL | 3.0 |
-| **C** | Weak claim — you have a debt claim against them up to 1000 EURMTL | 2.0 |
-| **D** | Severe default — they broke debt obligations of 1000+ EURMTL | 1.0 |
+| Rating | MTLA Meaning | Value |
+|--------|--------------|-------|
+| **A** | Unconditional trust (vouch as if guaranteeing 1000+ EURMTL in court) | 4.0 |
+| **B** | Personal trust (would share debt obligations up to 1000 EURMTL) | 3.0 |
+| **C** | Weak claim (debt claim up to 1000 EURMTL) | 2.0 |
+| **D** | Severe default (broke debt obligations 1000+ EURMTL) | 1.0 |
 
-### Lore Aggregation (Technical Implementation)
-
-Lore aggregates ratings into a **weighted score** to reflect rater influence:
-
-**Weight per rater:**
-```
-Weight = log10(portfolio_xlm + 1) × sqrt(connections + 1)
-```
-- **Portfolio** (log₁₀): 10 XLM = 1.0, 100 XLM = 2.0, 1000 XLM = 3.0 — prevents whale dominance
-- **Connections** (√): diminishing returns for highly connected accounts
-- Min: 1.0, Max: 100.0
-
-**Scores:**
-- **Weighted Score** = Σ(rating × weight) / Σ(weight)
-- **Base Score** = Σ(rating) / count
-- **Grade**: A (3.50-4.00), B (2.50-3.49), C (1.50-2.49), D (0.01-1.49)
-
-**Reputation graph:** 2-level transitive trust — Level 1 (direct raters), Level 2 (raters of raters).
+**Lore aggregation:** Weighted score = Σ(rating × weight) / Σ(weight), where weight = log₁₀(portfolio+1) × √(connections+1), min 1.0, max 100.0. Grade boundaries: A (3.50+), B (2.50+), C (1.50+), D (>0). 2-level graph: direct raters + raters of raters.
 
 ---
 
