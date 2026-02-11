@@ -168,14 +168,14 @@ Relationships connect accounts on-chain. The value is always the **target accoun
 
 ### Rate someone (reputation)
 
-Members rate each other A/B/C/D. This is the foundation of the reputation system:
+Members rate each other A/B/C/D. Each rating is a **legally-binding declaration** with economic responsibility:
 
 | Rating | Value | Meaning |
 |--------|-------|---------|
-| **A** | 4.0 | Highest trust (equivalent to guaranteeing 1000+ EURMTL) |
-| **B** | 3.0 | Trusted, good standing |
-| **C** | 2.0 | Neutral |
-| **D** | 1.0 | Untrusted, serious debt violations |
+| **A** | 4.0 | Unconditional trust — you vouch for this account as if guaranteeing 1000+ EURMTL in court |
+| **B** | 3.0 | Personal trust — you would share debt obligations with them up to 1000 EURMTL |
+| **C** | 2.0 | Weak claim — you have a debt claim against them up to 1000 EURMTL |
+| **D** | 1.0 | Severe default — they broke debt obligations of 1000+ EURMTL |
 
 ```bash
 # Give account GTARGET... an A rating
