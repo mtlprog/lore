@@ -237,24 +237,33 @@ stellar tx new manage-data \
 
 ## Reputation System
 
-Lore computes a **weighted reputation score** from A/B/C/D ratings.
+Members rate each other A/B/C/D. Each rating is a **legally-binding declaration** with economic responsibility:
 
-**Weight formula per rater:**
-```
-Weight = log10(portfolio_xlm + 1) * sqrt(connections + 1)
-```
+| Rating | MTLA Meaning | Numeric Value (Lore) |
+|--------|--------------|----------------------|
+| **A** | Unconditional trust — you vouch for this account as if guaranteeing 1000+ EURMTL in court | 4.0 |
+| **B** | Personal trust — you would share debt obligations with them up to 1000 EURMTL | 3.0 |
+| **C** | Weak claim — you have a debt claim against them up to 1000 EURMTL | 2.0 |
+| **D** | Severe default — they broke debt obligations of 1000+ EURMTL | 1.0 |
 
-- Portfolio: logarithmic (10 XLM = 1.0, 100 XLM = 2.0, 1000 XLM = 3.0) — prevents whale dominance
-- Connections: square root — diminishing returns for highly connected accounts
-- Min weight: 1.0, max weight: 100.0
+### Lore Aggregation (Technical Implementation)
+
+Lore aggregates ratings into a **weighted score** to reflect rater influence:
+
+**Weight per rater:**
+```
+Weight = log10(portfolio_xlm + 1) × sqrt(connections + 1)
+```
+- **Portfolio** (log₁₀): 10 XLM = 1.0, 100 XLM = 2.0, 1000 XLM = 3.0 — prevents whale dominance
+- **Connections** (√): diminishing returns for highly connected accounts
+- Min: 1.0, Max: 100.0
 
 **Scores:**
-- **Weighted Score** = sum(rating_value * weight) / sum(weight)
-- **Base Score** = sum(rating_value) / count(ratings)
+- **Weighted Score** = Σ(rating × weight) / Σ(weight)
+- **Base Score** = Σ(rating) / count
+- **Grade**: A (3.50-4.00), B (2.50-3.49), C (1.50-2.49), D (0.01-1.49)
 
-**Grades:** A (3.50-4.00), B (2.50-3.49), C (1.50-2.49), D (0.01-1.49)
-
-**Reputation graph:** Lore builds a 2-level graph — Level 1 (direct raters) and Level 2 (raters of raters) — to show transitive trust.
+**Reputation graph:** 2-level transitive trust — Level 1 (direct raters), Level 2 (raters of raters).
 
 ---
 
