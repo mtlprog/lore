@@ -98,6 +98,8 @@ The application follows a layered architecture:
 
 - **Template Layer** (`internal/template/`) - Embedded templates using Go's `embed` package. `base.html` provides master layout, extended by `home.html` and `account.html`. Custom functions: `add`, `addFloat` (float64 + int), `truncate`, `slice`, `formatNumber` (space-separated thousands), `votePower` (log10-based: 1-10=1, 11-100=2, 101-1000=3), `markdown` (renders Markdown with XSS sanitization), `searchURL` (builds /search URLs with query params).
 
+- **Middleware Layer** (`internal/middleware/`) - HTTP middleware components. Middleware chain (outer to inner): Cache-Control → Rate Limiter → Router. `CacheControl` sets Cache-Control headers based on content type (static images: 1 year immutable, robots.txt: 1 day, swagger: 1 hour, init forms: 1 hour, API: 1 minute with revalidation, HTML pages: 5 minutes with revalidation, POST/PUT/DELETE: no-store). `RateLimiter` enforces per-IP rate limits with sliding window algorithm (default: 100 req/min), bypasses static files, supports X-Forwarded-For header, returns HTTP 429 with Retry-After on limit exceeded. `ExtractIP` extracts client IP from X-Forwarded-For, X-Real-IP, or RemoteAddr (SECURITY: only use behind trusted reverse proxy).
+
 ## Key Technical Details
 
 - **Template Buffering**: Render templates to `bytes.Buffer` first, write to ResponseWriter only on success. Prevents partial HTML on template errors.
@@ -125,6 +127,8 @@ The application follows a layered architecture:
 - **Graceful Degradation**: Non-critical data fetches (LP shares, operations) should log errors and continue with nil/empty data, not fail the entire page render.
 - **Template Block Override Pattern**: Use `{{block "name" .}}default{{end}}` in base.html for values that child templates can override (e.g., SEO meta tags). Child templates define `{{define "name"}}custom value{{end}}`.
 - **Static Files**: Embedded in `internal/static/` using `//go:embed`. Served via `handler.RegisterStaticRoutes()`. Add new static files to embed directive in `static.go`.
+- **Cache-Control Strategy**: Static images (favicon, og-image) cached for 1 year with immutable flag. robots.txt cached for 1 day. Swagger docs cached for 1 hour. Init forms (GET) cached for 1 hour. API endpoints cached for 1 minute with must-revalidate. HTML pages cached for 5 minutes with must-revalidate. POST/PUT/DELETE requests use no-store. Middleware applies headers before rate limiting to optimize performance.
+- **Rate Limiting**: Per-IP sliding window algorithm with 1-minute window. Default limit: 100 requests/minute (configurable via `--rate-limit`/`RATE_LIMIT`). Static files bypass rate limiting. Returns HTTP 429 with Retry-After header on limit exceeded. Background cleanup goroutine removes expired entries every minute. MUST call `Close()` on shutdown to prevent goroutine leaks.
 
 ## Stellar Account Data Keys
 
