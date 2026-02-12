@@ -60,11 +60,11 @@ func TestNew(t *testing.T) {
 
 func TestExtractIP(t *testing.T) {
 	tests := []struct {
-		name           string
-		remoteAddr     string
-		xForwardedFor  string
-		xRealIP        string
-		expectedIP     string
+		name          string
+		remoteAddr    string
+		xForwardedFor string
+		xRealIP       string
+		expectedIP    string
 	}{
 		{
 			name:       "RemoteAddr only",

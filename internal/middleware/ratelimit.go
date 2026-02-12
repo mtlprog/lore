@@ -17,13 +17,13 @@ const (
 
 // RateLimiter wraps an http.Handler with rate limiting per IP address.
 type RateLimiter struct {
-	limit       int                      // Maximum requests per window
-	window      time.Duration            // Time window for rate limiting
-	requests    map[string][]time.Time   // IP -> request timestamps
-	mu          sync.RWMutex             // Thread-safe access
-	cleanupDone chan struct{}            // Shutdown signal for cleanup goroutine
-	closeOnce   sync.Once                // Ensures Close() is called only once
-	staticPaths map[string]bool          // Paths that bypass rate limiting
+	limit       int                    // Maximum requests per window
+	window      time.Duration          // Time window for rate limiting
+	requests    map[string][]time.Time // IP -> request timestamps
+	mu          sync.RWMutex           // Thread-safe access
+	cleanupDone chan struct{}          // Shutdown signal for cleanup goroutine
+	closeOnce   sync.Once              // Ensures Close() is called only once
+	staticPaths map[string]bool        // Paths that bypass rate limiting
 }
 
 // New creates a new rate limiter with the given limit and static paths to bypass.
