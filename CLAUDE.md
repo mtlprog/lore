@@ -107,7 +107,8 @@ The application follows a layered architecture:
 - **Numbered Fields**: Account metadata like websites use numbered keys (Website0, Website1) parsed and sorted by `parseNumberedDataKeys()`
 - **Tag Fields**: Account tags use `Tag*` prefix keys (TagBelgrade, TagProgrammer) parsed by `parseTagKeys()`. Value is account ID (ignored for display).
 - **AND Filtering Pattern**: For requiring all values match, use `GROUP BY + HAVING COUNT(DISTINCT column) = N` in subqueries.
-- **Configuration**: Port via `--port`/`PORT`, Horizon URL via `--horizon-url`/`HORIZON_URL`, log level via `--log-level`/`LOG_LEVEL` (debug, info, warn, error), database URL via `--database-url`/`DATABASE_URL` (required)
+- **Configuration**: Port via `--port`/`PORT`, Horizon URL via `--horizon-url`/`HORIZON_URL`, log level via `--log-level`/`LOG_LEVEL` (debug, info, warn, error), database URL via `--database-url`/`DATABASE_URL` (required), rate limit via `--rate-limit`/`RATE_LIMIT` (default: 100)
+- **Environment Variable Defaults**: CRITICAL - Always provide fallback defaults for env vars/CLI flags. IntFlag/StringFlag return zero values when not set. Check for zero/empty and use `config.Default*` constants. Example: `if rateLimit <= 0 { rateLimit = config.DefaultRateLimit }`. Production crashes without defaults.
 - **Logging**: Uses `log/slog` with JSON output and source location. Log levels: `info` for lifecycle events, `error` for unexpected failures (not expected errors like 404), `debug` for troubleshooting
 - **Token Constants**: Defined in `internal/config/config.go` (MTLAP, MTLAC, issuer address)
 - **Template Inheritance**: Each page template must be cloned from base separately (see `template.go`). Using `ParseFS` with multiple templates defining the same block causes overwrites.
