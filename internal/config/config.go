@@ -24,4 +24,7 @@ const (
 
 	// DefaultPageLimit is the default number of accounts per page.
 	DefaultPageLimit = 20
+
+	// DefaultRateLimit is the default requests per minute per IP address.
+	DefaultRateLimit = 100
 )
