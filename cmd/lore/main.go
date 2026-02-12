@@ -21,6 +21,7 @@ import (
 	"github.com/mtlprog/lore/internal/database"
 	"github.com/mtlprog/lore/internal/handler"
 	"github.com/mtlprog/lore/internal/logger"
+	"github.com/mtlprog/lore/internal/middleware"
 	"github.com/mtlprog/lore/internal/repository"
 	"github.com/mtlprog/lore/internal/reputation"
 	"github.com/mtlprog/lore/internal/service"
@@ -74,6 +75,13 @@ func main() {
 						Value:   config.DefaultPort,
 						Usage:   "HTTP server port",
 						EnvVars: []string{"PORT"},
+					},
+					&cli.IntFlag{
+						Name:    "rate-limit",
+						Aliases: []string{"r"},
+						Value:   config.DefaultRateLimit,
+						Usage:   "Maximum requests per minute per IP address",
+						EnvVars: []string{"RATE_LIMIT"},
 					},
 				},
 				Action: runServe,
@@ -155,9 +163,28 @@ func runServe(c *cli.Context) error {
 	))
 	handler.RegisterStaticRoutes(mux, static.Handler())
 
+	// Setup rate limiter
+	staticPaths := []string{
+		"/favicon.svg",
+		"/og-image.svg",
+		"/og-image.png",
+		"/favicon-32x32.png",
+		"/favicon-16x16.png",
+		"/apple-touch-icon.png",
+		"/skill.md",
+		"/robots.txt",
+	}
+
+	rateLimit := c.Int("rate-limit")
+	limiter, err := middleware.New(rateLimit, staticPaths)
+	if err != nil {
+		return fmt.Errorf("failed to create rate limiter: %w", err)
+	}
+	defer limiter.Close()
+
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      mux,
+		Handler:      limiter.Middleware(mux),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
