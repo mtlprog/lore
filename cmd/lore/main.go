@@ -176,6 +176,9 @@ func runServe(c *cli.Context) error {
 	}
 
 	rateLimit := c.Int("rate-limit")
+	if rateLimit <= 0 {
+		rateLimit = config.DefaultRateLimit
+	}
 	limiter, err := middleware.New(rateLimit, staticPaths)
 	if err != nil {
 		return fmt.Errorf("failed to create rate limiter: %w", err)
