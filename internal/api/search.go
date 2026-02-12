@@ -50,7 +50,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 
 	// Validate query length
 	if len(query) > 100 {
-		writeError(w, http.StatusBadRequest, "search query too long (max 100 characters)")
+		h.writeError(w, http.StatusBadRequest, "search query too long (max 100 characters)")
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 
 	// If no query and no tags, return empty result
 	if query == "" && len(tags) == 0 {
-		writeJSON(w, http.StatusOK, PaginatedResponse{
+		h.writeJSON(w, http.StatusOK, PaginatedResponse{
 			Data: []AccountListItem{},
 			Pagination: Pagination{
 				Limit:  limit,
@@ -78,14 +78,14 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	totalCount, err := h.accounts.CountSearchAccounts(ctx, query, tags)
 	if err != nil {
 		slog.Error("api: failed to count search results", "query", query, "tags", tags, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to search accounts")
+		h.writeError(w, http.StatusInternalServerError, "failed to search accounts")
 		return
 	}
 
 	rows, err := h.accounts.SearchAccounts(ctx, query, tags, limit, offset, repoSort)
 	if err != nil {
 		slog.Error("api: failed to search accounts", "query", query, "tags", tags, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to search accounts")
+		h.writeError(w, http.StatusInternalServerError, "failed to search accounts")
 		return
 	}
 
@@ -108,7 +108,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 
-	writeJSON(w, http.StatusOK, PaginatedResponse{
+	h.writeJSON(w, http.StatusOK, PaginatedResponse{
 		Data: items,
 		Pagination: Pagination{
 			Limit:  limit,

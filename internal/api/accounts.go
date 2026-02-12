@@ -52,17 +52,17 @@ func (h *Handler) ListAccounts(w http.ResponseWriter, r *http.Request) {
 	case "":
 		items, total, err = h.listAll(ctx, limit, offset)
 	default:
-		writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid type: %s (valid: person, corporate, synthetic)", accountType))
+		h.writeError(w, http.StatusBadRequest, fmt.Sprintf("invalid type: %s (valid: person, corporate, synthetic)", accountType))
 		return
 	}
 
 	if err != nil {
 		slog.Error("api: failed to list accounts", "type", accountType, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to list accounts")
+		h.writeError(w, http.StatusInternalServerError, "failed to list accounts")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, PaginatedResponse{
+	h.writeJSON(w, http.StatusOK, PaginatedResponse{
 		Data: items,
 		Pagination: Pagination{
 			Limit:  limit,
@@ -200,7 +200,7 @@ func (h *Handler) listAll(ctx context.Context, limit, offset int) ([]AccountList
 //	@Router			/api/v1/accounts/{id} [get]
 func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	accountID, ok := validateAccountID(w, r)
+	accountID, ok := h.validateAccountID(w, r)
 	if !ok {
 		return
 	}
@@ -209,11 +209,11 @@ func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 	exists, err := h.accounts.AccountExists(ctx, accountID)
 	if err != nil {
 		slog.Error("api: failed to check account existence", "account_id", accountID, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to fetch account")
+		h.writeError(w, http.StatusInternalServerError, "failed to fetch account")
 		return
 	}
 	if !exists {
-		writeError(w, http.StatusNotFound, "account not found")
+		h.writeError(w, http.StatusNotFound, "account not found")
 		return
 	}
 
@@ -221,7 +221,7 @@ func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 	meta, err := h.accounts.GetAccountMetadata(ctx, accountID)
 	if err != nil {
 		slog.Error("api: failed to fetch account metadata", "account_id", accountID, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to fetch account")
+		h.writeError(w, http.StatusInternalServerError, "failed to fetch account")
 		return
 	}
 
@@ -229,7 +229,7 @@ func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 	accountInfo, err := h.accounts.GetAccountInfo(ctx, accountID)
 	if err != nil {
 		slog.Error("api: failed to fetch account info", "account_id", accountID, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to fetch account")
+		h.writeError(w, http.StatusInternalServerError, "failed to fetch account")
 		return
 	}
 
@@ -345,7 +345,7 @@ func (h *Handler) GetAccount(w http.ResponseWriter, r *http.Request) {
 		resp.Categories = convertCategories(categories)
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	h.writeJSON(w, http.StatusOK, resp)
 }
 
 func convertCategories(categories []model.RelationshipCategory) []RelationshipCategoryResponse {

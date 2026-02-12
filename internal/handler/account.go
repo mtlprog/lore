@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -163,8 +162,10 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 		ReputationScore: reputationScore,
 	}
 
-	var buf bytes.Buffer
-	if err := h.tmpl.Render(&buf, "account.html", data); err != nil {
+	buf := h.getBuffer()
+	defer h.putBuffer(buf)
+
+	if err := h.tmpl.Render(buf, "account.html", data); err != nil {
 		slog.Error("failed to render account template", "account_id", accountID, "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return

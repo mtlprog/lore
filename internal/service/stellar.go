@@ -81,15 +81,24 @@ func (c *cache) Set(key string, data interface{}) {
 
 // StellarService provides access to Stellar network data.
 type StellarService struct {
-	client    *horizonclient.Client
-	nftCache  *cache // Caches NFT metadata (1 hour TTL)
-	tomlCache *cache // Caches stellar.toml content (1 hour TTL)
+	client     *horizonclient.Client
+	httpClient *http.Client // Shared HTTP client for external requests
+	nftCache   *cache       // Caches NFT metadata (1 hour TTL)
+	tomlCache  *cache       // Caches stellar.toml content (1 hour TTL)
 }
 
 // NewStellarService creates a new Stellar service with the given Horizon URL.
 func NewStellarService(horizonURL string) *StellarService {
 	return &StellarService{
-		client:    &horizonclient.Client{HorizonURL: horizonURL},
+		client: &horizonclient.Client{HorizonURL: horizonURL},
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				MaxIdleConns:        100,
+				MaxIdleConnsPerHost: 10,
+				IdleConnTimeout:     90 * time.Second,
+			},
+		},
 		nftCache:  newCache(1 * time.Hour),
 		tomlCache: newCache(1 * time.Hour),
 	}
@@ -731,8 +740,7 @@ func (s *StellarService) GetIssuerNFTMetadata(ctx context.Context, issuerID, ass
 	}
 
 	// Fetch metadata from IPFS
-	httpClient := &http.Client{Timeout: 10 * time.Second}
-	resp, err := httpClient.Get(ipfsGateway + ipfsHash)
+	resp, err := s.httpClient.Get(ipfsGateway + ipfsHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch IPFS metadata: %w", err)
 	}
@@ -824,9 +832,8 @@ func (s *StellarService) FetchStellarToml(ctx context.Context, homeDomain string
 		// Treat as cache miss and continue with fresh fetch
 	}
 
-	httpClient := &http.Client{Timeout: 10 * time.Second}
 	url := "https://" + homeDomain + "/.well-known/stellar.toml"
-	resp, err := httpClient.Get(url)
+	resp, err := s.httpClient.Get(url)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to fetch stellar.toml: %w", err)
 	}

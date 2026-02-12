@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -18,8 +17,10 @@ func (h *Handler) InitLanding(w http.ResponseWriter, r *http.Request) {
 		Page: "landing",
 	}
 
-	var buf bytes.Buffer
-	if err := h.tmpl.Render(&buf, "init.html", data); err != nil {
+	buf := h.getBuffer()
+	defer h.putBuffer(buf)
+
+	if err := h.tmpl.Render(buf, "init.html", data); err != nil {
 		slog.Error("failed to render init landing", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -245,8 +246,10 @@ func (h *Handler) renderParticipantForm(w http.ResponseWriter, form model.Partic
 		PreviewAction: "/init/participant",
 	}
 
-	var buf bytes.Buffer
-	if err := h.tmpl.Render(&buf, "init.html", data); err != nil {
+	buf := h.getBuffer()
+	defer h.putBuffer(buf)
+
+	if err := h.tmpl.Render(buf, "init.html", data); err != nil {
 		slog.Error("failed to render participant form", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -271,8 +274,10 @@ func (h *Handler) renderCorporateForm(w http.ResponseWriter, form model.Corporat
 		PreviewAction: "/init/corporate",
 	}
 
-	var buf bytes.Buffer
-	if err := h.tmpl.Render(&buf, "init.html", data); err != nil {
+	buf := h.getBuffer()
+	defer h.putBuffer(buf)
+
+	if err := h.tmpl.Render(buf, "init.html", data); err != nil {
 		slog.Error("failed to render corporate form", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -325,8 +330,10 @@ func (h *Handler) previewParticipant(w http.ResponseWriter, r *http.Request, ori
 		LabLink:    service.BuildLabLink(xdr),
 	}
 
-	var buf bytes.Buffer
-	if err := h.tmpl.Render(&buf, "init.html", data); err != nil {
+	buf := h.getBuffer()
+	defer h.putBuffer(buf)
+
+	if err := h.tmpl.Render(buf, "init.html", data); err != nil {
 		slog.Error("failed to render preview", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -379,8 +386,10 @@ func (h *Handler) previewCorporate(w http.ResponseWriter, r *http.Request, origi
 		LabLink:    service.BuildLabLink(xdr),
 	}
 
-	var buf bytes.Buffer
-	if err := h.tmpl.Render(&buf, "init.html", data); err != nil {
+	buf := h.getBuffer()
+	defer h.putBuffer(buf)
+
+	if err := h.tmpl.Render(buf, "init.html", data); err != nil {
 		slog.Error("failed to render preview", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return

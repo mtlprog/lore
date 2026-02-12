@@ -25,7 +25,7 @@ import (
 //	@Router			/api/v1/accounts/{id}/relationships [get]
 func (h *Handler) GetRelationships(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	accountID, ok := validateAccountID(w, r)
+	accountID, ok := h.validateAccountID(w, r)
 	if !ok {
 		return
 	}
@@ -33,11 +33,11 @@ func (h *Handler) GetRelationships(w http.ResponseWriter, r *http.Request) {
 	exists, err := h.accounts.AccountExists(ctx, accountID)
 	if err != nil {
 		slog.Error("api: failed to check account existence", "account_id", accountID, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to check account")
+		h.writeError(w, http.StatusInternalServerError, "failed to check account")
 		return
 	}
 	if !exists {
-		writeError(w, http.StatusNotFound, "account not found")
+		h.writeError(w, http.StatusNotFound, "account not found")
 		return
 	}
 
@@ -48,7 +48,7 @@ func (h *Handler) GetRelationships(w http.ResponseWriter, r *http.Request) {
 	relationships, err := h.accounts.GetRelationships(ctx, accountID)
 	if err != nil {
 		slog.Error("api: failed to fetch relationships", "account_id", accountID, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to fetch relationships")
+		h.writeError(w, http.StatusInternalServerError, "failed to fetch relationships")
 		return
 	}
 
@@ -80,5 +80,5 @@ func (h *Handler) GetRelationships(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	h.writeJSON(w, http.StatusOK, resp)
 }

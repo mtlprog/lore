@@ -199,6 +199,7 @@ func runServe(c *cli.Context) error {
 	serverErr := make(chan error, 1)
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(done)
 
 	go func() {
 		slog.Info("starting server", "server_addr", "http://localhost:"+port)

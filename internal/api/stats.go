@@ -18,11 +18,11 @@ func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.accounts.GetStats(r.Context())
 	if err != nil {
 		slog.Error("api: failed to fetch stats", "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to fetch stats")
+		h.writeError(w, http.StatusInternalServerError, "failed to fetch stats")
 		return
 	}
 
-	writeJSON(w, http.StatusOK, StatsResponse{
+	h.writeJSON(w, http.StatusOK, StatsResponse{
 		TotalAccounts:  stats.TotalAccounts,
 		TotalPersons:   stats.TotalPersons,
 		TotalCompanies: stats.TotalCompanies,

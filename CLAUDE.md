@@ -103,6 +103,9 @@ The application follows a layered architecture:
 ## Key Technical Details
 
 - **Template Buffering**: Render templates to `bytes.Buffer` first, write to ResponseWriter only on success. Prevents partial HTML on template errors.
+- **Resource Pooling**: Use `sync.Pool` for objects created on hot paths. Handler has `bufferPool` for bytes.Buffer reuse via `getBuffer()`/`putBuffer()`. API handler has same pattern for JSON encoding. Prevents GC pressure from per-request allocations.
+- **HTTP Client Reuse**: NEVER create `&http.Client{}` in request handlers or frequently-called functions. StellarService has shared `httpClient` field with connection pooling (`MaxIdleConns: 100, MaxIdleConnsPerHost: 10`). Creating clients per-request causes memory/connection leaks.
+- **Buffer Pool Pattern**: Handlers use `buf := h.getBuffer(); defer h.putBuffer(buf)` for template rendering. API uses same for JSON encoding. Always call `buf.Reset()` before returning to pool.
 - **Stellar Metadata**: Account data is stored in base64 on Stellar; the service layer decodes transparently
 - **Stellar SDK Types**: `horizon.Balance` embeds `base.Asset`, so prefer `bal.Code` over `bal.Asset.Code` (staticcheck QF1008). Import `base` package when writing tests.
 - **Pagination**: Offset-based pagination for database queries, passed as `persons_offset` and `corporate_offset` query params. Horizon API uses cursor-based pagination for account detail pages.
@@ -240,6 +243,9 @@ lop.Filter(slice, func(x T, _ int) bool { ... })              // Parallel filter
 - `internal/handler/*_test.go` - HTTP handlers using mockery-generated mocks
 - `internal/reputation/*_test.go` - reputation calculator and types
 - Use table-driven tests with `t.Run()` for edge cases
+
+### Memory Leak Debugging
+- Check for per-request object creation (HTTP clients, buffers, maps). Use `grep "http\.Client{" "bytes\.Buffer"` to find allocations. Look for missing `defer Close()`, `defer Stop()`, or missing cleanup goroutines.
 
 ### Mocking with mockery
 - Config in `.mockery.yaml`, regenerate with `mockery` or `go generate ./internal/handler/`

@@ -23,7 +23,7 @@ import (
 //	@Router			/api/v1/accounts/{id}/reputation [get]
 func (h *Handler) GetReputation(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	accountID, ok := validateAccountID(w, r)
+	accountID, ok := h.validateAccountID(w, r)
 	if !ok {
 		return
 	}
@@ -31,23 +31,23 @@ func (h *Handler) GetReputation(w http.ResponseWriter, r *http.Request) {
 	exists, err := h.accounts.AccountExists(ctx, accountID)
 	if err != nil {
 		slog.Error("api: failed to check account existence", "account_id", accountID, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to check account")
+		h.writeError(w, http.StatusInternalServerError, "failed to check account")
 		return
 	}
 	if !exists {
-		writeError(w, http.StatusNotFound, "account not found")
+		h.writeError(w, http.StatusNotFound, "account not found")
 		return
 	}
 
 	if h.reputation == nil {
-		writeError(w, http.StatusServiceUnavailable, "reputation feature not available")
+		h.writeError(w, http.StatusServiceUnavailable, "reputation feature not available")
 		return
 	}
 
 	graph, err := h.reputation.GetGraph(ctx, accountID)
 	if err != nil {
 		slog.Error("api: failed to fetch reputation graph", "account_id", accountID, "error", err)
-		writeError(w, http.StatusInternalServerError, "failed to fetch reputation data")
+		h.writeError(w, http.StatusInternalServerError, "failed to fetch reputation data")
 		return
 	}
 
@@ -65,7 +65,7 @@ func (h *Handler) GetReputation(w http.ResponseWriter, r *http.Request) {
 			Level1Nodes:     []ReputationNodeResponse{},
 			Level2Nodes:     []ReputationNodeResponse{},
 		}
-		writeJSON(w, http.StatusOK, resp)
+		h.writeJSON(w, http.StatusOK, resp)
 		return
 	}
 
@@ -81,7 +81,7 @@ func (h *Handler) GetReputation(w http.ResponseWriter, r *http.Request) {
 		}),
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	h.writeJSON(w, http.StatusOK, resp)
 }
 
 func convertReputationNode(n model.ReputationNode) ReputationNodeResponse {

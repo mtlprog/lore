@@ -3,10 +3,12 @@
 package handler
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/mtlprog/lore/internal/model"
 	"github.com/mtlprog/lore/internal/repository"
@@ -59,6 +61,7 @@ type Handler struct {
 	accounts   AccountQuerier
 	reputation ReputationQuerier
 	tmpl       TemplateRenderer
+	bufferPool *sync.Pool // Pool of bytes.Buffer for template rendering
 }
 
 // New creates a new Handler with the given dependencies.
@@ -79,7 +82,23 @@ func New(stellar StellarServicer, accounts AccountQuerier, reputation Reputation
 		accounts:   accounts,
 		reputation: reputation,
 		tmpl:       tmpl,
+		bufferPool: &sync.Pool{
+			New: func() interface{} {
+				return new(bytes.Buffer)
+			},
+		},
 	}, nil
+}
+
+// getBuffer retrieves a buffer from the pool.
+func (h *Handler) getBuffer() *bytes.Buffer {
+	return h.bufferPool.Get().(*bytes.Buffer)
+}
+
+// putBuffer returns a buffer to the pool after resetting it.
+func (h *Handler) putBuffer(buf *bytes.Buffer) {
+	buf.Reset()
+	h.bufferPool.Put(buf)
 }
 
 // RegisterRoutes registers all HTTP routes on the given mux.

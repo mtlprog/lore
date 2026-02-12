@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"log/slog"
 	"net/http"
 
@@ -69,8 +68,10 @@ func (h *Handler) Transaction(w http.ResponseWriter, r *http.Request) {
 		AccountNames: accountNames,
 	}
 
-	var buf bytes.Buffer
-	if err := h.tmpl.Render(&buf, "transaction.html", data); err != nil {
+	buf := h.getBuffer()
+	defer h.putBuffer(buf)
+
+	if err := h.tmpl.Render(buf, "transaction.html", data); err != nil {
 		slog.Error("failed to render transaction template", "tx_hash", txHash, "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
