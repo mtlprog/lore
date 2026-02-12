@@ -185,9 +185,12 @@ func runServe(c *cli.Context) error {
 	}
 	defer limiter.Close()
 
+	// Apply middleware chain: Cache-Control -> Rate Limiter -> Router
+	handler := middleware.CacheControl(limiter.Middleware(mux))
+
 	server := &http.Server{
 		Addr:         ":" + port,
-		Handler:      limiter.Middleware(mux),
+		Handler:      handler,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
