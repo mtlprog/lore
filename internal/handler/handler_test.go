@@ -1197,6 +1197,71 @@ func TestCollectAccountIDs(t *testing.T) {
 	})
 }
 
+func TestCollectGroupAccountIDs(t *testing.T) {
+	stellarID := "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567890ABCDEFGHIJKLMNOPQRST" // 56 chars
+
+	t.Run("empty groups returns empty slice", func(t *testing.T) {
+		result := collectGroupAccountIDs(nil)
+		assert.Empty(t, result)
+	})
+
+	t.Run("collects from group-level SourceAccount", func(t *testing.T) {
+		groups := []model.TransactionGroup{
+			{SourceAccount: "GFEEPAYER", Operations: []model.Operation{{From: "GA", To: "GB"}}},
+		}
+		result := collectGroupAccountIDs(groups)
+		assert.Contains(t, result, "GFEEPAYER")
+		assert.Contains(t, result, "GA")
+		assert.Contains(t, result, "GB")
+		assert.Len(t, result, 3)
+	})
+
+	t.Run("deduplicates across groups and ops", func(t *testing.T) {
+		groups := []model.TransactionGroup{
+			{
+				SourceAccount: "GSHARED",
+				Operations: []model.Operation{
+					{From: "GSHARED", To: "GB"}, // GSHARED duplicates with group source
+				},
+			},
+			{
+				SourceAccount: "GSHARED", // duplicates across groups
+				Operations: []model.Operation{
+					{From: "GC", To: "GB"}, // GB duplicates across groups
+				},
+			},
+		}
+		result := collectGroupAccountIDs(groups)
+		assert.Len(t, result, 3)
+		assert.Contains(t, result, "GSHARED")
+		assert.Contains(t, result, "GB")
+		assert.Contains(t, result, "GC")
+	})
+
+	t.Run("collects Stellar-shaped DataValue but skips non-ID strings", func(t *testing.T) {
+		groups := []model.TransactionGroup{
+			{
+				Operations: []model.Operation{
+					{DataValue: stellarID},
+					{DataValue: "not-a-stellar-id"},
+				},
+			},
+		}
+		result := collectGroupAccountIDs(groups)
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, stellarID)
+	})
+
+	t.Run("skips empty SourceAccount", func(t *testing.T) {
+		groups := []model.TransactionGroup{
+			{SourceAccount: "", Operations: []model.Operation{{From: "GA"}}},
+		}
+		result := collectGroupAccountIDs(groups)
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, "GA")
+	})
+}
+
 // isStellarAccountID tests
 
 func TestIsStellarAccountID(t *testing.T) {

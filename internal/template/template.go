@@ -110,6 +110,11 @@ var funcMap = template.FuncMap{
 	"containsTag": func(tags []string, tag string) bool {
 		return lo.Contains(tags, tag)
 	},
+	// dict builds a map[string]interface{} from alternating key/value pairs, for passing
+	// multiple named args into a sub-template (Go templates only allow one dot argument).
+	// Example: {{template "op-body" dict "op" $op "names" $names}}
+	// Errors are returned (not panicked) so template execution surfaces them via the
+	// normal Render error path — the handler logs and returns 500.
 	"dict": func(values ...interface{}) (map[string]interface{}, error) {
 		if len(values)%2 != 0 {
 			return nil, fmt.Errorf("dict requires even number of arguments, got %d", len(values))

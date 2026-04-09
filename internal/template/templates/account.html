@@ -213,7 +213,7 @@
     </div>
 </div>
 
-{{if and .TxGroups (gt (len .TxGroups.Groups) 0)}}
+{{if or .TxGroupsError (and .TxGroups (gt (len .TxGroups.Groups) 0))}}
 {{$names := .AccountNames}}
 {{$accountID := .Account.ID}}
 <div id="operations" class="section ops-section">
@@ -222,6 +222,11 @@
         <span class="section-count">Newest first</span>
     </div>
 
+    {{if .TxGroupsError}}
+    <div class="ops-error">{{.TxGroupsError}}</div>
+    {{end}}
+
+    {{if and .TxGroups (gt (len .TxGroups.Groups) 0)}}
     <div class="ops-list">
         {{range .TxGroups.Groups}}
         {{$opCount := len .Operations}}
@@ -229,14 +234,19 @@
         {{$hash := .Hash}}
         {{$memo := .Memo}}
         {{$memoType := .MemoType}}
+        {{$successful := .Successful}}
+        {{$partial := .Partial}}
+        {{$source := .SourceAccount}}
         {{$first := index .Operations 0}}
         {{if gt $opCount 1}}
-        <details class="op-group">
+        <details class="op-group{{if not $successful}} op-group-failed{{end}}">
             <summary class="op-row op-group-summary">
                 <span class="op-group-chevron">▸</span>
                 <span class="op-time">{{$first.CreatedAt}}</span>
                 <span class="op-type op-{{$first.TypeCategory}}">{{$first.TypeDisplay}}</span>
                 <span class="op-summary">{{template "op-body" dict "op" $first "names" $names}}</span>
+                {{if not $successful}}<span class="op-group-failed-badge">FAILED</span>{{end}}
+                {{if $partial}}<span class="op-group-partial-badge">PARTIAL</span>{{end}}
                 <span class="op-group-more">+{{add $opCount -1}} more</span>
             </summary>
             <div class="op-group-extra">
@@ -244,6 +254,13 @@
                     {{if and $memo (ne $memoType "none")}}
                     <span class="op-memo-label">MEMO</span>
                     <span class="op-memo-value">{{$memo}}</span>
+                    {{end}}
+                    {{if and $source (ne $source $accountID)}}
+                    <span class="op-memo-label">SRC</span>
+                    <a href="/accounts/{{$source}}" class="op-account-link">{{accountDisplay $source $names}}</a>
+                    {{end}}
+                    {{if $partial}}
+                    <span class="op-group-partial-note">partial view — more ops in this transaction on the next page</span>
                     {{end}}
                     <a href="/transactions/{{$hash}}#operations" class="op-group-tx-link">view tx →</a>
                 </div>
@@ -258,10 +275,11 @@
             </div>
         </details>
         {{else}}
-        <a href="/transactions/{{$hash}}#operations" class="op-row">
+        <a href="/transactions/{{$hash}}#operations" class="op-row{{if not $successful}} op-row-failed{{end}}">
             <span class="op-time">{{$first.CreatedAt}}</span>
             <span class="op-type op-{{$first.TypeCategory}}">{{$first.TypeDisplay}}</span>
             <span class="op-summary">{{template "op-body" dict "op" $first "names" $names}}</span>
+            {{if not $successful}}<span class="op-group-failed-badge">FAILED</span>{{end}}
             <span class="op-arrow">▶</span>
         </a>
         {{end}}{{/* multi-vs-single */}}
@@ -274,33 +292,46 @@
         <a href="/accounts/{{$accountID}}?ops_cursor={{.TxGroups.NextCursor}}#operations" class="btn">Load More</a>
     </div>
     {{end}}
+    {{end}}{{/* Groups non-empty */}}
 </div>
 {{end}}
 {{end}}
 
 {{/*
-    op-body renders a single operation's inline summary. For payment-like ops where the
-    viewer is a party (.Direction set), prepends an IN/OUT badge and shows only the counterparty.
-    Otherwise falls back to a type-specific description with both sides of any flow.
+    op-amount renders the type-specific numeric amount fragment for an op. Shared by op-body
+    in both the direction-annotated (viewer-relative) and direction-absent branches.
+    For account_merge there is no fixed amount (the full balance moves) so we emit a note.
 */}}
 {{define "op-amount"}}
 {{- $op := .op -}}
 {{- if eq $op.Type "payment" -}}<span class="op-amount-inline">{{$op.Amount}} {{$op.AssetCode}}</span>
 {{- else if eq $op.Type "create_account" -}}<span class="op-amount-inline">{{$op.StartingBalance}} XLM</span>
 {{- else if or (eq $op.Type "path_payment_strict_send") (eq $op.Type "path_payment_strict_receive") -}}<span class="op-amount-inline">{{$op.SourceAmount}} {{$op.SourceAsset}} → {{$op.DestAmount}} {{$op.DestAsset}}</span>
+{{- else if eq $op.Type "account_merge" -}}<span class="op-amount-inline op-note">(full balance)</span>
 {{- end -}}
 {{end}}
 
+{{/*
+    op-body renders a single operation's inline summary. For payment-like ops where the
+    viewer is a party (.Direction set), prepends an IN/OUT/SELF badge and shows only the
+    counterparty (or "self" for DirectionSelf). Otherwise falls back to a type-specific
+    description with both sides of any flow.
+*/}}
 {{define "op-body"}}
 {{$op := .op}}{{$names := .names}}
 {{- if $op.Direction -}}
-    <span class="op-dir op-dir-{{$op.Direction}}">{{if eq $op.Direction "in"}}↓ IN{{else}}↑ OUT{{end}}</span>
+    {{- if eq $op.Direction "in" -}}<span class="op-dir op-dir-in">↓ IN</span>
+    {{- else if eq $op.Direction "out" -}}<span class="op-dir op-dir-out">↑ OUT</span>
+    {{- else if eq $op.Direction "self" -}}<span class="op-dir op-dir-self">↻ SELF</span>
+    {{- end}}
     {{template "op-amount" (dict "op" $op)}}
-    {{if eq $op.Direction "in"}}from{{else}}to{{end}}
-    <a href="/accounts/{{$op.Counterparty}}" class="op-account-link">{{accountDisplay $op.Counterparty $names}}</a>
+    {{if eq $op.Direction "in"}}from <a href="/accounts/{{$op.Counterparty}}" class="op-account-link">{{accountDisplay $op.Counterparty $names}}</a>
+    {{- else if eq $op.Direction "out"}}to <a href="/accounts/{{$op.Counterparty}}" class="op-account-link">{{accountDisplay $op.Counterparty $names}}</a>
+    {{- else if eq $op.Direction "self"}}(self){{end}}
 {{- else if or (eq $op.Type "payment") (eq $op.Type "create_account") (eq $op.Type "path_payment_strict_send") (eq $op.Type "path_payment_strict_receive") -}}
     {{template "op-amount" (dict "op" $op)}}
-    {{if and $op.From $op.To}}<a href="/accounts/{{$op.From}}" class="op-account-link">{{accountDisplay $op.From $names}}</a> → <a href="/accounts/{{$op.To}}" class="op-account-link">{{accountDisplay $op.To $names}}</a>{{end}}
+    {{if and $op.From $op.To}}<a href="/accounts/{{$op.From}}" class="op-account-link">{{accountDisplay $op.From $names}}</a> → <a href="/accounts/{{$op.To}}" class="op-account-link">{{accountDisplay $op.To $names}}</a>
+    {{- else}}<span class="op-note">(missing party)</span>{{end}}
 {{- else if eq $op.Type "change_trust" -}}
     {{$op.AssetCode}}{{if eq $op.TrustLimit "0"}} (remove){{end}}
 {{- else if eq $op.Type "manage_data" -}}

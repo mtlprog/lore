@@ -31,6 +31,37 @@ func TestAdd(t *testing.T) {
 	}
 }
 
+func TestDict(t *testing.T) {
+	dict := funcMap["dict"].(func(...interface{}) (map[string]interface{}, error))
+
+	t.Run("builds map from alternating key/value pairs", func(t *testing.T) {
+		got, err := dict("op", "payment", "names", map[string]string{"a": "b"})
+		require.NoError(t, err)
+		assert.Equal(t, "payment", got["op"])
+		assert.Equal(t, map[string]string{"a": "b"}, got["names"])
+	})
+
+	t.Run("empty args produces empty map", func(t *testing.T) {
+		got, err := dict()
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("odd number of args returns error", func(t *testing.T) {
+		got, err := dict("op")
+		assert.Nil(t, got)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "even number")
+	})
+
+	t.Run("non-string key returns error", func(t *testing.T) {
+		got, err := dict(42, "value")
+		assert.Nil(t, got)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "keys must be strings")
+	})
+}
+
 func TestTruncate(t *testing.T) {
 	truncate := funcMap["truncate"].(func(string, int) string)
 
@@ -448,6 +479,7 @@ func TestRender(t *testing.T) {
 					MemoType      string
 					Memo          string
 					Successful    bool
+					Partial       bool
 					Operations    []struct {
 						ID              string
 						Type            string
@@ -460,6 +492,7 @@ func TestRender(t *testing.T) {
 				NextCursor string
 				HasMore    bool
 			}
+			TxGroupsError   string
 			AccountNames    map[string]string
 			ReputationScore *struct {
 				WeightedScore float64
@@ -579,6 +612,7 @@ func TestRender(t *testing.T) {
 		data := struct {
 			Account         *model.AccountDetail
 			TxGroups        *model.TransactionGroupsPage
+			TxGroupsError   string
 			AccountNames    map[string]string
 			ReputationScore *model.ReputationScore
 		}{
@@ -593,10 +627,11 @@ func TestRender(t *testing.T) {
 				Groups: []model.TransactionGroup{
 					{
 						// Multi-op group: sender of several payments
-						Hash:      "txhash1abcdef",
-						CreatedAt: "2026-04-09 12:00:00",
-						MemoType:  "text",
-						Memo:      "quarterly salary",
+						Hash:       "txhash1abcdef",
+						CreatedAt:  "2026-04-09 12:00:00",
+						MemoType:   "text",
+						Memo:       "quarterly salary",
+						Successful: true,
 						Operations: []model.Operation{
 							{
 								Type:            "payment",
@@ -628,8 +663,9 @@ func TestRender(t *testing.T) {
 					},
 					{
 						// Single-op group: incoming payment
-						Hash:      "txhash2ghijkl",
-						CreatedAt: "2026-04-09 11:30:00",
+						Hash:       "txhash2ghijkl",
+						CreatedAt:  "2026-04-09 11:30:00",
+						Successful: true,
 						Operations: []model.Operation{
 							{
 								Type:            "payment",
@@ -670,11 +706,159 @@ func TestRender(t *testing.T) {
 		assert.Contains(t, output, "Other Account")
 	})
 
+	t.Run("account template renders failed badge and no memo for multi-op groups", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Account         *model.AccountDetail
+			TxGroups        *model.TransactionGroupsPage
+			TxGroupsError   string
+			AccountNames    map[string]string
+			ReputationScore *model.ReputationScore
+		}{
+			Account: &model.AccountDetail{ID: "GVIEWER", Name: "V"},
+			AccountNames: map[string]string{
+				"GOTHER": "Other",
+			},
+			TxGroups: &model.TransactionGroupsPage{
+				Groups: []model.TransactionGroup{
+					{
+						Hash:       "txFail",
+						CreatedAt:  "2026-04-09 12:00:00",
+						MemoType:   "none",
+						Successful: false,
+						Operations: []model.Operation{
+							{
+								Type:            "payment",
+								TypeDisplay:     "Payment",
+								TypeCategory:    "payment",
+								CreatedAt:       "2026-04-09 12:00:00",
+								TransactionHash: "txFail",
+								From:            "GVIEWER",
+								To:              "GOTHER",
+								Amount:          "1",
+								AssetCode:       "EURMTL",
+								Direction:       model.DirectionOut,
+								Counterparty:    "GOTHER",
+							},
+							{
+								Type:            "payment",
+								TypeDisplay:     "Payment",
+								TypeCategory:    "payment",
+								CreatedAt:       "2026-04-09 12:00:00",
+								TransactionHash: "txFail",
+								From:            "GVIEWER",
+								To:              "GOTHER",
+								Amount:          "2",
+								AssetCode:       "EURMTL",
+								Direction:       model.DirectionOut,
+								Counterparty:    "GOTHER",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		err := tmpl.Render(&buf, "account.html", data)
+		require.NoError(t, err)
+
+		output := buf.String()
+		assert.Contains(t, output, "op-group-failed", "failed group class present")
+		assert.Contains(t, output, "FAILED", "failed badge text present")
+		// MemoType=none → no MEMO label should appear
+		assert.NotContains(t, output, ">MEMO<", "MEMO label suppressed when memo_type is none")
+	})
+
+	t.Run("account template renders partial badge for force-flushed group", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Account         *model.AccountDetail
+			TxGroups        *model.TransactionGroupsPage
+			TxGroupsError   string
+			AccountNames    map[string]string
+			ReputationScore *model.ReputationScore
+		}{
+			Account: &model.AccountDetail{ID: "GVIEWER", Name: "V"},
+			TxGroups: &model.TransactionGroupsPage{
+				Groups: []model.TransactionGroup{
+					{
+						Hash:       "txPartial",
+						CreatedAt:  "2026-04-09 12:00:00",
+						Successful: true,
+						Partial:    true,
+						MemoType:   "none",
+						Operations: []model.Operation{
+							{Type: "payment", TypeDisplay: "Payment", TypeCategory: "payment", TransactionHash: "txPartial", Amount: "1", AssetCode: "EURMTL", From: "GVIEWER", To: "GX", Direction: model.DirectionOut, Counterparty: "GX"},
+							{Type: "payment", TypeDisplay: "Payment", TypeCategory: "payment", TransactionHash: "txPartial", Amount: "2", AssetCode: "EURMTL", From: "GVIEWER", To: "GY", Direction: model.DirectionOut, Counterparty: "GY"},
+						},
+					},
+				},
+			},
+		}
+
+		err := tmpl.Render(&buf, "account.html", data)
+		require.NoError(t, err)
+		assert.Contains(t, buf.String(), "PARTIAL")
+		assert.Contains(t, buf.String(), "partial view — more ops in this transaction on the next page")
+	})
+
+	t.Run("account template renders error notice when TxGroupsError is set", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Account         *model.AccountDetail
+			TxGroups        *model.TransactionGroupsPage
+			TxGroupsError   string
+			AccountNames    map[string]string
+			ReputationScore *model.ReputationScore
+		}{
+			Account:       &model.AccountDetail{ID: "GERR", Name: "Err"},
+			TxGroupsError: "Failed to load operations — try again in a moment.",
+		}
+
+		err := tmpl.Render(&buf, "account.html", data)
+		require.NoError(t, err)
+		output := buf.String()
+		assert.Contains(t, output, "ops-error")
+		assert.Contains(t, output, "Failed to load operations")
+	})
+
+	t.Run("account template renders self-direction badge", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Account         *model.AccountDetail
+			TxGroups        *model.TransactionGroupsPage
+			TxGroupsError   string
+			AccountNames    map[string]string
+			ReputationScore *model.ReputationScore
+		}{
+			Account: &model.AccountDetail{ID: "GVIEWER", Name: "V"},
+			TxGroups: &model.TransactionGroupsPage{
+				Groups: []model.TransactionGroup{
+					{
+						Hash:       "txSelf",
+						CreatedAt:  "2026-04-09 12:00:00",
+						Successful: true,
+						MemoType:   "none",
+						Operations: []model.Operation{
+							{Type: "payment", TypeDisplay: "Payment", TypeCategory: "payment", TransactionHash: "txSelf", Amount: "100", AssetCode: "EURMTL", From: "GVIEWER", To: "GVIEWER", Direction: model.DirectionSelf},
+						},
+					},
+				},
+			},
+		}
+		err := tmpl.Render(&buf, "account.html", data)
+		require.NoError(t, err)
+		output := buf.String()
+		assert.Contains(t, output, "op-dir-self")
+		assert.Contains(t, output, "↻ SELF")
+	})
+
 	t.Run("account template omits operations section when no groups", func(t *testing.T) {
 		var buf bytes.Buffer
 		data := struct {
 			Account         *model.AccountDetail
 			TxGroups        *model.TransactionGroupsPage
+			TxGroupsError   string
 			AccountNames    map[string]string
 			ReputationScore *model.ReputationScore
 		}{

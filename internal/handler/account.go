@@ -17,6 +17,7 @@ import (
 type AccountData struct {
 	Account         *model.AccountDetail
 	TxGroups        *model.TransactionGroupsPage
+	TxGroupsError   string                 // Non-empty when the operations fetch failed; template renders an inline notice.
 	AccountNames    map[string]string      // Map of account ID to name for linked accounts
 	ReputationScore *model.ReputationScore // Weighted reputation score (optional)
 }
@@ -74,10 +75,15 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	// Fetch operations grouped by transaction (cursor-based pagination, counts transactions).
 	opsCursor := r.URL.Query().Get("ops_cursor")
 	const txGroupLimit = 10
+	var txGroupsError string
 	txGroups, err := h.stellar.GetAccountTransactionGroups(ctx, accountID, opsCursor, txGroupLimit)
 	if err != nil {
-		slog.Error("failed to fetch transaction groups", "account_id", accountID, "error", err)
+		slog.Error("failed to fetch transaction groups", "account_id", accountID, "ops_cursor", opsCursor, "error", err)
 		txGroups = nil
+		// Surface a user-visible notice rather than silently rendering an empty section.
+		// Operations are the primary content of this page; distinguishing "failed to load"
+		// from "no operations found" is important for users debugging missing data.
+		txGroupsError = "Failed to load operations — try again in a moment."
 	}
 
 	// Collect account IDs from all ops in all groups for name lookup
@@ -158,6 +164,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	data := AccountData{
 		Account:         account,
 		TxGroups:        txGroups,
+		TxGroupsError:   txGroupsError,
 		AccountNames:    accountNames,
 		ReputationScore: reputationScore,
 	}
@@ -198,6 +205,8 @@ func collectGroupAccountIDs(groups []model.TransactionGroup) []string {
 	return lo.Keys(idSet)
 }
 
+// addOpIDs inserts account-like IDs (From, To, SourceAccount, and Stellar-shaped DataValue)
+// from each op into idSet. Shared helper for collectAccountIDs and collectGroupAccountIDs.
 func addOpIDs(idSet map[string]struct{}, ops []model.Operation) {
 	for _, op := range ops {
 		if op.From != "" {
