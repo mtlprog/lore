@@ -357,9 +357,9 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, nil)
 
 		// Expect operations fetch
-		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(&model.OperationsPage{
-			Operations: []model.Operation{},
-			HasMore:    false,
+		stellar.EXPECT().GetAccountTransactionGroups(mock.Anything, "GABC123", "", 10).Return(&model.TransactionGroupsPage{
+			Groups:  []model.TransactionGroup{},
+			HasMore: false,
 		}, nil)
 
 		// Expect account names lookup (empty since no operations)
@@ -417,7 +417,7 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
 		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
 		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, nil)
-		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(nil, nil)
+		stellar.EXPECT().GetAccountTransactionGroups(mock.Anything, "GABC123", "", 10).Return(nil, nil)
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("template error"))
 
@@ -501,9 +501,9 @@ func TestAccountHandler(t *testing.T) {
 			},
 		}, nil)
 
-		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(&model.OperationsPage{
-			Operations: []model.Operation{},
-			HasMore:    false,
+		stellar.EXPECT().GetAccountTransactionGroups(mock.Anything, "GABC123", "", 10).Return(&model.TransactionGroupsPage{
+			Groups:  []model.TransactionGroup{},
+			HasMore: false,
 		}, nil)
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(map[string]string{}, nil).Maybe()
 
@@ -563,7 +563,7 @@ func TestAccountHandler(t *testing.T) {
 		// LP shares fetch fails
 		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, errors.New("database error"))
 
-		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(nil, nil)
+		stellar.EXPECT().GetAccountTransactionGroups(mock.Anything, "GABC123", "", 10).Return(nil, nil)
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 		var renderedData any
@@ -1194,6 +1194,71 @@ func TestCollectAccountIDs(t *testing.T) {
 
 		assert.Len(t, result, 1)
 		assert.Contains(t, result, "GDEF")
+	})
+}
+
+func TestCollectGroupAccountIDs(t *testing.T) {
+	stellarID := "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567890ABCDEFGHIJKLMNOPQRST" // 56 chars
+
+	t.Run("empty groups returns empty slice", func(t *testing.T) {
+		result := collectGroupAccountIDs(nil)
+		assert.Empty(t, result)
+	})
+
+	t.Run("collects from group-level SourceAccount", func(t *testing.T) {
+		groups := []model.TransactionGroup{
+			{SourceAccount: "GFEEPAYER", Operations: []model.Operation{{From: "GA", To: "GB"}}},
+		}
+		result := collectGroupAccountIDs(groups)
+		assert.Contains(t, result, "GFEEPAYER")
+		assert.Contains(t, result, "GA")
+		assert.Contains(t, result, "GB")
+		assert.Len(t, result, 3)
+	})
+
+	t.Run("deduplicates across groups and ops", func(t *testing.T) {
+		groups := []model.TransactionGroup{
+			{
+				SourceAccount: "GSHARED",
+				Operations: []model.Operation{
+					{From: "GSHARED", To: "GB"}, // GSHARED duplicates with group source
+				},
+			},
+			{
+				SourceAccount: "GSHARED", // duplicates across groups
+				Operations: []model.Operation{
+					{From: "GC", To: "GB"}, // GB duplicates across groups
+				},
+			},
+		}
+		result := collectGroupAccountIDs(groups)
+		assert.Len(t, result, 3)
+		assert.Contains(t, result, "GSHARED")
+		assert.Contains(t, result, "GB")
+		assert.Contains(t, result, "GC")
+	})
+
+	t.Run("collects Stellar-shaped DataValue but skips non-ID strings", func(t *testing.T) {
+		groups := []model.TransactionGroup{
+			{
+				Operations: []model.Operation{
+					{DataValue: stellarID},
+					{DataValue: "not-a-stellar-id"},
+				},
+			},
+		}
+		result := collectGroupAccountIDs(groups)
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, stellarID)
+	})
+
+	t.Run("skips empty SourceAccount", func(t *testing.T) {
+		groups := []model.TransactionGroup{
+			{SourceAccount: "", Operations: []model.Operation{{From: "GA"}}},
+		}
+		result := collectGroupAccountIDs(groups)
+		assert.Len(t, result, 1)
+		assert.Contains(t, result, "GA")
 	})
 }
 

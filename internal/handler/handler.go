@@ -17,7 +17,7 @@ import (
 // StellarServicer defines the interface for Stellar blockchain operations.
 type StellarServicer interface {
 	GetAccountDetail(ctx context.Context, accountID string) (*model.AccountDetail, error)
-	GetAccountOperations(ctx context.Context, accountID, cursor string, limit int) (*model.OperationsPage, error)
+	GetAccountTransactionGroups(ctx context.Context, accountID, cursor string, groupLimit int) (*model.TransactionGroupsPage, error)
 	GetTransactionDetail(ctx context.Context, txHash string) (*model.Transaction, error)
 	GetTokenDetail(ctx context.Context, code, issuer string) (*model.TokenDetail, error)
 	GetTokenOrderbook(ctx context.Context, code, issuer string, limit int) (*model.TokenOrderbook, error)

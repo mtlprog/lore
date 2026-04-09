@@ -155,11 +155,58 @@ type Operation struct {
 	Buying  string
 	Price   string
 	OfferID string
+	// Viewer-relative fields (populated only when fetched via GetAccountTransactionGroups).
+	// Direction indicates whether the viewer is sender/recipient; empty when not applicable.
+	// Counterparty is the account ID of the "other" party.
+	Direction    OperationDirection
+	Counterparty string
 }
 
-// OperationsPage for cursor-based pagination.
-type OperationsPage struct {
+// OperationDirection describes the viewer's role in a payment-like operation.
+//
+// Unlike reputation.Rating, the zero value DirectionNone is intentionally valid — it means
+// "op is not payment-like or the viewer is not involved", which is the common case for
+// non-account-scoped fetches. IsValid() exists to document the closed set and to validate
+// strings that may cross trust boundaries in the future.
+type OperationDirection string
+
+const (
+	DirectionNone OperationDirection = ""     // Viewer not involved or op is not payment-like (zero value)
+	DirectionIn   OperationDirection = "in"   // Viewer is the recipient
+	DirectionOut  OperationDirection = "out"  // Viewer is the sender
+	DirectionSelf OperationDirection = "self" // Viewer is both sender and recipient (self-payment/merge)
+)
+
+// IsValid reports whether d is one of the known direction values (including the empty default).
+func (d OperationDirection) IsValid() bool {
+	switch d {
+	case DirectionNone, DirectionIn, DirectionOut, DirectionSelf:
+		return true
+	}
+	return false
+}
+
+// TransactionGroup is a set of operations sharing the same transaction, used for grouped list views.
+//
+// Invariant: Operations is never empty. The producer (GetAccountTransactionGroups) constructs
+// groups only after appending their first operation. Consumers may still guard defensively since
+// the invariant is not enforced at the type level.
+type TransactionGroup struct {
+	Hash          string
+	CreatedAt     string // Transaction ledger close time (authoritative, shared across all ops)
+	SourceAccount string // Transaction-level source (fee payer)
+	MemoType      string
+	Memo          string
+	Successful    bool
+	// Partial is true when the group contains only a subset of the transaction's operations
+	// because a safety cap was hit mid-transaction. The remaining ops will appear in the next page.
+	Partial    bool
 	Operations []Operation
+}
+
+// TransactionGroupsPage for cursor-based pagination of grouped operations.
+type TransactionGroupsPage struct {
+	Groups     []TransactionGroup
 	NextCursor string
 	HasMore    bool
 }

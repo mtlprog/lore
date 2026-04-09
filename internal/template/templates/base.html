@@ -1908,6 +1908,184 @@
             color: var(--link);
         }
 
+        /* Transaction group (collapsible <details>) */
+        .op-group {
+            border-bottom: 1px solid var(--border);
+        }
+
+        .op-group:last-child {
+            border-bottom: none;
+        }
+
+        .op-group > summary {
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .op-group > summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .op-group > summary::marker {
+            content: '';
+        }
+
+        .op-group-chevron {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            flex-shrink: 0;
+            width: 0.75rem;
+            text-align: center;
+            display: inline-block;
+            transition: transform 0.15s ease;
+        }
+
+        .op-group[open] > summary .op-group-chevron {
+            transform: rotate(90deg);
+        }
+
+        .op-group-more {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            color: var(--accent);
+            background: rgba(0, 255, 136, 0.08);
+            padding: 0.125rem 0.5rem;
+            border: 1px solid rgba(0, 255, 136, 0.25);
+            flex-shrink: 0;
+            letter-spacing: 0.05em;
+        }
+
+        .op-group-extra {
+            background: var(--bg-card);
+            border-top: 1px solid var(--border);
+        }
+
+        .op-group-meta {
+            padding: 0.625rem 1rem 0.625rem 2.875rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .op-memo-label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--council);
+        }
+
+        .op-memo-value {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--text-dim);
+            word-break: break-word;
+        }
+
+        .op-group-tx-link {
+            color: var(--link);
+            text-decoration: none;
+            margin-left: auto;
+            font-size: 0.6875rem;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .op-group-tx-link:hover {
+            text-decoration: underline;
+        }
+
+        .op-row-sub {
+            padding-left: 2.875rem;
+            background: var(--bg-card);
+            cursor: default;
+        }
+
+        .op-row-sub:hover {
+            background: var(--bg-card);
+        }
+
+        /* Direction badges (↑ OUT / ↓ IN) for payment-like ops on account page */
+        .op-dir {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            padding: 0.0625rem 0.375rem;
+            margin-right: 0.375rem;
+            letter-spacing: 0.05em;
+            display: inline-block;
+        }
+
+        .op-dir-in {
+            color: var(--accent);
+            background: rgba(0, 255, 136, 0.12);
+        }
+
+        .op-dir-out {
+            color: var(--warn);
+            background: rgba(240, 180, 41, 0.12);
+        }
+
+        .op-dir-self {
+            color: var(--council);
+            background: rgba(163, 113, 247, 0.12);
+        }
+
+        .op-amount-inline {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--num);
+            margin-right: 0.375rem;
+        }
+
+        /* Operations section error notice (shown when the fetch failed) */
+        .ops-error {
+            background: rgba(248, 81, 73, 0.08);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            color: var(--danger);
+            padding: 0.75rem 1rem;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8125rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Failed transaction badge (on op-row or op-group) */
+        .op-group-failed-badge {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.625rem;
+            letter-spacing: 0.1em;
+            color: var(--danger);
+            background: rgba(248, 81, 73, 0.12);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            padding: 0.0625rem 0.375rem;
+            flex-shrink: 0;
+        }
+
+        .op-group-failed > summary,
+        .op-row-failed {
+            opacity: 0.75;
+        }
+
+        /* Partial-group badge (force-flush edge case) */
+        .op-group-partial-badge {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.625rem;
+            letter-spacing: 0.1em;
+            color: var(--warn);
+            background: rgba(240, 180, 41, 0.12);
+            border: 1px solid rgba(240, 180, 41, 0.3);
+            padding: 0.0625rem 0.375rem;
+            flex-shrink: 0;
+        }
+
+        .op-group-partial-note {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6875rem;
+            color: var(--warn);
+            font-style: italic;
+        }
+
         @media (max-width: 768px) {
             .op-time {
                 display: none;

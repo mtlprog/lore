@@ -314,34 +314,86 @@ func IsNotFound(err error) bool {
 	return false
 }
 
-// GetAccountOperations returns operations for an account (cursor-based pagination).
-// Filters out spam operations (claimable balance, small XLM payments < 1).
-// Fetches additional pages if needed to fill the requested limit.
-func (s *StellarService) GetAccountOperations(ctx context.Context, accountID, cursor string, limit int) (*model.OperationsPage, error) {
-	const (
-		fetchSize     = 50 // Fetch more than needed to allow for filtering
-		maxIterations = 5  // Max API calls to prevent hanging on spam-heavy accounts
-	)
+// operationFetcher is the minimal subset of *horizonclient.Client used by the grouping loop.
+// Exists so tests can inject a fake without mocking the full Horizon client.
+type operationFetcher interface {
+	Operations(req horizonclient.OperationRequest) (operations.OperationsPage, error)
+}
 
-	var filteredOps []model.Operation
+// Grouping loop tuning constants. Exported via unexported names for test reuse.
+const (
+	fetchSize        = 50  // Horizon ops per API call
+	maxIterations    = 10  // Max API calls per request to bound latency
+	maxUnderlyingOps = 200 // Safety cap on total ops scanned per request
+)
+
+// GetAccountTransactionGroups returns account operations grouped by parent transaction.
+//
+// Uses the Horizon "join=transactions" parameter so each operation carries its transaction
+// metadata (memo, source, successful, ledger close time) inline with no additional round-trips.
+// Filters spam at the TRANSACTION level: a transaction is dropped only if every one of its
+// operations is individually spam-classified (see isSpamOperation). If any op is real, the
+// whole group is preserved so the "+N more" count matches the transaction detail page.
+//
+// Pagination counts transactions, not operations: up to groupLimit distinct transactions are
+// returned per page. The cursor is the paging token of the last operation of the last complete
+// group, so the next fetch never starts mid-transaction. An in-progress trailing group is
+// normally discarded when safety caps are hit (its ops will be re-fetched on the next page).
+// Exception: if the cap is hit BEFORE any group was completed, the partial group is force-flushed
+// (with Partial=true) to guarantee forward progress and avoid a pagination deadlock.
+//
+// Guarantees:
+//   - HasMore is never true when NextCursor is empty.
+//   - Each returned group contains at least one operation.
+//   - Groups are newest-first (matching Horizon's OrderDesc ordering).
+func (s *StellarService) GetAccountTransactionGroups(ctx context.Context, accountID, cursor string, groupLimit int) (*model.TransactionGroupsPage, error) {
+	return fetchTransactionGroups(s.client, accountID, cursor, groupLimit)
+}
+
+// fetchTransactionGroups is the pure grouping state machine, parameterized on a fetcher so it
+// is directly unit-testable. Behavior documented on GetAccountTransactionGroups.
+func fetchTransactionGroups(fetcher operationFetcher, accountID, cursor string, groupLimit int) (*model.TransactionGroupsPage, error) {
+	var completedGroups []model.TransactionGroup
+	var currentGroup *model.TransactionGroup
+	var currentGroupLastPT string  // Paging token of the last op appended to currentGroup
+	var lastCompletedCursor string // Paging token of the last op of the last completed group
+
 	currentCursor := cursor
 	iterations := 0
+	opsSeen := 0
 	hasMoreInBlockchain := true
-	lastCursor := ""
+	reachedLimit := false // True iff we broke out of the loop because groupLimit was reached
 
-	for len(filteredOps) < limit && hasMoreInBlockchain && iterations < maxIterations {
+	// flushCurrentGroup emits the in-progress group to completedGroups if it has at least one
+	// non-spam op. Groups made entirely of spam are dropped silently (TRANSACTION-level spam
+	// filtering). The paging token of the last op in the flushed group becomes the new cursor.
+	flushCurrentGroup := func() {
+		if currentGroup == nil {
+			return
+		}
+		if groupHasAnyRealOp(currentGroup.Operations) {
+			completedGroups = append(completedGroups, *currentGroup)
+			lastCompletedCursor = currentGroupLastPT
+		}
+		currentGroup = nil
+		currentGroupLastPT = ""
+	}
+
+outer:
+	for len(completedGroups) < groupLimit && hasMoreInBlockchain && iterations < maxIterations && opsSeen < maxUnderlyingOps {
 		iterations++
 
 		req := horizonclient.OperationRequest{
 			ForAccount: accountID,
 			Limit:      uint(fetchSize),
-			Order:      horizonclient.OrderDesc, // Newest first
+			Order:      horizonclient.OrderDesc, // Newest first; adjacent ops with same tx hash share a group.
+			Join:       "transactions",
 		}
 		if currentCursor != "" {
 			req.Cursor = currentCursor
 		}
 
-		page, err := s.client.Operations(req)
+		page, err := fetcher.Operations(req)
 		if err != nil {
 			return nil, err
 		}
@@ -350,38 +402,141 @@ func (s *StellarService) GetAccountOperations(ctx context.Context, accountID, cu
 
 		for _, op := range page.Embedded.Records {
 			currentCursor = op.PagingToken()
+			opsSeen++
 
 			converted := convertOperation(op)
+			setOperationDirection(&converted, accountID)
 
-			// Filter spam operations
-			if isSpamOperation(converted) {
-				continue
+			// Group boundary: adjacent ops with a different tx hash start a new group.
+			// This is safe because Horizon returns ops in ledger order within each transaction,
+			// so once we see a different hash we will never see the previous hash again.
+			if currentGroup != nil && currentGroup.Hash != converted.TransactionHash {
+				flushCurrentGroup()
+				if len(completedGroups) >= groupLimit {
+					reachedLimit = true
+					break outer
+				}
 			}
 
-			filteredOps = append(filteredOps, converted)
-			lastCursor = currentCursor
-
-			// Stop if we have enough
-			if len(filteredOps) >= limit {
-				break
+			if currentGroup == nil {
+				currentGroup = newTransactionGroup(op, converted)
 			}
+			currentGroup.Operations = append(currentGroup.Operations, converted)
+			currentGroupLastPT = op.PagingToken()
 		}
 	}
 
-	// Determine if there's more data
-	hasMore := len(filteredOps) > limit || (len(filteredOps) == limit && hasMoreInBlockchain)
-
-	// Trim to requested limit
-	if len(filteredOps) > limit {
-		filteredOps = filteredOps[:limit]
-		lastCursor = filteredOps[limit-1].ID
+	// Reconcile the in-progress group:
+	//   - Blockchain exhausted    → group is complete, emit it (dropping if all-spam).
+	//   - Cap hit, zero completed → force-flush as Partial to guarantee pagination progress.
+	//                                Logged at Warn because it indicates a pathological account
+	//                                (hundreds of ops in one transaction) or Horizon throttling.
+	//   - Cap hit, some completed → discard partial; its ops will re-appear on next "Load More".
+	stoppedByCap := iterations >= maxIterations || opsSeen >= maxUnderlyingOps
+	if currentGroup != nil {
+		switch {
+		case !hasMoreInBlockchain:
+			flushCurrentGroup()
+		case stoppedByCap && len(completedGroups) == 0:
+			slog.Warn("grouping hit safety cap before any group completed; force-flushing partial group",
+				"account_id", accountID,
+				"tx_hash", currentGroup.Hash,
+				"partial_op_count", len(currentGroup.Operations),
+				"ops_seen", opsSeen,
+				"iterations", iterations)
+			currentGroup.Partial = true
+			flushCurrentGroup()
+		default:
+			// Discard partial: cursor stays at lastCompletedCursor, so the next page re-fetches
+			// these ops from the beginning of the transaction.
+			currentGroup = nil
+			currentGroupLastPT = ""
+		}
 	}
 
-	return &model.OperationsPage{
-		Operations: filteredOps,
-		NextCursor: lastCursor,
+	// HasMore reflects whether MORE data remains past our cursor. We stopped early if:
+	//   - we reached groupLimit (there may be more transactions), or
+	//   - a safety cap fired (the blockchain likely has more), or
+	//   - the last Horizon page was saturated (hasMoreInBlockchain).
+	hasMore := hasMoreInBlockchain || reachedLimit || stoppedByCap
+
+	// Defensive guarantee: never return HasMore=true with an empty cursor. The only way this
+	// can happen is an all-spam window that exhausted the iteration cap without producing any
+	// group — in that case we stop paginating and log so operators can investigate.
+	if hasMore && lastCompletedCursor == "" {
+		slog.Warn("all-spam window prevented pagination progress; returning HasMore=false",
+			"account_id", accountID,
+			"ops_seen", opsSeen,
+			"iterations", iterations)
+		hasMore = false
+	}
+
+	return &model.TransactionGroupsPage{
+		Groups:     completedGroups,
+		NextCursor: lastCompletedCursor,
 		HasMore:    hasMore,
 	}, nil
+}
+
+// newTransactionGroup builds a group header from a Horizon op and its converted form. Pulls
+// transaction-level fields (memo, source, successful, ledger close time) from the joined
+// Transaction when available; otherwise falls back to the op-level timestamp and hash.
+func newTransactionGroup(op operations.Operation, converted model.Operation) *model.TransactionGroup {
+	group := &model.TransactionGroup{
+		Hash:      converted.TransactionHash,
+		CreatedAt: converted.CreatedAt, // Fallback; overridden below when the join is present.
+	}
+	base := op.GetBase()
+	if base.Transaction != nil {
+		group.SourceAccount = base.Transaction.Account
+		group.MemoType = base.Transaction.MemoType
+		group.Memo = base.Transaction.Memo
+		group.Successful = base.Transaction.Successful
+		group.CreatedAt = base.Transaction.LedgerCloseTime.Format("2006-01-02 15:04:05")
+	} else {
+		// Join data missing — unexpected when Join:"transactions" is set. Log so operators can
+		// catch SDK upgrades or Horizon regressions that change the join semantics.
+		slog.Warn("operation join=transactions returned no Transaction data; group metadata will be empty",
+			"op_id", converted.ID,
+			"tx_hash", converted.TransactionHash)
+		// MemoType defaults to "none" so the template's memo-present guard doesn't misfire.
+		group.MemoType = "none"
+	}
+	return group
+}
+
+// groupHasAnyRealOp returns true if at least one op in the slice is not spam-classified.
+// Used for transaction-level spam filtering: a group is kept iff it contains at least one
+// real op, regardless of how many spam ops share its transaction.
+func groupHasAnyRealOp(ops []model.Operation) bool {
+	for i := range ops {
+		if !isSpamOperation(ops[i]) {
+			return true
+		}
+	}
+	return false
+}
+
+// setOperationDirection annotates op with Direction and Counterparty relative to the given
+// viewer account. Populated for payment-like operations where the viewer is a party; a
+// self-payment (viewer on both sides) is marked DirectionSelf with no counterparty.
+// For other op types or when the viewer is uninvolved, both fields are left empty.
+func setOperationDirection(op *model.Operation, viewerID string) {
+	switch op.Type {
+	case "payment", "create_account", "path_payment_strict_send", "path_payment_strict_receive", "account_merge":
+		fromIsViewer := op.From == viewerID
+		toIsViewer := op.To == viewerID
+		switch {
+		case fromIsViewer && toIsViewer:
+			op.Direction = model.DirectionSelf
+		case fromIsViewer:
+			op.Direction = model.DirectionOut
+			op.Counterparty = op.To
+		case toIsViewer:
+			op.Direction = model.DirectionIn
+			op.Counterparty = op.From
+		}
+	}
 }
 
 // isSpamOperation returns true if the operation should be filtered out.

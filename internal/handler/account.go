@@ -16,7 +16,8 @@ import (
 // AccountData holds data for the account detail page template.
 type AccountData struct {
 	Account         *model.AccountDetail
-	Operations      *model.OperationsPage
+	TxGroups        *model.TransactionGroupsPage
+	TxGroupsError   string                 // Non-empty when the operations fetch failed; template renders an inline notice.
 	AccountNames    map[string]string      // Map of account ID to name for linked accounts
 	ReputationScore *model.ReputationScore // Weighted reputation score (optional)
 }
@@ -71,19 +72,24 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 		accountInfo = nil
 	}
 
-	// Fetch operations with cursor-based pagination
+	// Fetch operations grouped by transaction (cursor-based pagination, counts transactions).
 	opsCursor := r.URL.Query().Get("ops_cursor")
-	const operationsLimit = 10
-	operations, err := h.stellar.GetAccountOperations(ctx, accountID, opsCursor, operationsLimit)
+	const txGroupLimit = 10
+	var txGroupsError string
+	txGroups, err := h.stellar.GetAccountTransactionGroups(ctx, accountID, opsCursor, txGroupLimit)
 	if err != nil {
-		slog.Error("failed to fetch operations", "account_id", accountID, "error", err)
-		operations = nil
+		slog.Error("failed to fetch transaction groups", "account_id", accountID, "ops_cursor", opsCursor, "error", err)
+		txGroups = nil
+		// Surface a user-visible notice rather than silently rendering an empty section.
+		// Operations are the primary content of this page; distinguishing "failed to load"
+		// from "no operations found" is important for users debugging missing data.
+		txGroupsError = "Failed to load operations — try again in a moment."
 	}
 
-	// Collect account IDs from operations for name lookup
+	// Collect account IDs from all ops in all groups for name lookup
 	var accountNames map[string]string
-	if operations != nil && len(operations.Operations) > 0 {
-		accountIDs := collectAccountIDs(operations.Operations)
+	if txGroups != nil && len(txGroups.Groups) > 0 {
+		accountIDs := collectGroupAccountIDs(txGroups.Groups)
 		if len(accountIDs) > 0 {
 			accountNames, err = h.accounts.GetAccountNames(ctx, accountIDs)
 			if err != nil {
@@ -157,7 +163,8 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 
 	data := AccountData{
 		Account:         account,
-		Operations:      operations,
+		TxGroups:        txGroups,
+		TxGroupsError:   txGroupsError,
 		AccountNames:    accountNames,
 		ReputationScore: reputationScore,
 	}
@@ -177,11 +184,30 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// collectAccountIDs extracts all unique account IDs from operations.
-// This includes From, To, SourceAccount, and DataValue if it looks like a Stellar account ID.
+// collectAccountIDs extracts all unique account IDs from a flat operations slice.
+// Includes From, To, SourceAccount, and DataValue when it looks like a Stellar account ID.
 func collectAccountIDs(ops []model.Operation) []string {
 	idSet := make(map[string]struct{})
+	addOpIDs(idSet, ops)
+	return lo.Keys(idSet)
+}
 
+// collectGroupAccountIDs extracts all unique account IDs from transaction groups.
+// Includes each group's transaction source plus every op's From/To/SourceAccount/DataValue.
+func collectGroupAccountIDs(groups []model.TransactionGroup) []string {
+	idSet := make(map[string]struct{})
+	for _, g := range groups {
+		if g.SourceAccount != "" {
+			idSet[g.SourceAccount] = struct{}{}
+		}
+		addOpIDs(idSet, g.Operations)
+	}
+	return lo.Keys(idSet)
+}
+
+// addOpIDs inserts account-like IDs (From, To, SourceAccount, and Stellar-shaped DataValue)
+// from each op into idSet. Shared helper for collectAccountIDs and collectGroupAccountIDs.
+func addOpIDs(idSet map[string]struct{}, ops []model.Operation) {
 	for _, op := range ops {
 		if op.From != "" {
 			idSet[op.From] = struct{}{}
@@ -197,8 +223,6 @@ func collectAccountIDs(ops []model.Operation) []string {
 			idSet[op.DataValue] = struct{}{}
 		}
 	}
-
-	return lo.Keys(idSet)
 }
 
 // isStellarAccountID checks if a string looks like a Stellar account ID.
