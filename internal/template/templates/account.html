@@ -213,8 +213,9 @@
     </div>
 </div>
 
-{{if .Operations}}
+{{if and .TxGroups (gt (len .TxGroups.Groups) 0)}}
 {{$names := .AccountNames}}
+{{$accountID := .Account.ID}}
 <div id="operations" class="section ops-section">
     <div class="section-header">
         <span class="section-title">Operations</span>
@@ -222,40 +223,93 @@
     </div>
 
     <div class="ops-list">
-        {{range .Operations.Operations}}
-        <a href="/transactions/{{.TransactionHash}}#operations" class="op-row">
-            <span class="op-time">{{.CreatedAt}}</span>
-            <span class="op-type op-{{.TypeCategory}}">{{.TypeDisplay}}</span>
-            <span class="op-summary">
-                {{if eq .Type "payment"}}
-                    {{if .Amount}}{{.Amount}} {{.AssetCode}}{{end}}
-                    {{if .To}}→ <span class="op-account-link">{{accountDisplay .To $names}}</span>{{end}}
-                {{else if eq .Type "create_account"}}
-                    {{.StartingBalance}} XLM → <span class="op-account-link">{{accountDisplay .To $names}}</span>
-                {{else if eq .Type "change_trust"}}
-                    {{.AssetCode}}{{if eq .TrustLimit "0"}} (remove){{end}}
-                {{else if eq .Type "manage_data"}}
-                    {{if .DataValue}}{{.DataName}} = {{if isStellarID .DataValue}}<span class="op-account-link">{{accountDisplay .DataValue $names}}</span>{{else}}"{{.DataValue}}"{{end}}{{else}}deleted {{.DataName}}{{end}}
-                {{else if or (eq .Type "path_payment_strict_send") (eq .Type "path_payment_strict_receive")}}
-                    {{.SourceAmount}} {{.SourceAsset}} → {{.DestAmount}} {{.DestAsset}}
-                {{else if or (eq .Type "manage_sell_offer") (eq .Type "manage_buy_offer")}}
-                    {{if .Amount}}{{.Amount}} {{end}}{{.Selling}} → {{.Buying}}{{if .Price}} @ {{.Price}}{{end}}
-                {{else if eq .Type "account_merge"}}
-                    → <span class="op-account-link">{{accountDisplay .To $names}}</span>
-                {{else}}
-                    {{.TypeDisplay}}
+        {{range .TxGroups.Groups}}
+        {{$opCount := len .Operations}}
+        {{if gt $opCount 0}}
+        {{$hash := .Hash}}
+        {{$memo := .Memo}}
+        {{$memoType := .MemoType}}
+        {{$first := index .Operations 0}}
+        {{if gt $opCount 1}}
+        <details class="op-group">
+            <summary class="op-row op-group-summary">
+                <span class="op-group-chevron">▸</span>
+                <span class="op-time">{{$first.CreatedAt}}</span>
+                <span class="op-type op-{{$first.TypeCategory}}">{{$first.TypeDisplay}}</span>
+                <span class="op-summary">{{template "op-body" dict "op" $first "names" $names}}</span>
+                <span class="op-group-more">+{{add $opCount -1}} more</span>
+            </summary>
+            <div class="op-group-extra">
+                <div class="op-group-meta">
+                    {{if and $memo (ne $memoType "none")}}
+                    <span class="op-memo-label">MEMO</span>
+                    <span class="op-memo-value">{{$memo}}</span>
+                    {{end}}
+                    <a href="/transactions/{{$hash}}#operations" class="op-group-tx-link">view tx →</a>
+                </div>
+                {{range $idx, $op := .Operations}}
+                {{if gt $idx 0}}
+                <div class="op-row op-row-sub">
+                    <span class="op-type op-{{$op.TypeCategory}}">{{$op.TypeDisplay}}</span>
+                    <span class="op-summary">{{template "op-body" dict "op" $op "names" $names}}</span>
+                </div>
                 {{end}}
-            </span>
+                {{end}}
+            </div>
+        </details>
+        {{else}}
+        <a href="/transactions/{{$hash}}#operations" class="op-row">
+            <span class="op-time">{{$first.CreatedAt}}</span>
+            <span class="op-type op-{{$first.TypeCategory}}">{{$first.TypeDisplay}}</span>
+            <span class="op-summary">{{template "op-body" dict "op" $first "names" $names}}</span>
             <span class="op-arrow">▶</span>
         </a>
-        {{end}}
+        {{end}}{{/* multi-vs-single */}}
+        {{end}}{{/* opCount > 0 guard */}}
+        {{end}}{{/* range Groups */}}
     </div>
 
-    {{if .Operations.HasMore}}
+    {{if .TxGroups.HasMore}}
     <div class="pagination">
-        <a href="/accounts/{{.Account.ID}}?ops_cursor={{.Operations.NextCursor}}#operations" class="btn">Load More</a>
+        <a href="/accounts/{{$accountID}}?ops_cursor={{.TxGroups.NextCursor}}#operations" class="btn">Load More</a>
     </div>
     {{end}}
 </div>
 {{end}}
+{{end}}
+
+{{/*
+    op-body renders a single operation's inline summary. For payment-like ops where the
+    viewer is a party (.Direction set), prepends an IN/OUT badge and shows only the counterparty.
+    Otherwise falls back to a type-specific description with both sides of any flow.
+*/}}
+{{define "op-amount"}}
+{{- $op := .op -}}
+{{- if eq $op.Type "payment" -}}<span class="op-amount-inline">{{$op.Amount}} {{$op.AssetCode}}</span>
+{{- else if eq $op.Type "create_account" -}}<span class="op-amount-inline">{{$op.StartingBalance}} XLM</span>
+{{- else if or (eq $op.Type "path_payment_strict_send") (eq $op.Type "path_payment_strict_receive") -}}<span class="op-amount-inline">{{$op.SourceAmount}} {{$op.SourceAsset}} → {{$op.DestAmount}} {{$op.DestAsset}}</span>
+{{- end -}}
+{{end}}
+
+{{define "op-body"}}
+{{$op := .op}}{{$names := .names}}
+{{- if $op.Direction -}}
+    <span class="op-dir op-dir-{{$op.Direction}}">{{if eq $op.Direction "in"}}↓ IN{{else}}↑ OUT{{end}}</span>
+    {{template "op-amount" (dict "op" $op)}}
+    {{if eq $op.Direction "in"}}from{{else}}to{{end}}
+    <a href="/accounts/{{$op.Counterparty}}" class="op-account-link">{{accountDisplay $op.Counterparty $names}}</a>
+{{- else if or (eq $op.Type "payment") (eq $op.Type "create_account") (eq $op.Type "path_payment_strict_send") (eq $op.Type "path_payment_strict_receive") -}}
+    {{template "op-amount" (dict "op" $op)}}
+    {{if and $op.From $op.To}}<a href="/accounts/{{$op.From}}" class="op-account-link">{{accountDisplay $op.From $names}}</a> → <a href="/accounts/{{$op.To}}" class="op-account-link">{{accountDisplay $op.To $names}}</a>{{end}}
+{{- else if eq $op.Type "change_trust" -}}
+    {{$op.AssetCode}}{{if eq $op.TrustLimit "0"}} (remove){{end}}
+{{- else if eq $op.Type "manage_data" -}}
+    {{if $op.DataValue}}{{$op.DataName}} = {{if isStellarID $op.DataValue}}<a href="/accounts/{{$op.DataValue}}" class="op-account-link">{{accountDisplay $op.DataValue $names}}</a>{{else}}"{{$op.DataValue}}"{{end}}{{else}}deleted {{$op.DataName}}{{end}}
+{{- else if or (eq $op.Type "manage_sell_offer") (eq $op.Type "manage_buy_offer") -}}
+    {{if $op.Amount}}{{$op.Amount}} {{end}}{{$op.Selling}} → {{$op.Buying}}{{if $op.Price}} @ {{$op.Price}}{{end}}
+{{- else if eq $op.Type "account_merge" -}}
+    → <a href="/accounts/{{$op.To}}" class="op-account-link">{{accountDisplay $op.To $names}}</a>
+{{- else -}}
+    {{$op.TypeDisplay}}
+{{- end -}}
 {{end}}

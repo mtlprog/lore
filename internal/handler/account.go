@@ -16,7 +16,7 @@ import (
 // AccountData holds data for the account detail page template.
 type AccountData struct {
 	Account         *model.AccountDetail
-	Operations      *model.OperationsPage
+	TxGroups        *model.TransactionGroupsPage
 	AccountNames    map[string]string      // Map of account ID to name for linked accounts
 	ReputationScore *model.ReputationScore // Weighted reputation score (optional)
 }
@@ -71,19 +71,19 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 		accountInfo = nil
 	}
 
-	// Fetch operations with cursor-based pagination
+	// Fetch operations grouped by transaction (cursor-based pagination, counts transactions).
 	opsCursor := r.URL.Query().Get("ops_cursor")
-	const operationsLimit = 10
-	operations, err := h.stellar.GetAccountOperations(ctx, accountID, opsCursor, operationsLimit)
+	const txGroupLimit = 10
+	txGroups, err := h.stellar.GetAccountTransactionGroups(ctx, accountID, opsCursor, txGroupLimit)
 	if err != nil {
-		slog.Error("failed to fetch operations", "account_id", accountID, "error", err)
-		operations = nil
+		slog.Error("failed to fetch transaction groups", "account_id", accountID, "error", err)
+		txGroups = nil
 	}
 
-	// Collect account IDs from operations for name lookup
+	// Collect account IDs from all ops in all groups for name lookup
 	var accountNames map[string]string
-	if operations != nil && len(operations.Operations) > 0 {
-		accountIDs := collectAccountIDs(operations.Operations)
+	if txGroups != nil && len(txGroups.Groups) > 0 {
+		accountIDs := collectGroupAccountIDs(txGroups.Groups)
 		if len(accountIDs) > 0 {
 			accountNames, err = h.accounts.GetAccountNames(ctx, accountIDs)
 			if err != nil {
@@ -157,7 +157,7 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 
 	data := AccountData{
 		Account:         account,
-		Operations:      operations,
+		TxGroups:        txGroups,
 		AccountNames:    accountNames,
 		ReputationScore: reputationScore,
 	}
@@ -177,11 +177,28 @@ func (h *Handler) Account(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// collectAccountIDs extracts all unique account IDs from operations.
-// This includes From, To, SourceAccount, and DataValue if it looks like a Stellar account ID.
+// collectAccountIDs extracts all unique account IDs from a flat operations slice.
+// Includes From, To, SourceAccount, and DataValue when it looks like a Stellar account ID.
 func collectAccountIDs(ops []model.Operation) []string {
 	idSet := make(map[string]struct{})
+	addOpIDs(idSet, ops)
+	return lo.Keys(idSet)
+}
 
+// collectGroupAccountIDs extracts all unique account IDs from transaction groups.
+// Includes each group's transaction source plus every op's From/To/SourceAccount/DataValue.
+func collectGroupAccountIDs(groups []model.TransactionGroup) []string {
+	idSet := make(map[string]struct{})
+	for _, g := range groups {
+		if g.SourceAccount != "" {
+			idSet[g.SourceAccount] = struct{}{}
+		}
+		addOpIDs(idSet, g.Operations)
+	}
+	return lo.Keys(idSet)
+}
+
+func addOpIDs(idSet map[string]struct{}, ops []model.Operation) {
 	for _, op := range ops {
 		if op.From != "" {
 			idSet[op.From] = struct{}{}
@@ -197,8 +214,6 @@ func collectAccountIDs(ops []model.Operation) []string {
 			idSet[op.DataValue] = struct{}{}
 		}
 	}
-
-	return lo.Keys(idSet)
 }
 
 // isStellarAccountID checks if a string looks like a Stellar account ID.

@@ -314,28 +314,43 @@ func IsNotFound(err error) bool {
 	return false
 }
 
-// GetAccountOperations returns operations for an account (cursor-based pagination).
-// Filters out spam operations (claimable balance, small XLM payments < 1).
-// Fetches additional pages if needed to fill the requested limit.
-func (s *StellarService) GetAccountOperations(ctx context.Context, accountID, cursor string, limit int) (*model.OperationsPage, error) {
+// GetAccountTransactionGroups returns account operations grouped by parent transaction.
+// Uses the Horizon "join=transactions" parameter so each operation carries its transaction
+// metadata (memo, source, successful) inline with no additional round-trips.
+//
+// Pagination counts transactions, not operations: up to groupLimit distinct transactions are
+// returned per page. The cursor is the paging token of the last operation of the last COMPLETE
+// group, so the next fetch never starts mid-transaction. An in-progress trailing group is
+// normally discarded when safety caps are hit (its ops will be re-fetched on the next page).
+// Exception: if the cap is hit BEFORE any group was completed, the partial group is force-flushed
+// to guarantee forward progress and avoid a pagination deadlock. Callers must also treat an
+// empty NextCursor as end-of-stream regardless of HasMore.
+func (s *StellarService) GetAccountTransactionGroups(ctx context.Context, accountID, cursor string, groupLimit int) (*model.TransactionGroupsPage, error) {
 	const (
-		fetchSize     = 50 // Fetch more than needed to allow for filtering
-		maxIterations = 5  // Max API calls to prevent hanging on spam-heavy accounts
+		fetchSize        = 50  // Horizon ops per API call
+		maxIterations    = 10  // Max API calls to prevent hanging on spam-heavy accounts
+		maxUnderlyingOps = 200 // Safety cap on total ops scanned per request
 	)
 
-	var filteredOps []model.Operation
+	var completedGroups []model.TransactionGroup
+	var currentGroup *model.TransactionGroup
+	var currentGroupLastPT string  // Paging token of the last op added to currentGroup
+	var lastCompletedCursor string // Paging token of the last op of the last completed group
+
 	currentCursor := cursor
 	iterations := 0
+	opsSeen := 0
 	hasMoreInBlockchain := true
-	lastCursor := ""
 
-	for len(filteredOps) < limit && hasMoreInBlockchain && iterations < maxIterations {
+outer:
+	for len(completedGroups) < groupLimit && hasMoreInBlockchain && iterations < maxIterations && opsSeen < maxUnderlyingOps {
 		iterations++
 
 		req := horizonclient.OperationRequest{
 			ForAccount: accountID,
 			Limit:      uint(fetchSize),
-			Order:      horizonclient.OrderDesc, // Newest first
+			Order:      horizonclient.OrderDesc,
+			Join:       "transactions", // Attach transaction data to each op
 		}
 		if currentCursor != "" {
 			req.Cursor = currentCursor
@@ -350,38 +365,97 @@ func (s *StellarService) GetAccountOperations(ctx context.Context, accountID, cu
 
 		for _, op := range page.Embedded.Records {
 			currentCursor = op.PagingToken()
+			opsSeen++
 
 			converted := convertOperation(op)
-
-			// Filter spam operations
 			if isSpamOperation(converted) {
 				continue
 			}
 
-			filteredOps = append(filteredOps, converted)
-			lastCursor = currentCursor
+			// Annotate with viewer-relative direction/counterparty.
+			setOperationDirection(&converted, accountID)
 
-			// Stop if we have enough
-			if len(filteredOps) >= limit {
-				break
+			// Group boundary: flush the current group before starting a new one.
+			if currentGroup != nil && currentGroup.Hash != converted.TransactionHash {
+				completedGroups = append(completedGroups, *currentGroup)
+				lastCompletedCursor = currentGroupLastPT
+				currentGroup = nil
+				currentGroupLastPT = ""
+
+				if len(completedGroups) >= groupLimit {
+					break outer
+				}
 			}
+
+			if currentGroup == nil {
+				base := op.GetBase()
+				group := model.TransactionGroup{
+					Hash:      converted.TransactionHash,
+					CreatedAt: converted.CreatedAt,
+				}
+				if base.Transaction != nil {
+					group.SourceAccount = base.Transaction.Account
+					group.MemoType = base.Transaction.MemoType
+					group.Memo = base.Transaction.Memo
+					group.Successful = base.Transaction.Successful
+				}
+				currentGroup = &group
+			}
+			currentGroup.Operations = append(currentGroup.Operations, converted)
+			currentGroupLastPT = op.PagingToken()
 		}
 	}
 
-	// Determine if there's more data
-	hasMore := len(filteredOps) > limit || (len(filteredOps) == limit && hasMoreInBlockchain)
-
-	// Trim to requested limit
-	if len(filteredOps) > limit {
-		filteredOps = filteredOps[:limit]
-		lastCursor = filteredOps[limit-1].ID
+	// Reconcile the in-progress group:
+	//   - Blockchain exhausted  → group is complete, emit it.
+	//   - Cap hit with zero groups completed → force-flush (accepts a cross-page split) so
+	//     the cursor advances and the next "Load More" makes progress.
+	//   - Cap hit with at least one completed group → discard partial, re-fetch next time.
+	stoppedByCap := iterations >= maxIterations || opsSeen >= maxUnderlyingOps
+	if currentGroup != nil {
+		switch {
+		case !hasMoreInBlockchain:
+			completedGroups = append(completedGroups, *currentGroup)
+			lastCompletedCursor = currentGroupLastPT
+		case stoppedByCap && len(completedGroups) == 0:
+			slog.Debug("grouping hit cap with no completed groups, force-flushing partial group to avoid pagination deadlock",
+				"account_id", accountID, "ops_seen", opsSeen, "iterations", iterations)
+			completedGroups = append(completedGroups, *currentGroup)
+			lastCompletedCursor = currentGroupLastPT
+		}
+		currentGroup = nil
 	}
 
-	return &model.OperationsPage{
-		Operations: filteredOps,
-		NextCursor: lastCursor,
+	hasMore := hasMoreInBlockchain || currentGroup != nil
+
+	// Defensive guarantee: never return HasMore=true with an empty cursor. The template would
+	// otherwise render a "Load More" link pointing back to the start of the history.
+	if hasMore && lastCompletedCursor == "" {
+		hasMore = false
+	}
+
+	return &model.TransactionGroupsPage{
+		Groups:     completedGroups,
+		NextCursor: lastCompletedCursor,
 		HasMore:    hasMore,
 	}, nil
+}
+
+// setOperationDirection annotates op with Direction and Counterparty relative to the given
+// viewer account. Only populated for payment-like operations where the viewer is the sender
+// or recipient; otherwise both fields are left empty (DirectionNone).
+func setOperationDirection(op *model.Operation, viewerID string) {
+	switch op.Type {
+	case "payment", "create_account", "path_payment_strict_send", "path_payment_strict_receive", "account_merge":
+		switch {
+		case op.From == viewerID && op.To != viewerID:
+			op.Direction = model.DirectionOut
+			op.Counterparty = op.To
+		case op.To == viewerID && op.From != viewerID:
+			op.Direction = model.DirectionIn
+			op.Counterparty = op.From
+		}
+	}
 }
 
 // isSpamOperation returns true if the operation should be filtered out.

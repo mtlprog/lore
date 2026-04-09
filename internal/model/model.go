@@ -155,11 +155,45 @@ type Operation struct {
 	Buying  string
 	Price   string
 	OfferID string
+	// Viewer-relative fields (populated only when fetched via GetAccountTransactionGroups).
+	// Direction indicates whether the viewer is sender/recipient; empty when not applicable.
+	// Counterparty is the account ID of the "other" party.
+	Direction    OperationDirection
+	Counterparty string
 }
 
-// OperationsPage for cursor-based pagination.
-type OperationsPage struct {
-	Operations []Operation
+// OperationDirection describes the viewer's role in a payment-like operation.
+type OperationDirection string
+
+const (
+	DirectionNone OperationDirection = ""    // Viewer not involved or op is not payment-like
+	DirectionIn   OperationDirection = "in"  // Viewer is the recipient
+	DirectionOut  OperationDirection = "out" // Viewer is the sender
+)
+
+// IsValid reports whether d is one of the known direction values.
+func (d OperationDirection) IsValid() bool {
+	switch d {
+	case DirectionNone, DirectionIn, DirectionOut:
+		return true
+	}
+	return false
+}
+
+// TransactionGroup is a set of operations sharing the same transaction, used for grouped list views.
+type TransactionGroup struct {
+	Hash          string
+	CreatedAt     string // From the first operation
+	SourceAccount string // Transaction-level source (fee payer)
+	MemoType      string
+	Memo          string
+	Successful    bool
+	Operations    []Operation
+}
+
+// TransactionGroupsPage for cursor-based pagination of grouped operations.
+type TransactionGroupsPage struct {
+	Groups     []TransactionGroup
 	NextCursor string
 	HasMore    bool
 }

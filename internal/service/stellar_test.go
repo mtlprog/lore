@@ -423,3 +423,106 @@ func TestIsSpamOperation(t *testing.T) {
 		})
 	}
 }
+
+func TestSetOperationDirection(t *testing.T) {
+	const viewer = "GVIEWER"
+	const other = "GOTHER"
+
+	tests := []struct {
+		name             string
+		op               model.Operation
+		wantDirection    model.OperationDirection
+		wantCounterparty string
+	}{
+		{
+			name:             "payment where viewer is sender",
+			op:               model.Operation{Type: "payment", From: viewer, To: other},
+			wantDirection:    model.DirectionOut,
+			wantCounterparty: other,
+		},
+		{
+			name:             "payment where viewer is recipient",
+			op:               model.Operation{Type: "payment", From: other, To: viewer},
+			wantDirection:    model.DirectionIn,
+			wantCounterparty: other,
+		},
+		{
+			name:             "payment where viewer is both sides",
+			op:               model.Operation{Type: "payment", From: viewer, To: viewer},
+			wantDirection:    model.DirectionNone,
+			wantCounterparty: "",
+		},
+		{
+			name:             "payment where viewer is neither side",
+			op:               model.Operation{Type: "payment", From: "GA", To: "GB"},
+			wantDirection:    model.DirectionNone,
+			wantCounterparty: "",
+		},
+		{
+			name:             "create_account viewer as funder is out",
+			op:               model.Operation{Type: "create_account", From: viewer, To: other},
+			wantDirection:    model.DirectionOut,
+			wantCounterparty: other,
+		},
+		{
+			name:             "create_account viewer as new account is in",
+			op:               model.Operation{Type: "create_account", From: other, To: viewer},
+			wantDirection:    model.DirectionIn,
+			wantCounterparty: other,
+		},
+		{
+			name:             "path_payment_strict_send viewer as sender",
+			op:               model.Operation{Type: "path_payment_strict_send", From: viewer, To: other},
+			wantDirection:    model.DirectionOut,
+			wantCounterparty: other,
+		},
+		{
+			name:             "path_payment_strict_receive viewer as recipient",
+			op:               model.Operation{Type: "path_payment_strict_receive", From: other, To: viewer},
+			wantDirection:    model.DirectionIn,
+			wantCounterparty: other,
+		},
+		{
+			name:             "account_merge viewer as source is out",
+			op:               model.Operation{Type: "account_merge", From: viewer, To: other},
+			wantDirection:    model.DirectionOut,
+			wantCounterparty: other,
+		},
+		{
+			name:             "manage_data is not payment-like",
+			op:               model.Operation{Type: "manage_data", DataName: "foo"},
+			wantDirection:    model.DirectionNone,
+			wantCounterparty: "",
+		},
+		{
+			name:             "change_trust is not payment-like",
+			op:               model.Operation{Type: "change_trust", AssetCode: "MTLAP"},
+			wantDirection:    model.DirectionNone,
+			wantCounterparty: "",
+		},
+		{
+			name:             "manage_sell_offer is not payment-like",
+			op:               model.Operation{Type: "manage_sell_offer", Selling: "XLM", Buying: "USDC"},
+			wantDirection:    model.DirectionNone,
+			wantCounterparty: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			op := tt.op
+			setOperationDirection(&op, viewer)
+			assert.Equal(t, tt.wantDirection, op.Direction)
+			assert.Equal(t, tt.wantCounterparty, op.Counterparty)
+			assert.True(t, op.Direction.IsValid())
+		})
+	}
+}
+
+func TestOperationDirectionIsValid(t *testing.T) {
+	assert.True(t, model.DirectionNone.IsValid())
+	assert.True(t, model.DirectionIn.IsValid())
+	assert.True(t, model.DirectionOut.IsValid())
+	assert.False(t, model.OperationDirection("bogus").IsValid())
+	assert.False(t, model.OperationDirection("IN").IsValid())
+}

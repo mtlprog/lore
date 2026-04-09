@@ -357,9 +357,9 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, nil)
 
 		// Expect operations fetch
-		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(&model.OperationsPage{
-			Operations: []model.Operation{},
-			HasMore:    false,
+		stellar.EXPECT().GetAccountTransactionGroups(mock.Anything, "GABC123", "", 10).Return(&model.TransactionGroupsPage{
+			Groups:  []model.TransactionGroup{},
+			HasMore: false,
 		}, nil)
 
 		// Expect account names lookup (empty since no operations)
@@ -417,7 +417,7 @@ func TestAccountHandler(t *testing.T) {
 		accounts.EXPECT().GetConfirmedRelationships(mock.Anything, "GABC123").Return(nil, nil)
 		accounts.EXPECT().GetAccountInfo(mock.Anything, "GABC123").Return(&repository.AccountInfo{}, nil)
 		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, nil)
-		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(nil, nil)
+		stellar.EXPECT().GetAccountTransactionGroups(mock.Anything, "GABC123", "", 10).Return(nil, nil)
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 		tmpl.EXPECT().Render(mock.Anything, mock.Anything, mock.Anything).Return(errors.New("template error"))
 
@@ -501,9 +501,9 @@ func TestAccountHandler(t *testing.T) {
 			},
 		}, nil)
 
-		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(&model.OperationsPage{
-			Operations: []model.Operation{},
-			HasMore:    false,
+		stellar.EXPECT().GetAccountTransactionGroups(mock.Anything, "GABC123", "", 10).Return(&model.TransactionGroupsPage{
+			Groups:  []model.TransactionGroup{},
+			HasMore: false,
 		}, nil)
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(map[string]string{}, nil).Maybe()
 
@@ -563,7 +563,7 @@ func TestAccountHandler(t *testing.T) {
 		// LP shares fetch fails
 		accounts.EXPECT().GetLPShares(mock.Anything, "GABC123").Return(nil, errors.New("database error"))
 
-		stellar.EXPECT().GetAccountOperations(mock.Anything, "GABC123", "", 10).Return(nil, nil)
+		stellar.EXPECT().GetAccountTransactionGroups(mock.Anything, "GABC123", "", 10).Return(nil, nil)
 		accounts.EXPECT().GetAccountNames(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 		var renderedData any

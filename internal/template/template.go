@@ -110,6 +110,20 @@ var funcMap = template.FuncMap{
 	"containsTag": func(tags []string, tag string) bool {
 		return lo.Contains(tags, tag)
 	},
+	"dict": func(values ...interface{}) (map[string]interface{}, error) {
+		if len(values)%2 != 0 {
+			return nil, fmt.Errorf("dict requires even number of arguments, got %d", len(values))
+		}
+		d := make(map[string]interface{}, len(values)/2)
+		for i := 0; i < len(values); i += 2 {
+			key, ok := values[i].(string)
+			if !ok {
+				return nil, fmt.Errorf("dict keys must be strings, got %T at index %d", values[i], i)
+			}
+			d[key] = values[i+1]
+		}
+		return d, nil
+	},
 	"lower": strings.ToLower,
 	"multiplyStrings": func(a, b string) string {
 		af, _ := strconv.ParseFloat(a, 64)

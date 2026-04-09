@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/mtlprog/lore/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -439,14 +440,22 @@ func TestRender(t *testing.T) {
 				TotalXLMValue float64
 				IsCorporate   bool
 			}
-			Operations *struct {
-				Operations []struct {
-					ID              string
-					Type            string
-					TypeDisplay     string
-					TypeCategory    string
-					CreatedAt       string
-					TransactionHash string
+			TxGroups *struct {
+				Groups []struct {
+					Hash          string
+					CreatedAt     string
+					SourceAccount string
+					MemoType      string
+					Memo          string
+					Successful    bool
+					Operations    []struct {
+						ID              string
+						Type            string
+						TypeDisplay     string
+						TypeCategory    string
+						CreatedAt       string
+						TransactionHash string
+					}
 				}
 				NextCursor string
 				HasMore    bool
@@ -549,7 +558,7 @@ func TestRender(t *testing.T) {
 				TotalXLMValue: 0,
 				IsCorporate:   false,
 			},
-			Operations:      nil,
+			TxGroups:        nil,
 			AccountNames:    nil,
 			ReputationScore: nil,
 		}
@@ -563,6 +572,125 @@ func TestRender(t *testing.T) {
 		assert.Contains(t, output, "This is a test account")
 		assert.Contains(t, output, "https://example.com")
 		assert.Contains(t, output, "MTLAP")
+	})
+
+	t.Run("account template renders grouped operations with direction badges", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Account         *model.AccountDetail
+			TxGroups        *model.TransactionGroupsPage
+			AccountNames    map[string]string
+			ReputationScore *model.ReputationScore
+		}{
+			Account: &model.AccountDetail{
+				ID:   "GVIEWER1234567890",
+				Name: "Viewer Account",
+			},
+			AccountNames: map[string]string{
+				"GOTHER": "Other Account",
+			},
+			TxGroups: &model.TransactionGroupsPage{
+				Groups: []model.TransactionGroup{
+					{
+						// Multi-op group: sender of several payments
+						Hash:      "txhash1abcdef",
+						CreatedAt: "2026-04-09 12:00:00",
+						MemoType:  "text",
+						Memo:      "quarterly salary",
+						Operations: []model.Operation{
+							{
+								Type:            "payment",
+								TypeDisplay:     "Payment",
+								TypeCategory:    "payment",
+								CreatedAt:       "2026-04-09 12:00:00",
+								TransactionHash: "txhash1abcdef",
+								From:            "GVIEWER1234567890",
+								To:              "GOTHER",
+								Amount:          "100",
+								AssetCode:       "EURMTL",
+								Direction:       model.DirectionOut,
+								Counterparty:    "GOTHER",
+							},
+							{
+								Type:            "payment",
+								TypeDisplay:     "Payment",
+								TypeCategory:    "payment",
+								CreatedAt:       "2026-04-09 12:00:00",
+								TransactionHash: "txhash1abcdef",
+								From:            "GVIEWER1234567890",
+								To:              "GOTHER",
+								Amount:          "50",
+								AssetCode:       "EURMTL",
+								Direction:       model.DirectionOut,
+								Counterparty:    "GOTHER",
+							},
+						},
+					},
+					{
+						// Single-op group: incoming payment
+						Hash:      "txhash2ghijkl",
+						CreatedAt: "2026-04-09 11:30:00",
+						Operations: []model.Operation{
+							{
+								Type:            "payment",
+								TypeDisplay:     "Payment",
+								TypeCategory:    "payment",
+								CreatedAt:       "2026-04-09 11:30:00",
+								TransactionHash: "txhash2ghijkl",
+								From:            "GOTHER",
+								To:              "GVIEWER1234567890",
+								Amount:          "1000",
+								AssetCode:       "EURMTL",
+								Direction:       model.DirectionIn,
+								Counterparty:    "GOTHER",
+							},
+						},
+					},
+				},
+				HasMore: false,
+			},
+		}
+
+		err := tmpl.Render(&buf, "account.html", data)
+		require.NoError(t, err)
+
+		output := buf.String()
+		// Multi-op group renders as <details>
+		assert.Contains(t, output, "<details class=\"op-group\">")
+		assert.Contains(t, output, "+1 more")
+		// Memo rendered inside expanded group
+		assert.Contains(t, output, "quarterly salary")
+		assert.Contains(t, output, "MEMO")
+		// Direction badges
+		assert.Contains(t, output, "op-dir-out")
+		assert.Contains(t, output, "op-dir-in")
+		assert.Contains(t, output, "↑ OUT")
+		assert.Contains(t, output, "↓ IN")
+		// Counterparty name resolved via AccountNames
+		assert.Contains(t, output, "Other Account")
+	})
+
+	t.Run("account template omits operations section when no groups", func(t *testing.T) {
+		var buf bytes.Buffer
+		data := struct {
+			Account         *model.AccountDetail
+			TxGroups        *model.TransactionGroupsPage
+			AccountNames    map[string]string
+			ReputationScore *model.ReputationScore
+		}{
+			Account: &model.AccountDetail{ID: "GEMPTY", Name: "Empty"},
+			TxGroups: &model.TransactionGroupsPage{
+				Groups:  []model.TransactionGroup{},
+				HasMore: false,
+			},
+		}
+
+		err := tmpl.Render(&buf, "account.html", data)
+		require.NoError(t, err)
+
+		output := buf.String()
+		// Empty groups slice should not render the operations section header.
+		assert.NotContains(t, output, `id="operations"`)
 	})
 
 	t.Run("transaction template renders successfully", func(t *testing.T) {
